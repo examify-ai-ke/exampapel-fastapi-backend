@@ -1,8 +1,8 @@
 """empty message
 
-Revision ID: 4adc5112ca32
-Revises: ddca5e7d8a53
-Create Date: 2024-05-06 19:28:35.347097
+Revision ID: ecc9051870aa
+Revises: 23c93458cfaa
+Create Date: 2024-05-07 07:12:45.477157
 
 """
 from alembic import op
@@ -12,8 +12,8 @@ import sqlmodel # added
 
 
 # revision identifiers, used by Alembic.
-revision = '4adc5112ca32'
-down_revision = 'ddca5e7d8a53'
+revision = 'ecc9051870aa'
+down_revision = '23c93458cfaa'
 branch_labels = None
 depends_on = None
 

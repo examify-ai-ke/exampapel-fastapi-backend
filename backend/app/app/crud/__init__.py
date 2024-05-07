@@ -9,3 +9,4 @@ from .user_follow_crud import user_follow
 # custom
 from .institution_crud import institution
 from .faculty_crud import faculty
+from .department_crud import department

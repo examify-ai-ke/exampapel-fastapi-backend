@@ -8,17 +8,27 @@ from app.models.image_media_model import ImageMedia
 from app.utils.slugify_string import generate_slug
 from pydantic import field_validator, validator
 
+
 # Department model with ForeignKey to Faculty
-class Department(SQLModel, BaseUUIDModel, table=True):
+class Department(BaseUUIDModel, SQLModel, table=True):
     name: str = Field(nullable=False, unique=True)
     description: Optional[str]
     slug: Optional[str] = Field(default=None, unique=True)
 
+    image_id: UUID | None = Field(default=None, foreign_key="ImageMedia.id")
+    image: ImageMedia | None = Relationship(
+        sa_relationship_kwargs={
+            "lazy": "joined",
+            "primaryjoin": "Department.image_id==ImageMedia.id",
+        }
+    )
     # Foreign key to Faculty
-    faculty_id: int = Field(foreign_key="faculty.id", nullable=False)
+    faculty_id: UUID = Field(foreign_key="Faculty.id", nullable=False)
 
     # Relationship with Faculty
-    faculty: "Faculty" = Relationship(back_populates="departments")
+    faculty: "Faculty" = Relationship(
+        back_populates="departments", sa_relationship_kwargs={"lazy": "joined"}
+    )
 
     created_by_id: UUID | None = Field(default=None, foreign_key="User.id")
     created_by: "User" = Relationship(  # noqa: F821
@@ -28,9 +38,7 @@ class Department(SQLModel, BaseUUIDModel, table=True):
         }
     )
 
-    @validator("slug", pre=True, always=True)
+    @validator("slug")
     def set_slug(cls, value, values):
-        if value:
-            return value
         name = values.get("name", "")
         return generate_slug(name)

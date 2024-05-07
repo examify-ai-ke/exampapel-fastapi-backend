@@ -1,7 +1,7 @@
-from app.schemas.faculty_schema import FacultyCreate, FacultyUpdate
+from app.schemas.department_schema import DepartmentCreate, DepartmentUpdate
 from datetime import datetime
 from app.crud.base_crud import CRUDBase
-from app.models.faculty_model import Faculty
+from app.models.department_model import Department
 from app.schemas.media_schema import IMediaCreate
 from app.models.image_media_model import ImageMedia
 from app.models.media_model import Media
@@ -9,18 +9,18 @@ from sqlmodel import select, func, and_, col
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 
-class CRUDFaculty(CRUDBase[Faculty, FacultyCreate, FacultyUpdate]):
+class CRUDDepartment(CRUDBase[Department, DepartmentCreate, DepartmentUpdate]):
 
-    async def get_faculty_by_slug(
+    async def get_department_by_slug(
         self, *, slug: str, db_session: AsyncSession | None = None
-    ) -> Faculty:
+    ) -> Department:
         db_session = db_session or super().get_db().session
-        faculty = await db_session.execute(
-            select(Faculty).where(col(Faculty.slug).ilike(f"%{slug}%"))
+        department = await db_session.execute(
+            select(Department).where(col(Department.slug).ilike(f"%{slug}%"))
         )
-        return faculty.scalars().all()
+        return department.scalars().all()
 
-    async def get_count_of_faculties(
+    async def get_count_of_departments(
         self,
         *,
         # start_time: datetime,
@@ -29,7 +29,7 @@ class CRUDFaculty(CRUDBase[Faculty, FacultyCreate, FacultyUpdate]):
     ) -> int:
         db_session = db_session or super().get_db().session
         subquery = (
-            select(Faculty)
+            select(Department)
             # .where(
             #     and_(
             #         Institution.created_at > start_time,
@@ -43,26 +43,26 @@ class CRUDFaculty(CRUDBase[Faculty, FacultyCreate, FacultyUpdate]):
         value = count.scalar_one_or_none()
         return value
 
-    async def update_faculty_image(
+    async def update_department_image(
         self,
         *,
-        faculty: Faculty,
+        department: Department,
         media: IMediaCreate,
         heigth: int,
         width: int,
         file_format: str,
-    ) -> Faculty:
+    ) -> Department:
         db_session = super().get_db().session
-        faculty.image= ImageMedia(
+        department.image = ImageMedia(
             media=Media.model_validate(media),
             height=heigth,
             width=width,
             file_format=file_format,
         )
-        db_session.add(faculty)
+        db_session.add(department)
         await db_session.commit()
-        await db_session.refresh(faculty)
-        return faculty
+        await db_session.refresh(department)
+        return department
 
 
-faculty = CRUDFaculty(Faculty)
+department = CRUDDepartment(Department)

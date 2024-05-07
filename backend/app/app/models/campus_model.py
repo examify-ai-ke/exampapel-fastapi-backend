@@ -31,7 +31,5 @@ class Campus(BaseUUIDModel,CampusBase, table=True):
 
     @validator("slug", pre=True, always=True)
     def set_slug(cls, value, values):
-        if value:
-            return value
         name = values.get("name", "")
         return generate_slug(name)

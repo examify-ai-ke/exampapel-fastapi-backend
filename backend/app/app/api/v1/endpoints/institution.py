@@ -221,7 +221,7 @@ async def add_faculty_to_institution(
 
 @router.post("/{institution_id}/logo")
 async def upload_institution_logo(
-    valid_institution: User = Depends(user_deps.is_valid_institution),
+    valid_institution: Institution = Depends(user_deps.is_valid_institution),
     title: str | None = Body(None),
     description: str | None = Body(None),
     institution_logo: UploadFile = File(...),

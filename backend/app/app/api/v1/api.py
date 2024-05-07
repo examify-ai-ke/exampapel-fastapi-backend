@@ -12,7 +12,8 @@ from app.api.v1.endpoints import (
     report,
     periodic_tasks,
     institution,
-    faculty
+    faculty,
+    department,
 )
 
 api_router = APIRouter()
@@ -32,7 +33,9 @@ api_router.include_router(
     periodic_tasks.router, prefix="/periodic_tasks", tags=["periodic_tasks"]
 )
 
-api_router.include_router(institution.router, prefix="/institution", tags=["institution"])
 api_router.include_router(
-    faculty.router, prefix="/faculty", tags=["faculty"]
+    institution.router, prefix="/institution", tags=["institution"]
 )
+api_router.include_router(faculty.router, prefix="/faculty", tags=["faculty"])
+
+api_router.include_router(department.router, prefix="/department", tags=["department"])

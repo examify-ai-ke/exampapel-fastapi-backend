@@ -46,8 +46,6 @@ class InstitutionBase(SQLModel):
     
     @validator("slug")
     def set_slug(cls, value, values):
-        if value:
-            return value
         name = values.get("name", "")
         return generate_slug(name)
 

@@ -89,3 +89,73 @@ class CRUDInstitution(CRUDBase[Institution, InstitutionCreate, InstitutionUpdate
 
 
 institution = CRUDInstitution(Institution)
+
+
+# from fastapi import FastAPI, Depends, HTTPException
+# from sqlalchemy.ext.asyncio import AsyncSession
+# from sqlalchemy.future import select
+# from app.models import Institution, Faculty, InstitutionFaculty  # Import your models
+# from app.database import get_db  # Dependency for database session
+# from uuid import UUID
+# from typing import List
+
+# app = FastAPI()
+
+
+# # Schema for adding multiple faculties to an institution
+# class AddFacultiesToInstitutionRequest(BaseModel):
+#     faculty_ids: List[UUID]  # List of UUIDs representing faculties to add
+
+
+# @app.post("/institutions/{institution_id}/faculties")
+# async def add_faculties_to_institution(
+#     institution_id: UUID,
+#     request: AddFacultiesToInstitutionRequest,
+#     db: AsyncSession = Depends(get_db),
+# ):
+#     # Ensure the institution exists
+#     institution = await db.get(Institution, institution_id)
+#     if not institution:
+#         raise HTTPException(status_code=404, detail="Institution not found")
+
+#     # Retrieve the faculties from the given list of faculty IDs
+#     faculty_ids = request.faculty_ids
+#     faculties = await db.execute(select(Faculty).where(Faculty.id.in_(faculty_ids)))
+#     faculties_list = faculties.scalars().all()
+
+#     # Check if any of the faculty IDs do not exist
+#     existing_faculty_ids = {faculty.id for faculty in faculties_list}
+#     missing_faculty_ids = set(faculty_ids) - existing_faculty_ids
+#     if missing_faculty_ids:
+#         raise HTTPException(
+#             status_code=404,
+#             detail=f"Faculties with IDs {missing_faculty_ids} not found",
+#         )
+
+#     # Check for existing associations to avoid duplicates
+#     existing_associations = await db.execute(
+#         select(InstitutionFaculty).where(
+#             InstitutionFaculty.institution_id == institution_id,
+#             InstitutionFaculty.faculty_id.in_(faculty_ids),
+#         )
+#     )
+#     existing_associations_set = {
+#         assoc.faculty_id for assoc in existing_associations.scalars().all()
+#     }
+#     duplicate_faculty_ids = set(faculty_ids) & existing_associations_set
+
+#     if duplicate_faculty_ids:
+#         raise HTTPException(
+#             status_code=400,
+#             detail=f"Faculties with IDs {duplicate_faculty_ids} are already associated with Institution '{institution_id}'",
+#         )
+
+#     # If everything is valid, add the faculties to the institution
+#     for faculty in faculties_list:
+#         institution.faculties.append(faculty)
+
+#     await db.commit()
+
+#     return {
+#         "message": f"Successfully added faculties to Institution '{institution_id}'"
+#     }

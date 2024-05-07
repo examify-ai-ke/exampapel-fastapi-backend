@@ -8,6 +8,8 @@ from uuid import UUID
 from app.schemas.institution_schema import InstitutionRead
 from app.models.institution_model import Institution
 from app.schemas.faculty_schema import FacultyRead
+from app.models.department_model import Department
+from app.schemas.department_schema import DepartmentRead
 from fastapi import HTTPException, Path, status
 from typing_extensions import Annotated
 
@@ -49,8 +51,17 @@ async def is_valid_faculty(
 ) -> FacultyRead:
     faculty = await crud.faculty.get(id=faculty_id)
     if not faculty:
-        raise IdNotFoundException(Institution, id=faculty_id)
+        raise IdNotFoundException(faculty, id=faculty_id)
     return faculty
+
+
+async def is_valid_department(
+    department_id: Annotated[UUID, Path(title="The UUID id of the department")]
+) -> DepartmentRead:
+    department = await crud.faculty.get(id=department_id)
+    if not department:
+        raise IdNotFoundException(Department, id=department_id)
+    return department
 
 
 async def is_valid_user_id(

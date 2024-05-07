@@ -42,6 +42,6 @@ class InstitutionRead(InstitutionBase):
 
     faculties: list[FacultyRead] | None = []
     campuses: list[CampusRead] | None = []
-
+    
     class Config:
         from_attributes = True  # This allows the schema to work with ORM objects

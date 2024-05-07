@@ -1,4 +1,5 @@
 from app.models.institution_model import Institution, InstitutionFacultyLink
+from app.models.department_model import Department
 from sqlmodel import Field, Relationship, SQLModel, Enum, Column, DateTime, String
 from app.models.base_uuid_model import BaseUUIDModel
 from uuid import UUID
@@ -7,7 +8,7 @@ from typing import List, Optional
 from app.models.image_media_model import ImageMedia
 from app.utils.slugify_string import generate_slug
 from pydantic import  field_validator, validator
-
+from slugify import slugify
 
 # Updated Faculty model to reflect the connection to InstitutionFaculty
 class Faculty(BaseUUIDModel, SQLModel, table=True):
@@ -29,7 +30,13 @@ class Faculty(BaseUUIDModel, SQLModel, table=True):
     # Relationships
     # Many-to_many Relationship with Institution
     institutions: List[Institution] = Relationship(
-        back_populates="faculties", link_model=InstitutionFacultyLink
+        back_populates="faculties",
+        link_model=InstitutionFacultyLink,
+        sa_relationship_kwargs={"lazy": "joined"},
+    )
+
+    departments: List[Department] = Relationship(
+        back_populates="faculty", sa_relationship_kwargs={"lazy": "joined"}
     )
 
     created_by_id: UUID | None = Field(default=None, foreign_key="User.id")
@@ -40,9 +47,20 @@ class Faculty(BaseUUIDModel, SQLModel, table=True):
         }
     )
 
+    @property
+    def total_institutions(self):
+        total=len(self.institutions)
+        return total
+
+    @property
+    def total_departments(self):
+        total=len(self.departments)
+        return total
+
     @validator("slug", pre=True, always=True)
     def set_slug(cls, value, values):
-        if value:
-            return value
         name = values.get("name", "")
         return generate_slug(name)
+
+    institution_count = total_institutions
+    department_count = total_departments

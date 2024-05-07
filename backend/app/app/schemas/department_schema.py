@@ -19,8 +19,8 @@ class DepartmentCreate(DepartmentBase):
 
 # Read schema for Department
 class DepartmentRead(DepartmentBase):
-    id: UUID # Read schema includes the unique identifier
-    faculty_id: UUID # Read schema has faculty reference
+    id: Optional[UUID] # Read schema includes the unique identifier
+    faculty_id: Optional[UUID]   # Read schema has faculty reference
 
     class Config:
         from_attributes = True

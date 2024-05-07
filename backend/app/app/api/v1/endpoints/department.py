@@ -22,13 +22,13 @@ from fastapi import (
 )
 from app import crud
 from app.api import deps
-from app.models.faculty_model import Faculty
+from app.models.department_model import Department
 from app.models.user_model import User
 from app.schemas.common_schema import IOrderEnum
-from app.schemas.faculty_schema import (
-    FacultyRead,
-    FacultyCreate,
-    FacultyUpdate,
+from app.schemas.department_schema import (
+    DepartmentRead,
+    DepartmentCreate,
+    DepartmentUpdate,
 )
 from app.schemas.response_schema import (
     IDeleteResponseBase,
@@ -46,134 +46,138 @@ router = APIRouter()
 
 
 @router.get("")
-async def get_faculty_list(
+async def get_department_list(
     params: Params = Depends(),
     current_user: User = Depends(deps.get_current_user()),
-) -> IGetResponsePaginated[FacultyRead]:
+) -> IGetResponsePaginated[DepartmentRead]:
     """
-    Gets a paginated list of faculties
+    Gets a paginated list of departments
     """
-    faculties = await crud.faculty.get_multi_paginated(params=params)
-    return create_response(data=faculties)
+    departments = await crud.department.get_multi_paginated(params=params)
+    return create_response(data=departments)
 
 
 @router.get("/get_by_created_at")
-async def get_faculty_list_order_by_created_at(
+async def get_departments_list_order_by_created_at(
     order: IOrderEnum
     | None = Query(
         default=IOrderEnum.ascendent, description="It is optional. Default is ascendent"
     ),
     params: Params = Depends(),
     current_user: User = Depends(deps.get_current_user()),
-) -> IGetResponsePaginated[FacultyRead]:
+) -> IGetResponsePaginated[DepartmentRead]:
     """
-    Gets a paginated list of  faculties ordered by created at datetime
+    Gets a paginated list of  departments ordered by created at datetime
     """
-    faculties = await crud.faculty.get_multi_paginated_ordered(
+    departments = await crud.department.get_multi_paginated_ordered(
         params=params, order=order
     )
-    return create_response(data=faculties)
+    return create_response(data=departments)
 
 
-@router.get("/get_by_id/{faculty_id}")
-async def get_faculty_by_id(
-    faculty_id: UUID,
+@router.get("/get_by_id/{department_id}")
+async def get_department_by_id(
+    department_id: UUID,
     current_user: User = Depends(deps.get_current_user()),
-) -> IGetResponseBase[FacultyRead]:
+) -> IGetResponseBase[DepartmentRead]:
     """
-    Gets a faculty by its id
+    Gets a deaprtment by its id
     """
-    faculty = await crud.faculty.get(id=faculty_id)
-    if not faculty:
-        raise IdNotFoundException(Faculty, faculty_id)
+    department = await crud.department.get(id=department_id)
+    if not department:
+        raise IdNotFoundException(Department, department_id)
 
     # print_hero.delay(hero.id)
-    return create_response(data=faculty)
+    return create_response(data=department)
 
 
-@router.get("/get_by_slug/{faculty_slug}")
-async def get_faculty_by_slug(
-    faculty_slug: str,
+@router.get("/get_by_slug/{department_slug}")
+async def get_department_by_slug(
+    department_slug: str,
     current_user: User = Depends(deps.get_current_user()),
-) -> IGetResponseBase[list[FacultyRead]]:
+) -> IGetResponseBase[list[DepartmentRead]]:
     """
-    Gets a faculty by slug
+    Gets a department by slug
     """
-    faculty_frm_db = await crud.faculty.get_faculty_by_slug(slug=faculty_slug)
-    if not faculty_frm_db:
-        raise NameNotFoundException(Faculty, faculty_slug)
+    department_frm_db = await crud.department.get_department_by_slug(
+        slug=department_slug
+    )
+    if not department_frm_db:
+        raise NameNotFoundException(Department, department_slug)
 
-    return create_response(data=faculty_frm_db)
+    return create_response(data=department_frm_db)
 
 
 @router.post("")
-async def create_faculty(
-    faculty: FacultyCreate,
+async def create_department(
+    department: DepartmentCreate,
     current_user: User = Depends(
         deps.get_current_user(required_roles=[IRoleEnum.admin, IRoleEnum.manager])
     ),
-) -> IPostResponseBase[FacultyRead]:
+) -> IPostResponseBase[DepartmentRead]:
     """
-    Creates a new faculty
+    Creates a new department
 
     Required roles:
     - admin
     - manager
     """
 
-    _faculty = await crud.faculty.create(obj_in=faculty, created_by_id=current_user.id)
-    return create_response(data=_faculty)
+    _department = await crud.department.create(
+        obj_in=department, created_by_id=current_user.id
+    )
+    return create_response(data=_department)
 
 
-@router.put("/{faculty_id}")
-async def update_faculty(
-    faculty_id: UUID,
-    faculty: FacultyUpdate,
+@router.put("/{department_id}")
+async def update_department(
+    department_id: UUID,
+    department: DepartmentUpdate,
     current_user: User = Depends(
         deps.get_current_user(required_roles=[IRoleEnum.admin, IRoleEnum.manager])
     ),
-) -> IPutResponseBase[FacultyRead]:
+) -> IPutResponseBase[DepartmentRead]:
     """
-    Updates a faculty by its id
+    Updates a department by its id
 
     Required roles:
     - admin
     - manager
     """
-    current_faculty = await crud.faculty.get(id=faculty_id)
-    if not current_faculty:
-        raise IdNotFoundException(Faculty, faculty_id)
-    if not is_authorized(current_user, "read", current_faculty):
+    current_dept = await crud.department.get(id=department_id)
+    if not current_dept:
+        raise IdNotFoundException(Department, department_id)
+    if not is_authorized(current_user, "read", current_dept):
         raise HTTPException(
             status_code=403,
-            detail="You are not Authorized to update this faculty because you did not created it",
+            detail="You are not Authorized to update this Department because you did not created it",
         )
 
-    faculty_updated = await crud.faculty.update(
-        obj_new=faculty, obj_current=current_faculty
+    department_updated = await crud.department.update(
+        obj_new=department, obj_current=current_dept
     )
-    return create_response(data=faculty_updated)
+    return create_response(data=department_updated)
 
 
-@router.delete("/{faculty_id}")
-async def remove_faculty(
-    faculty_id: UUID,
+@router.delete("/{department_id}")
+async def remove_department(
+    department_id: UUID,
     current_user: User = Depends(
         deps.get_current_user(required_roles=[IRoleEnum.admin, IRoleEnum.manager])
     ),
-) -> IDeleteResponseBase[FacultyRead]:
+) -> IDeleteResponseBase[DepartmentRead]:
     """
-    Deletes a faculty by its id
+    Deletes a department by its id
 
     Required roles:
     - admin
     - manager
     """
-    current_faculty = await crud.faculty.get(id=faculty_id)
-    if not current_faculty:
-        raise IdNotFoundException(Faculty, faculty_id)
-    faculty = await crud.faculty.remove(id=faculty_id)
-    return create_response(data=faculty)
+    current_depart = await crud.department.get(id=department_id)
+    if not current_depart:
+        raise IdNotFoundException(Department, department_id)
+    department = await crud.department.remove(id=department_id)
+    return create_response(data=department)
 
 
 # @router.post("/logo")
@@ -211,42 +215,42 @@ async def remove_faculty(
 #         return Response("Internal server error", status_code=500)
 
 
-@router.post("/{faculty_id}/image")
-async def upload_faculty_image(
-    valid_faculty: Faculty = Depends(user_deps.is_valid_faculty),
+@router.post("/{department_id}/image")
+async def upload_department_image(
+    valid_department: Department= Depends(user_deps.is_valid_department),
     title: str | None = Body(None),
     description: str | None = Body(None),
-    faculty_image: UploadFile = File(...),
+    department_image: UploadFile = File(...),
     current_user: User = Depends(
         deps.get_current_user(required_roles=[IRoleEnum.admin, IRoleEnum.manager])
     ),
     minio_client: MinioClient = Depends(deps.minio_auth),
-) -> IPostResponseBase[FacultyRead]:
+) -> IPostResponseBase[DepartmentRead]:
     """
-    Uploads a faculty hero image by id
+    Uploads a department hero image by id
 
     Required roles:
     - admin
     - manager
     """
     try:
-        image_modified = modify_image(BytesIO(faculty_image.file.read()))
+        image_modified = modify_image(BytesIO(department_image.file.read()))
         data_file = minio_client.put_object(
-            file_name=faculty_image.filename,
+            file_name=department_image.filename,
             file_data=BytesIO(image_modified.file_data),
-            content_type=faculty_image.content_type,
+            content_type=department_image.content_type,
         )
         media = IMediaCreate(
             title=title, description=description, path=data_file.file_name
         )
-        faculty_photo = await crud.faculty.update_faculty_image(
-            faculty=valid_faculty,
+        department_photo = await crud.department.update_department_image(
+            department=valid_department,
             image=media,
             heigth=image_modified.height,
             width=image_modified.width,
             file_format=image_modified.file_format,
         )
-        return create_response(data=faculty_photo)
+        return create_response(data=department_photo)
     except Exception as e:
         print(e)
         return Response("Internal server error", status_code=500)
