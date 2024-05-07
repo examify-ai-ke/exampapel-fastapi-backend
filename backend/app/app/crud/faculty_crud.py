@@ -1,3 +1,4 @@
+from typing import Any
 from app.schemas.faculty_schema import FacultyCreate, FacultyUpdate
 from datetime import datetime
 from app.crud.base_crud import CRUDBase
@@ -5,6 +6,7 @@ from app.models.faculty_model import Faculty
 from app.schemas.media_schema import IMediaCreate
 from app.models.image_media_model import ImageMedia
 from app.models.media_model import Media
+from app.models.department_model import Department
 from sqlmodel import select, func, and_, col
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -18,7 +20,7 @@ class CRUDFaculty(CRUDBase[Faculty, FacultyCreate, FacultyUpdate]):
         faculty = await db_session.execute(
             select(Faculty).where(col(Faculty.slug).ilike(f"%{slug}%"))
         )
-        return faculty.scalars().all()
+        return faculty.unique().scalars().all()
 
     async def get_count_of_faculties(
         self,
@@ -63,6 +65,28 @@ class CRUDFaculty(CRUDBase[Faculty, FacultyCreate, FacultyUpdate]):
         await db_session.commit()
         await db_session.refresh(faculty)
         return faculty
+
+    async def check_existing_faculty_department_association(
+        self,
+        *,
+        department: Department,
+        faculty:Faculty,
+        db_session: AsyncSession | None = None,
+    ) -> Any:
+        db_session = super().get_db().session
+        # Check if the relationship already exists in the join table
+        query = select(Department).where(
+            Department.faculty_id == faculty.id, Department.id==department.id
+        )
+
+        result = await db_session.execute(query)
+        # Retrieve the first result or None if no result
+        existing_association = result.scalar_one_or_none()
+
+        if existing_association is None:
+            return None  # Handle the case where no record is found
+        else:
+            return existing_association  # Return the existing record
 
 
 faculty = CRUDFaculty(Faculty)

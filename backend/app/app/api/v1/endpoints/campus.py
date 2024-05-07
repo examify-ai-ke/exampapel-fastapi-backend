@@ -22,13 +22,13 @@ from fastapi import (
 )
 from app import crud
 from app.api import deps
-from app.models.faculty_model import Faculty
+from app.models.campus_model import Campus
 from app.models.user_model import User
 from app.schemas.common_schema import IOrderEnum
-from app.schemas.faculty_schema import (
-    FacultyRead,
-    FacultyCreate,
-    FacultyUpdate,
+from app.schemas.campus_schema import (
+    CampusRead,
+    CampusCreate,
+    CampusUpdate,
 )
 from app.schemas.response_schema import (
     IDeleteResponseBase,
@@ -46,134 +46,133 @@ router = APIRouter()
 
 
 @router.get("")
-async def get_faculty_list(
+async def get_campus_list(
     params: Params = Depends(),
     current_user: User = Depends(deps.get_current_user()),
-) -> IGetResponsePaginated[FacultyRead]:
+) -> IGetResponsePaginated[CampusRead]:
     """
-    Gets a paginated list of faculties
+    Gets a paginated list of campus
     """
-    faculties = await crud.faculty.get_multi_paginated(params=params)
-    return create_response(data=faculties)
+    campuses = await crud.campus.get_multi_paginated(params=params)
+    return create_response(data=campuses)
 
 
 @router.get("/get_by_created_at")
-async def get_faculty_list_order_by_created_at(
+async def get_campus_list_order_by_created_at(
     order: IOrderEnum
     | None = Query(
         default=IOrderEnum.ascendent, description="It is optional. Default is ascendent"
     ),
     params: Params = Depends(),
     current_user: User = Depends(deps.get_current_user()),
-) -> IGetResponsePaginated[FacultyRead]:
+) -> IGetResponsePaginated[CampusRead]:
     """
-    Gets a paginated list of  faculties ordered by created at datetime
+    Gets a paginated list of campuses ordered by created at datetime
     """
-    faculties = await crud.faculty.get_multi_paginated_ordered(
+    campus = await crud.campus.get_multi_paginated_ordered(
         params=params, order=order
     )
-    return create_response(data=faculties)
+    return create_response(data=campus)
 
 
-@router.get("/get_by_id/{faculty_id}")
-async def get_faculty_by_id(
-    faculty_id: UUID,
+@router.get("/get_by_id/{campus_id}")
+async def get_campus_by_id(
+    campus_id: UUID,
     current_user: User = Depends(deps.get_current_user()),
-) -> IGetResponseBase[FacultyRead]:
+) -> IGetResponseBase[CampusRead]:
     """
-    Gets a faculty by its id
+    Gets a campus by its id
     """
-    faculty = await crud.faculty.get(id=faculty_id)
-    if not faculty:
-        raise IdNotFoundException(Faculty, faculty_id)
+    campus = await crud.campus.get(id=campus_id)
+    if not campus:
+        raise IdNotFoundException(Campus, campus_id)
 
     # print_hero.delay(hero.id)
-    return create_response(data=faculty)
+    return create_response(data=campus)
 
 
-@router.get("/get_by_slug/{faculty_slug}")
-async def get_faculty_by_slug(
-    faculty_slug: str,
+@router.get("/get_by_slug/{campus_slug}")
+async def get_campus_by_slug(
+    campus_slug: str,
     current_user: User = Depends(deps.get_current_user()),
-) -> IGetResponseBase[list[FacultyRead]]:
+) -> IGetResponseBase[list[CampusRead]]:
     """
-    Gets a faculty by slug
+    Gets a Campus by slug
     """
-    faculty_frm_db = await crud.faculty.get_faculty_by_slug(slug=faculty_slug)
-    if not faculty_frm_db:
-        raise NameNotFoundException(Faculty, faculty_slug)
+    campus_frm_db = await crud.campus.get_campus_by_slug(slug=campus_slug)
+    if not campus_frm_db:
+        raise NameNotFoundException(Campus, campus_slug)
 
-    return create_response(data=faculty_frm_db)
+    return create_response(data=campus_frm_db)
 
 
 @router.post("")
-async def create_faculty(
-    faculty: FacultyCreate,
+async def create_campus(
+    campus: CampusCreate,
     current_user: User = Depends(
         deps.get_current_user(required_roles=[IRoleEnum.admin, IRoleEnum.manager])
     ),
-) -> IPostResponseBase[FacultyRead]:
+) -> IPostResponseBase[CampusRead]:
     """
-    Creates a new faculty
+    Creates a new Campus
 
     Required roles:
     - admin
     - manager
     """
 
-    _faculty = await crud.faculty.create(obj_in=faculty, created_by_id=current_user.id)
-    return create_response(data=_faculty)
+    _campus = await crud.campus.create(obj_in=campus, created_by_id=current_user.id)
+    return create_response(data=_campus)
 
 
-@router.put("/{faculty_id}")
-async def update_faculty(
-    faculty_id: UUID,
-    faculty: FacultyUpdate,
+@router.put("/{campus_id}")
+async def update_campus(
+    campus_id: UUID,
+    campus: CampusUpdate,
     current_user: User = Depends(
         deps.get_current_user(required_roles=[IRoleEnum.admin, IRoleEnum.manager])
     ),
-) -> IPutResponseBase[FacultyRead]:
+) -> IPutResponseBase[CampusRead]:
     """
-    Updates a faculty by its id
+    Updates a Campus by its id
 
     Required roles:
     - admin
     - manager
     """
-    current_faculty = await crud.faculty.get(id=faculty_id)
-    if not current_faculty:
-        raise IdNotFoundException(Faculty, faculty_id)
-    if not is_authorized(current_user, "read", current_faculty):
+    current_campus = await crud.campus.get(id=campus_id)
+    if not current_campus:
+        raise IdNotFoundException(Campus, campus_id)
+    if not is_authorized(current_user, "read", current_campus):
         raise HTTPException(
             status_code=403,
-            detail="You are not Authorized to update this faculty because you did not created it",
+            detail="You are not Authorized to update this Campus because you did not created it",
         )
 
-    faculty_updated = await crud.faculty.update(
-        obj_new=faculty, obj_current=current_faculty
+    campus_updated = await crud.campus.update(
+        obj_new=campus, obj_current=campus_updated
     )
-    return create_response(data=faculty_updated)
+    return create_response(data=campus_updated)
 
 
-@router.delete("/{faculty_id}")
-async def remove_faculty(
-    faculty_id: UUID,
+@router.delete("/{campus_id}")
+async def remove_campus(
+    campus_id: UUID,
     current_user: User = Depends(
         deps.get_current_user(required_roles=[IRoleEnum.admin, IRoleEnum.manager])
     ),
-) -> IDeleteResponseBase[FacultyRead]:
+) -> IDeleteResponseBase[CampusRead]:
     """
-    Deletes a faculty by its id
-
+    Deletes a Campus by its id.
     Required roles:
     - admin
     - manager
     """
-    current_faculty = await crud.faculty.get(id=faculty_id)
-    if not current_faculty:
-        raise IdNotFoundException(Faculty, faculty_id)
-    faculty = await crud.faculty.remove(id=faculty_id)
-    return create_response(data=faculty)
+    current_campus = await crud.campus.get(id=campus_id)
+    if not current_campus:
+        raise IdNotFoundException(Campus, campus_id)
+    campus = await crud.campus.remove(id=campus_id)
+    return create_response(data=campus)
 
 
 # @router.post("/logo")
@@ -211,83 +210,42 @@ async def remove_faculty(
 #         return Response("Internal server error", status_code=500)
 
 
-@router.post("/{faculty_id}/image")
-async def upload_faculty_image(
-    valid_faculty: Faculty = Depends(user_deps.is_valid_faculty),
+@router.post("/{campus_id}/image")
+async def upload_campus_image(
+    valid_campus: Campus= Depends(user_deps.is_valid_campus),
     title: str | None = Body(None),
     description: str | None = Body(None),
-    faculty_image: UploadFile = File(...),
+    campus_image: UploadFile = File(...),
     current_user: User = Depends(
         deps.get_current_user(required_roles=[IRoleEnum.admin, IRoleEnum.manager])
     ),
     minio_client: MinioClient = Depends(deps.minio_auth),
-) -> IPostResponseBase[FacultyRead]:
+) -> IPostResponseBase[CampusRead]:
     """
-    Uploads a faculty hero image by id
+    Uploads a campus hero image by id
 
     Required roles:
     - admin
     - manager
     """
     try:
-        image_modified = modify_image(BytesIO(faculty_image.file.read()))
+        image_modified = modify_image(BytesIO(campus_image.file.read()))
         data_file = minio_client.put_object(
-            file_name=faculty_image.filename,
+            file_name=campus_image.filename,
             file_data=BytesIO(image_modified.file_data),
-            content_type=faculty_image.content_type,
+            content_type=campus_image.content_type,
         )
         media = IMediaCreate(
             title=title, description=description, path=data_file.file_name
         )
-        faculty_photo = await crud.faculty.update_faculty_image(
-            faculty=valid_faculty,
+        campus_photo = await crud.campus.update_campus_image(
+            campus=valid_campus,
             image=media,
             heigth=image_modified.height,
             width=image_modified.width,
             file_format=image_modified.file_format,
         )
-        return create_response(data=faculty_photo)
+        return create_response(data=campus_photo)
     except Exception as e:
         print(e)
         return Response("Internal server error", status_code=500)
-
-
-# Associate department with faculty
-@router.post("/{faculty_id}/departments/{department_id}")
-async def add_department_to_faculty(
-    faculty_id: UUID,
-    department_id: UUID,
-    current_user: User = Depends(
-        deps.get_current_user(required_roles=[IRoleEnum.admin, IRoleEnum.manager])
-    ),
-)-> IPostResponseBase[FacultyRead]:
-    """
-    Uploads a faculty hero image by id
-
-    Required roles:
-    - admin
-    - manager
-    """
-    faculty_db = await crud.faculty.get(id=faculty_id)
-    department_db = await crud.department.get(id=department_id)
-    if not faculty_db or not department_db:
-        raise HTTPException(status_code=404, detail="Faculty or Department not found")
-
-    # Check if association already exist
-    _association = await crud.faculty.check_existing_faculty_department_association(
-        department=department_db,faculty=faculty_db
-    )
-
-    if _association is not None:
-        # If an association already exists, raise an error or return a suitable response
-        raise HTTPException(
-            status_code=400,
-            detail=f"Faculty '{faculty_db.name}' is already associated with Department '{department_db.name}'",
-        )
-    else:      
-
-        faculty_db.departments.append(department_db)
-        facilty_with_department = await crud.faculty.add_related(
-            appended_parent_object=faculty_db
-        )
-        return create_response(data=facilty_with_department)

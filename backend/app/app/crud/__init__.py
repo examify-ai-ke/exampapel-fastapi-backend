@@ -10,3 +10,5 @@ from .user_follow_crud import user_follow
 from .institution_crud import institution
 from .faculty_crud import faculty
 from .department_crud import department
+from .campus_crud import campus
+from .programme_crud import programme

@@ -32,6 +32,16 @@ class FacultyRead(FacultyBase):
     class Config:
         from_attributes = True
 
+class DepartmentReadForFacultyReadForInstitution(BaseModel):
+    name: str
+    id :UUID
+    slug: str
+class FacultyReadForInstitution(BaseModel):
+    id: UUID
+    name: str
+    slug: str
+    departments: list[DepartmentReadForFacultyReadForInstitution] | None = []
+    # department_count: int | None
 
 @optional()
 class FacultyUpdate(BaseModel):

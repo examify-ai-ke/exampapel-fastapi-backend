@@ -3,7 +3,7 @@ from app.models.institution_model import InstitutionBase
 # from app.models.team_model import TeamBase
 from app.utils.partial import optional
 from uuid import UUID
-from app.schemas.faculty_schema import FacultyRead, FacultyBase
+from app.schemas.faculty_schema import FacultyReadForInstitution 
 from app.schemas.campus_schema import CampusRead
 from pydantic import  BaseModel
 
@@ -40,8 +40,8 @@ class InstitutionFacultyUpdate(BaseModel):
 class InstitutionRead(InstitutionBase):
     id: UUID  # ID is known after creation
 
-    faculties: list[FacultyRead] | None = []
+    faculties: list[FacultyReadForInstitution] | None = []
     campuses: list[CampusRead] | None = []
-    
+
     class Config:
         from_attributes = True  # This allows the schema to work with ORM objects

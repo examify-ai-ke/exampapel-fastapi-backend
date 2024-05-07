@@ -16,12 +16,15 @@ class DepartmentBase(BaseModel):
 class DepartmentCreate(DepartmentBase):
     faculty_id: UUID # Needed to create a Department in a specific Faculty
 
-
+class ProgrammeReadForDepartments(BaseModel):
+    id: UUID
+    name: str
+    slug: str
 # Read schema for Department
 class DepartmentRead(DepartmentBase):
     id: Optional[UUID] # Read schema includes the unique identifier
     faculty_id: Optional[UUID]   # Read schema has faculty reference
-
+    programmes: Optional[List[ProgrammeReadForDepartments]]
     class Config:
         from_attributes = True
 

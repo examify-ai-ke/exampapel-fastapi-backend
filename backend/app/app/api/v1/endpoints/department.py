@@ -7,6 +7,8 @@ from io import BytesIO
 from app.deps import user_deps
 from app.schemas.media_schema import IMediaCreate
 from app.utils.slugify_string import generate_slug
+from app.models.programme_model import Programme
+from app.schemas.programme_schema import ProgrammeCreate
 from fastapi import APIRouter, Depends, HTTPException, Query
 from app.utils.minio_client import MinioClient
 from fastapi_pagination import Params
@@ -254,3 +256,45 @@ async def upload_department_image(
     except Exception as e:
         print(e)
         return Response("Internal server error", status_code=500)
+
+
+# Associate  programme with departmenmt
+@router.post("/{department_id}/programmes/{programme_id}")
+async def add_programme_to_department(
+    department_id: UUID,
+    programme_id: UUID,
+    current_user: User = Depends(
+        deps.get_current_user(required_roles=[IRoleEnum.admin, IRoleEnum.manager])
+    ),
+) -> IDeleteResponseBase[DepartmentRead]:
+    """
+    Add a Programme to a Department by id
+
+    Required roles:
+    - admin
+    - manager
+    """
+    department_db = await crud.department.get(id=department_id)
+    programme_db = await crud.programme.get(id=programme_id)
+    if not department_db or not programme_db:
+        raise HTTPException(status_code=404, detail="Department  or Programme not found")
+ 
+    # Check if association already exist
+    _association = await crud.department.check_existing_association_with_programme(
+        department=department_db, programme=programme_db
+    )
+
+    if _association is not None:
+        # If an association already exists, raise an error or return a suitable response
+        raise HTTPException(
+            status_code=400,
+            detail=f"Department '{department_db.name}' is already associated with  Programme '{programme_db.name}'",
+        )
+    else:
+        # Add the programme to the department's list of programmes
+        department_db.programmes.append(programme_db)
+
+        department_with_programme = await crud.department.add_related(
+            appended_parent_object=department_db
+        )
+        return create_response(data=department_with_programme)

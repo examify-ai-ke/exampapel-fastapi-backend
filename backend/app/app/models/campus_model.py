@@ -21,6 +21,7 @@ class Campus(BaseUUIDModel,CampusBase, table=True):
     
     # Relationships
     institution: "Institution" = Relationship(back_populates="campuses")
+    
     created_by_id: UUID | None = Field(default=None, foreign_key="User.id")
     created_by: "User" = Relationship(  # noqa: F821
         sa_relationship_kwargs={
@@ -33,3 +34,4 @@ class Campus(BaseUUIDModel,CampusBase, table=True):
     def set_slug(cls, value, values):
         name = values.get("name", "")
         return generate_slug(name)
+    

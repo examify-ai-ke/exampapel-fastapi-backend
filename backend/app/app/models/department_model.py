@@ -1,4 +1,5 @@
 # from app.models.institution_model import Institution
+from app.models.programme_model import ProgrammeDepartmentLink
 from sqlmodel import Field, Relationship, SQLModel, Enum, Column, DateTime, String
 from app.models.base_uuid_model import BaseUUIDModel
 from uuid import UUID
@@ -28,6 +29,13 @@ class Department(BaseUUIDModel, SQLModel, table=True):
     # Relationship with Faculty
     faculty: "Faculty" = Relationship(
         back_populates="departments", sa_relationship_kwargs={"lazy": "joined"}
+    )
+
+    # Relationship with Faculty
+    programmes: List["Programme"] = Relationship(
+        link_model=ProgrammeDepartmentLink,
+        back_populates="departments",
+        sa_relationship_kwargs={"lazy": "joined"},
     )
 
     created_by_id: UUID | None = Field(default=None, foreign_key="User.id")

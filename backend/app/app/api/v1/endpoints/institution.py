@@ -145,11 +145,11 @@ async def update_institution(
     current_inst = await crud.institution.get(id=institution_id)
     if not current_inst:
         raise IdNotFoundException(Institution, institution_id)
-    if not is_authorized(current_user, "read", current_inst):
-        raise HTTPException(
-            status_code=403,
-            detail="You are not Authorized to update this institution because you did not created it",
-        )
+    # if not is_authorized(current_user, "read", current_inst):
+    #     raise HTTPException(
+    #         status_code=403,
+    #         detail="You are not Authorized to update this institution because you did not created it",
+    #     )
 
     institution_updated = await crud.institution.update(
         obj_new=institution, obj_current=current_inst
@@ -179,7 +179,7 @@ async def remove_institution(
 
 
 # Associate faculty with institution
-@router.post("/institutions/{institution_id}/faculties/{faculty_id}")
+@router.post("/{institution_id}/faculties/{faculty_id}")
 async def add_faculty_to_institution(
     institution_id: UUID,
     faculty_id: UUID,

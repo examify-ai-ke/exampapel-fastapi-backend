@@ -7,6 +7,7 @@ from app.schemas.media_schema import IMediaCreate
 from app.models.image_media_model import ImageMedia
 from app.models.media_model import Media
 from app.models.faculty_model import Faculty
+
 from fastapi import HTTPException
 from sqlmodel import select, func, and_, col
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -21,7 +22,7 @@ class CRUDInstitution(CRUDBase[Institution, InstitutionCreate, InstitutionUpdate
         institution = await db_session.execute(
             select(Institution).where(col(Institution.slug).ilike(f"%{slug}%"))
         )
-        return institution.scalars().all()
+        return institution.unique().scalars().all()
 
     async def get_count_of_institutions(
         self,
@@ -43,7 +44,7 @@ class CRUDInstitution(CRUDBase[Institution, InstitutionCreate, InstitutionUpdate
         )
         query = select(func.count()).select_from(subquery)
         count = await db_session.execute(query)
-        value = count.scalar_one_or_none()
+        value = count.unique().scalar_one_or_none()
         return value
 
     async def update_institution_logo(
@@ -80,12 +81,15 @@ class CRUDInstitution(CRUDBase[Institution, InstitutionCreate, InstitutionUpdate
             InstitutionFacultyLink.institution_id == institution.id,
             InstitutionFacultyLink.faculty_id == faculty.id,
         )
-        existing_association = (await db_session.execute(query)).scalar_one()
-        # print(existing_association.scalar_one())
-        if existing_association is not None:
-            return existing_association
+        
+        result = await db_session.execute(query)
+        # Retrieve the first result or None if no result
+        existing_association = result.scalar_one_or_none()
+
+        if existing_association is None:
+            return None  # Handle the case where no record is found
         else:
-            return None
+            return existing_association  # Return the existing record
 
 
 institution = CRUDInstitution(Institution)
