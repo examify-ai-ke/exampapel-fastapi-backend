@@ -4,7 +4,8 @@ from typing import List, Optional
 from app.utils.partial import optional
 from uuid import UUID
 # from app.schemas.institution_schema import InstitutionDepartmentBase
-from app.schemas.department_schema import DepartmentRead
+from app.schemas.department_schema import DepartmentReadForFaculty
+
 # from app.models.institution_model import Institution
 from pydantic import field_validator, BaseModel
 
@@ -25,9 +26,10 @@ class InstitutionForFaculty(BaseModel):
 class FacultyRead(FacultyBase):
     id: UUID
     department_count: int | None
-    departments: list[DepartmentRead] | None =[]
-    institution_count: int | None
+    departments: list[DepartmentReadForFaculty] | None = []
+
     institutions: list[InstitutionForFaculty] | None =[]
+    institution_count: int | None
 
     class Config:
         from_attributes = True

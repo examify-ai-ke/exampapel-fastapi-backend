@@ -29,6 +29,13 @@ class DepartmentRead(DepartmentBase):
         from_attributes = True
 
 
+class DepartmentReadForFaculty(BaseModel):
+    id: Optional[UUID]  # Read schema includes the unique identifier
+    name: str
+    slug:Optional[str]
+    programmes: Optional[List[ProgrammeReadForDepartments]]
+
+
 # Update schema for Department
 class DepartmentUpdate(BaseModel):
     name: Optional[str]  # Optional fields for updating
