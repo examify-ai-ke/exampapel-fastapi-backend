@@ -26,7 +26,7 @@ class IResponseBase(BaseModel, Generic[T]):
 
 
 class IGetResponsePaginated(AbstractPage[T], Generic[T]):
-    message: str | None = ""
+    message: str | None = "Item retreived successfully"
     meta: dict = {}
     data: PageBase[T]
 

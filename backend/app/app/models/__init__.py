@@ -6,10 +6,14 @@ from .group_model import Group
 from .media_model import Media
 from .image_media_model import ImageMedia
 from .user_follow_model import UserFollow
-from .institution_model import Institution
 
+# Custome Models
+from .institution_model import Institution
 from .faculty_model import (
     Faculty,
     InstitutionFacultyLink,
 )
+from .department_model import Department
+from .programme_model import Programme
 from .campus_model import Campus
+from .course_model import Course

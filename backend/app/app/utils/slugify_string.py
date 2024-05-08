@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Any, Dict
 import unicodedata
 import re
 from slugify import slugify
