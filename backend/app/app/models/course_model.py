@@ -1,3 +1,4 @@
+from app.models.module_model import CourseModuleLink
 from sqlmodel import Field, Relationship, SQLModel, Enum, Column, DateTime, String
 from app.models.base_uuid_model import BaseUUIDModel
 from uuid import UUID
@@ -44,6 +45,13 @@ class Course(BaseUUIDModel, CourseBase, table=True):
             "lazy": "joined",
             "primaryjoin": "Course.image_id==ImageMedia.id",
         }
+    )
+
+    # Relationship with CourseModule/Unit
+    modules: List["Module"] = Relationship(
+        link_model=CourseModuleLink,
+        back_populates="courses",
+        sa_relationship_kwargs={"lazy": "joined"},
     )
 
     @validator("slug", pre=True, always=True)

@@ -17,3 +17,4 @@ from .department_model import Department
 from .programme_model import Programme
 from .campus_model import Campus
 from .course_model import Course
+from .module_model import Module

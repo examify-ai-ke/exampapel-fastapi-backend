@@ -13,3 +13,4 @@ from .department_crud import department
 from .campus_crud import campus
 from .programme_crud import programme
 from .course_crud import course
+from .module_crud import module

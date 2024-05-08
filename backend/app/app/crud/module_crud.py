@@ -1,0 +1,92 @@
+from typing import Any
+from app.schemas.module_schema import ModuleCreate, ModuleUpdate
+from datetime import datetime
+from app.crud.base_crud import CRUDBase
+from app.models.module_model import CourseModuleLink, Module
+from app.schemas.media_schema import IMediaCreate
+from app.models.image_media_model import ImageMedia
+from app.models.media_model import Media
+from app.models.course_model import Course
+from sqlmodel import select, func, and_, col
+from sqlmodel.ext.asyncio.session import AsyncSession
+
+
+class CRUDModule(CRUDBase[Module, ModuleCreate, ModuleUpdate]):
+
+    async def get_module_by_slug(
+        self, *, slug: str, db_session: AsyncSession | None = None
+    ) -> Module:
+        db_session = db_session or super().get_db().session
+        module = await db_session.execute(
+            select(Module).where(col(Module.slug).ilike(f"%{slug}%"))
+        )
+        return module.unique().scalars().all()
+
+    async def get_count_of_modules(
+        self,
+        *,
+        # start_time: datetime,
+        # end_time: datetime,
+        db_session: AsyncSession | None = None,
+    ) -> int:
+        db_session = db_session or super().get_db().session
+        subquery = (
+            select(Module)
+            # .where(
+            #     and_(
+            #         Module.created_at > start_time,
+            #         Module.created_at < end_time,
+            #     )
+            # )
+            .subquery()
+        )
+        query = select(func.count()).select_from(subquery)
+        count = await db_session.execute(query)
+        value = count.scalar_one_or_none()
+        return value
+
+    async def update_module_image(
+        self,
+        *,
+        module: Module,
+        media: IMediaCreate,
+        heigth: int,
+        width: int,
+        file_format: str,
+    ) -> Module:
+        db_session = super().get_db().session
+        module.image = ImageMedia(
+            media=Media.model_validate(media),
+            height=heigth,
+            width=width,
+            file_format=file_format,
+        )
+        db_session.add(module)
+        await db_session.commit()
+        await db_session.refresh(module)
+        return module
+
+    async def check_existing_association_with_course(
+        self,
+        *,
+        course: Course,
+        module: Module,
+        db_session: AsyncSession | None = None,
+    ) -> Any:
+        db_session = super().get_db().session
+
+        query = select(CourseModuleLink).where(
+            CourseModuleLink.course_id == course.id,
+            CourseModuleLink.module_id == module.id,
+        )
+
+        result = await db_session.execute(query)
+        # Retrieve the first result or None if no result
+        existing_association = result.scalar_one_or_none()
+
+        if existing_association is None:
+            return None  # Handle the case where no record is found
+        else:
+            return existing_association  # Return the existing record
+
+module = CRUDModule(Module)

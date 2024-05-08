@@ -254,4 +254,42 @@ async def upload_course_image(
         return Response("Internal server error", status_code=500)
 
 
+# Associate  Course with Module
+@router.post("/{course_id}/modules/{module_id}")
+async def add_module_to_course(
+    course_id: UUID,
+    module_id: UUID,
+    current_user: User = Depends(
+        deps.get_current_user(required_roles=[IRoleEnum.admin, IRoleEnum.manager])
+    ),
+) -> IPostResponseBase[CourseRead]:
+    """
+    Add a Module to a course by Ids
 
+    Required roles:
+    - admin
+    - manager
+    """
+    course_db = await crud.course.get(id=course_id)
+    module_db = await crud.module.get(id=module_id)
+    if not course_db or not module_db:
+        raise HTTPException(status_code=404, detail="Course or Module not found")
+
+    # Check if association already exist
+    _association = await crud.module.check_existing_association_with_course(
+        course=course_db, module=module_db
+    )
+
+    if _association is not None:
+        # If an association already exists, raise an error or return a suitable response
+        raise HTTPException(
+            status_code=400,
+            detail=f"Course '{course_db.name}' is already associated with Module '{module_db.name}'",
+        )
+    else:
+        # Add the programme to the department's list of programmes
+        course_db.modules.append(module_db)
+        course_with_module = await crud.course.add_related(
+            appended_parent_object=course_db
+        )
+        return create_response(data=course_with_module)
