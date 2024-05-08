@@ -258,3 +258,47 @@ async def upload_programme_image(
     except Exception as e:
         print(e)
         return Response("Internal server error", status_code=500)
+
+
+# Associate  programme with departmenmt
+# @router.post("/{programme_id}/courses/{course_id}")
+# async def add_course_to_programme(
+#     programme_id: UUID,
+#     course_id: UUID,
+#     current_user: User = Depends(
+#         deps.get_current_user(required_roles=[IRoleEnum.admin, IRoleEnum.manager])
+#     ),
+# ) -> IPostResponseBase[ProgrammeRead]:
+#     """
+#     Add a Course to a Programme by Ids
+
+#     Required roles:
+#     - admin
+#     - manager
+#     """
+#     course_db = await crud.course.get(id=course_id)
+#     programme_db = await crud.programme.get(id=programme_id)
+#     if not course_db or not programme_db:
+#         raise HTTPException(
+#             status_code=404, detail="Programme  or Course not found"
+#         )
+
+#     # Check if association already exist
+#     _association = await crud.course.check_existing_association_with_programme(
+#         course=course_db, programme=programme_db
+#     )
+
+#     if _association is not None:
+#         # If an association already exists, raise an error or return a suitable response
+#         raise HTTPException(
+#             status_code=400,
+#             detail=f"Course '{course_db.name}' is already associated with Programme '{programme_db.name}'",
+#         )
+#     else:
+#         # Add the programme to the department's list of programmes
+#         programme_db.courses.append(course_db)
+
+#         department_with_programme = await crud.department.add_related(
+#             appended_parent_object=programme_db
+#         )
+#         return create_response(data=department_with_programme)

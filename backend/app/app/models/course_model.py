@@ -23,7 +23,7 @@ class Course(BaseUUIDModel, CourseBase, table=True):
     slug: Optional[str] = Field(default=None, unique=True)
 
     # Foreign key to Programme
-    programme_id: UUID  = Field(foreign_key="Programme.id", nullable=False)
+    programme_id: UUID = Field(foreign_key="Programme.id", nullable=False)
 
     # Relationship with Programme
     programme: "Programme" = Relationship(

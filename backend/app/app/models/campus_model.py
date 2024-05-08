@@ -12,8 +12,9 @@ from app.utils.slugify_string import generate_slug
 # Define the Campus model
 class CampusBase(SQLModel):  
     name: str = Field(nullable=False)
-    location: Optional[str] = None
+    description: Optional[str] = Field(default="An institution campus", unique=False)
     slug: Optional[str] = Field(default=None, unique=True)
+    address: Optional[str] = Field(default=None, unique=True)
 
 class Campus(BaseUUIDModel,CampusBase, table=True):    
     # Foreign key to Institution
@@ -34,4 +35,3 @@ class Campus(BaseUUIDModel,CampusBase, table=True):
     def set_slug(cls, value, values):
         name = values.get("name", "")
         return generate_slug(name)
-    

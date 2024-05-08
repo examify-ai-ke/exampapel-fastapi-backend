@@ -15,7 +15,8 @@ from app.api.v1.endpoints import (
     faculty,
     department,
     campus,
-    programme
+    programme,
+    course
 )
 
 api_router = APIRouter()
@@ -43,3 +44,5 @@ api_router.include_router(faculty.router, prefix="/faculty", tags=["faculty"])
 api_router.include_router(department.router, prefix="/department", tags=["department"])
 api_router.include_router(campus.router, prefix="/campus", tags=["campus"])
 api_router.include_router(programme.router, prefix="/programme", tags=["programme"])
+
+api_router.include_router(course.router, prefix="/course", tags=["course"])

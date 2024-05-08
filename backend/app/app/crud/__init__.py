@@ -12,3 +12,4 @@ from .faculty_crud import faculty
 from .department_crud import department
 from .campus_crud import campus
 from .programme_crud import programme
+from .course_crud import course

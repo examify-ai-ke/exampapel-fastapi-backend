@@ -14,6 +14,7 @@ from app.models.campus_model import Campus
 from app.schemas.campus_schema import CampusRead
 from app.models.programme_model import Programme
 from app.schemas.programme_schema import ProgrammeRead
+from app.schemas.course_schema import CourseRead
 from fastapi import HTTPException, Path, status
 from typing_extensions import Annotated
 
@@ -75,6 +76,15 @@ async def is_valid_department(
     if not department:
         raise IdNotFoundException(Department, id=department_id)
     return department
+
+
+async def is_valid_course(
+    course_id: Annotated[UUID, Path(title="The UUID id of the course")]
+) -> CourseRead:
+    course = await crud.faculty.get(id=course_id)
+    if not course:
+        raise IdNotFoundException(Department, id=course_id)
+    return course
 
 
 async def is_valid_campus(

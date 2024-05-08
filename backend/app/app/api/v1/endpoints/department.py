@@ -266,7 +266,7 @@ async def add_programme_to_department(
     current_user: User = Depends(
         deps.get_current_user(required_roles=[IRoleEnum.admin, IRoleEnum.manager])
     ),
-) -> IDeleteResponseBase[DepartmentRead]:
+) -> IPostResponseBase[DepartmentRead]:
     """
     Add a Programme to a Department by id
 

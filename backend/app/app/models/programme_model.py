@@ -29,10 +29,9 @@ class ProgrammeDepartmentLink(BaseUUIDModel, SQLModel, table=True):
         foreign_key="Programme.id",
         primary_key=True,
         default=None,
-        unique=True,
     )
     department_id: UUID | None = Field(
-        foreign_key="Department.id", primary_key=True, default=None, unique=True
+        foreign_key="Department.id", primary_key=True, default=None
     )
 
 

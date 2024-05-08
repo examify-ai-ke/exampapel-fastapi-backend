@@ -21,13 +21,13 @@ class InstitutionFacultyLink(BaseUUIDModel, SQLModel, table=True):
         foreign_key="Institution.id",
         primary_key=True,
         default=None,
-        unique=True,
+
     )
     faculty_id: UUID | None = Field(
         foreign_key="Faculty.id",
         primary_key=True,
         default=None,
-        unique=True
+  
     )
 
 

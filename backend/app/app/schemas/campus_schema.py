@@ -7,12 +7,13 @@ from pydantic import   BaseModel
 # Campus Schemas
 class CampusBase(BaseModel):
     name: str
-    location: Optional[str]
+    description: Optional[str]
     slug: Optional[str]
+    address: Optional[str]
 
 class CampusCreate(BaseModel):
     name: str
-    location: Optional[str]
+    description: Optional[str]
     institution_id: UUID  # Foreign key for creating a campus
 
 
