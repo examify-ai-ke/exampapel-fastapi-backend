@@ -39,14 +39,9 @@ class InstitutionBase(SQLModel):
         sa_column=Column(Enum(InstitutionTypes), nullable=False))
     email: EmailStr = Field(sa_column=Column(String, index=True, unique=True))
     phone_number: Optional[str] = Field(nullable=False)
-
     # Slug with a validator to generate it from the name
     slug: Optional[str] = Field(default=None, unique=True)
 
-    @validator("slug")
-    def set_slug(cls, value, values):
-        name = values.get("name", "")
-        return generate_slug(name)
 
 class Institution(BaseUUIDModel, InstitutionBase, table=True): 
 
@@ -64,6 +59,8 @@ class Institution(BaseUUIDModel, InstitutionBase, table=True):
             "primaryjoin": "Institution.created_by_id==User.id",
         }
     )
+    
+
     # Relationships
     campuses: List["Campus"] = Relationship(
         back_populates="institution", sa_relationship_kwargs={"lazy": "joined"}
@@ -76,10 +73,16 @@ class Institution(BaseUUIDModel, InstitutionBase, table=True):
         sa_relationship_kwargs={"lazy": "joined"},
     )
 
-    # # Pydantic validator to generate a slug if not provided
-    # @field_validator("slug")
-    # def set_slug(cls, value, values):
-    #     if value is None:
-    #         name = values.get("name", "")
-    #         return generate_slug(name)  # Create a slug from the name
-    #     return value
+    exam_papers: List["ExamPaper"] = Relationship(
+        back_populates="institution", sa_relationship_kwargs={"lazy": "joined"}
+    )
+
+    @validator("slug")
+    def set_slug(cls, value, values):
+        name = values.get("name", "")
+        return generate_slug(name)
+
+    @property
+    def exams_count(self):
+        count=len(self.exam_papers)
+        return count

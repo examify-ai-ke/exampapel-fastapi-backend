@@ -14,3 +14,7 @@ from .campus_crud import campus
 from .programme_crud import programme
 from .course_crud import course
 from .module_crud import module
+from .exam_paper_crud import exam_paper
+from .instruction_crud import instruction
+from .exam_title_crud import exam_title
+from .exam_description_crud import exam_description

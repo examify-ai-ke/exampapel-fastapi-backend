@@ -1,4 +1,5 @@
 import enum
+from app.models.exam_paper_model import ModuleExamsLink
 from sqlmodel import (
     Field,
     Relationship,
@@ -47,6 +48,12 @@ class Module(BaseUUIDModel, SQLModel, table=True):
         back_populates="modules",
         link_model=CourseModuleLink,
         sa_relationship_kwargs={"lazy": "joined"}
+    )
+
+    exam_papers: List["ExamPaper"] = Relationship(
+        back_populates="modules",
+        link_model=ModuleExamsLink,
+        sa_relationship_kwargs={"lazy": "joined"},
     )
 
     created_by_id: UUID | None = Field(default=None, foreign_key="User.id")

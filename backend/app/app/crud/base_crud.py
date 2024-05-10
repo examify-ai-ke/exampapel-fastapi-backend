@@ -172,6 +172,44 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         await db_session.refresh(db_obj)
         return db_obj
 
+    async def create_with_related_list(
+        self,
+        *,
+        obj_in: CreateSchemaType | ModelType,
+        related_list_object1: ModelType = None,
+        related_list_object2: ModelType = None,
+        items1: str = None,
+        items2: str = None,
+        created_by_id: UUID | str | None = None,
+        db_session: AsyncSession | None = None,
+    ) -> ModelType:
+        db_session = db_session or self.db.session
+        db_obj = self.model.model_validate(obj_in)  # type: ignore
+
+        if created_by_id:
+            db_obj.created_by_id = created_by_id
+        if related_list_object1:
+            attr1 = getattr(db_obj, items1)
+            # Then, extend the list
+            attr1.extend(related_list_object1)
+            # db_obj.instructions.extend(related_list_object1)
+        if related_list_object2:
+            attr2 = getattr(db_obj, items2)
+            attr2.extend(related_list_object2)
+            # db_obj.modules.extend(related_list_object2)
+            # getattr(db_obj.get(items2,""), "extend")(related__list_object2)
+        try:
+            db_session.add(db_obj)
+            await db_session.commit()
+        except exc.IntegrityError:
+            db_session.rollback()
+            raise HTTPException(
+                status_code=409,
+                detail="Resource already exists",
+            )
+        await db_session.refresh(db_obj)
+        return db_obj
+
     async def update(
         self,
         *,

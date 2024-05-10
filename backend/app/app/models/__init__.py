@@ -18,3 +18,11 @@ from .programme_model import Programme
 from .campus_model import Campus
 from .course_model import Course
 from .module_model import Module
+from .exam_paper_model import (
+    ExamPaper,
+    ExamInstruction,
+    ModuleExamsLink,
+    InstructionExamsLink,
+    ExamDescription,
+    ExamTitle
+)

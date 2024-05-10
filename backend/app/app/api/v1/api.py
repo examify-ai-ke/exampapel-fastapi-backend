@@ -17,7 +17,12 @@ from app.api.v1.endpoints import (
     campus,
     programme,
     course,
-    module
+    module,
+    exam_paper,
+    instruction,
+    exam_description,
+    exam_title
+    
 )
 
 api_router = APIRouter()
@@ -48,4 +53,12 @@ api_router.include_router(programme.router, prefix="/programme", tags=["programm
 
 api_router.include_router(course.router, prefix="/course", tags=["course"])
 
-api_router.include_router(module.router, prefix="/module", tags=["course modules/units"])
+api_router.include_router(module.router, prefix="/module", tags=["modules/units"])
+
+
+api_router.include_router(exam_title.router, prefix="/exam_title", tags=["exam_title"])
+api_router.include_router(
+    exam_description.router, prefix="/exam_description", tags=["exam_description"]
+)
+api_router.include_router(instruction.router, prefix="/instruction", tags=["instruction"])
+api_router.include_router(exam_paper.router, prefix="/exampaper", tags=["exampaper"])

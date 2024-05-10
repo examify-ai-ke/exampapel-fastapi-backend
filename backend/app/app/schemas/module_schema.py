@@ -31,12 +31,16 @@ class CourseReadForModule(BaseModel):
     id:UUID
     name:str
     slug:str
-
+class ExamPaperReadForModule(BaseModel):
+    id: UUID
+    slug:str
+    name:str
 # Schema for reading a Module
 class ModuleRead(ModuleBase):
     id: UUID
     slug: Optional[str]
     courses: Optional[List[CourseReadForModule]] = []  # To represent the relationship
-
+    exam_papers: Optional[List[ExamPaperReadForModule]] = []
+    # exam_papers_count: int #TODO
     class Config:
         from_attributes = True  # Allows ORM-based data to be converted to Pydantic

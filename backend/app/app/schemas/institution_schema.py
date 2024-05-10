@@ -7,6 +7,8 @@ from app.schemas.faculty_schema import FacultyReadForInstitution
 from app.schemas.campus_schema import CampusRead
 from pydantic import  BaseModel
 
+from app.schemas.exam_paper_schema import ExamPaperRead
+
 
 class InstitutionCreate(InstitutionBase):
     pass  # No extra fields required for creating an institution
@@ -39,9 +41,9 @@ class InstitutionFacultyUpdate(BaseModel):
 
 class InstitutionRead(InstitutionBase):
     id: UUID  # ID is known after creation
-
     faculties: list[FacultyReadForInstitution] | None = []
     campuses: list[CampusRead] | None = []
-
+    exam_papers: list[ExamPaperRead] | None = []
+    exams_count: int | None = 0
     class Config:
         from_attributes = True  # This allows the schema to work with ORM objects
