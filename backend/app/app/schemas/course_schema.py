@@ -31,6 +31,13 @@ class ModuleReadForCourse(BaseModel):
     name:str
     slug: str
     unit_code:str
+
+
+class ExamPapersReadForCourse(BaseModel):
+    id:UUID
+    name:str
+    slug: str
+    
 # Schema for reading a Course
 class CourseRead(CourseBase):
     id: UUID
@@ -38,6 +45,7 @@ class CourseRead(CourseBase):
     programme_id: UUID
     modules: Optional[list[ModuleReadForCourse]]
     image: IImageMediaRead | None
+    exam_papers: Optional[List[ExamPapersReadForCourse]]
 
     class Config:
         from_attributes = True  # Allows the schema to work with ORM objects

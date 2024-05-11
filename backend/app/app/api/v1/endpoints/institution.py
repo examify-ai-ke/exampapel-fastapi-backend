@@ -210,7 +210,7 @@ async def add_faculty_to_institution(
             status_code=400,
             detail=f"Faculty '{faculty_id}' is already associated with Institution '{institution_id}'"
         )
-    else:      
+    else:    
 
         institution.faculties.append(faculty)
         institution_with_faculty = await crud.institution.add_related(

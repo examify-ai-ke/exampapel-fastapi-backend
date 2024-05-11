@@ -30,6 +30,11 @@ class Course(BaseUUIDModel, CourseBase, table=True):
     programme: "Programme" = Relationship(
         back_populates="courses"        
     )
+    
+    exam_papers: List["ExamPaper"] = Relationship(
+        back_populates="course",
+        sa_relationship_kwargs={"lazy": "joined"},
+    )
 
     created_by_id: UUID | None = Field(default=None, foreign_key="User.id")
     created_by: "User" = Relationship(  # noqa: F821

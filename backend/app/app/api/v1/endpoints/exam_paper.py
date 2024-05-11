@@ -123,20 +123,29 @@ async def create_exam_paper(
     - admin
     - manager
     """
- 
+
     instructions = await crud.instruction.get_by_ids(list_ids=exampaper.instruction_ids)
     modules = await crud.module.get_by_ids(list_ids=exampaper.module_ids)
+    # course = await crud.course.get(id=exampaper.course_id)
     if len(instructions) != len(exampaper.instruction_ids):
         raise HTTPException(
             status_code=404, detail="Some instructions not found"
         )
     if len(modules) != len(exampaper.module_ids):
         raise HTTPException(status_code=404, detail="Some modules not found")
-
+    # if not course:
+    #     raise HTTPException(status_code=404, detail="The Selected Course was not found")
     # Add modules to the examPaper
     # exampaper..modules.extend(modules_list)  # Add the list of modules
+    
     exampaper = await crud.exam_paper.create_with_related_list(
-        obj_in=exampaper,related_list_object1=instructions,related_list_object2=modules,items1="instructions",items2="modules", created_by_id=current_user.id
+        obj_in=exampaper,
+        related_list_object1=instructions,
+        related_list_object2=modules,
+        # related_object3=course,
+        items1="instructions",
+        items2="modules",
+        created_by_id=current_user.id,
     )
     return create_response(data=exampaper)
 

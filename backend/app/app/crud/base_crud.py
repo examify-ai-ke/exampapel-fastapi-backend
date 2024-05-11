@@ -173,15 +173,16 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         await db_session.refresh(db_obj)
         return db_obj
 
-
     async def create_with_related_list(
         self,
         *,
         obj_in: CreateSchemaType | ModelType,
-        related_list_object1: ModelType = None,
-        related_list_object2: ModelType = None,
+        related_list_object1: ModelType = None, #Instructions Model
+        related_list_object2: ModelType = None, #Module Model
+        related_object3: ModelType = None, #course Model
         items1: str = None,
         items2: str = None,
+        # items3: str = None,
         created_by_id: UUID | str | None = None,
         db_session: AsyncSession | None = None,
     ) -> ModelType:
@@ -200,6 +201,9 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             attr2.extend(related_list_object2)
             # db_obj.modules.extend(related_list_object2)
             # getattr(db_obj.get(items2,""), "extend")(related__list_object2)
+        if related_object3:
+            db_obj.append(related_object3)
+
         try:
             # Calculate the Hash for all the Table fields: this prevents us from dublicates.
             db_obj.hash_code = db_obj.calculate_hash

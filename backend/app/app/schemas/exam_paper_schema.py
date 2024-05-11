@@ -13,6 +13,7 @@ class ExamPaperCreate(ExamPaperBase):
     tags: Optional[List] = None
     title_id: UUID
     description_id:UUID
+    course_id:UUID
     institution_id:UUID
     pass  # No extra fields required for creating an exampaper
 
@@ -27,11 +28,11 @@ class ExamPaperUpdate(ExamPaperBase):
     # institution_type: Optional[InstitutionTypeEnum]
     pass
 
-class ModulesReadForExam(BaseModel):
+class ModuleReadForExamPaper(BaseModel):
     id: UUID
     name: str
     slug: str
-    # unit_code: str
+    unit_code: str
 
 class InstructionCreate(BaseModel):
     name: str
@@ -52,10 +53,13 @@ class InstructionRead(BaseModel):
         from_attributes = True  # Allows ORM-based data to be converted to Pydantic
 
 class InstitutionReadForExamPaper(BaseModel):
-    id:UUID
+    # id:UUID
     name:str
-    slug: str
-
+    # slug: str
+class CourseReadForExamPaper(BaseModel):
+    # id:UUID
+    name:str
+    slug:str
 # Schema for reading a ExamPaper
 class ExamPaperRead(ExamPaperBase):
     id: UUID
@@ -64,10 +68,11 @@ class ExamPaperRead(ExamPaperBase):
     title: "ExamTitleReadForExamPaperRead"
     description: "ExamDescriptionReadForExamPaper"
     # questions: Optional[List[QuestionsRead]] = []
-    modules: Optional[List[ModulesReadForExam]] = []
+    modules: Optional[List[ModuleReadForExamPaper]] = []
     created_by_id: UUID
     institution: InstitutionReadForExamPaper
     # hash_code: Optional[str]
+    course:Optional[CourseReadForExamPaper]
 
     class Config:
         from_attributes = True  # Allows ORM-based data to be converted to Pydantic

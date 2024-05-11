@@ -120,6 +120,14 @@ class ExamPaper(BaseUUIDModel,ExamPaperBase, table=True):
             "primaryjoin": "ExamPaper.title_id==ExamTitle.id",
         },
     )
+    course_id: UUID | None = Field(default=None, foreign_key="Course.id")
+    course: "Course" = Relationship(
+        back_populates="exam_papers",
+        sa_relationship_kwargs={
+            "lazy": "joined",
+            "primaryjoin": "ExamPaper.course_id==Course.id",
+        },
+    )
 
     institution_id: UUID | None = Field(default=None, foreign_key="Institution.id")
     institution: "Institution" = Relationship(
@@ -145,11 +153,6 @@ class ExamPaper(BaseUUIDModel,ExamPaperBase, table=True):
     # Hash value field
     hash_code: Optional[str] = Field(nullable=False, unique=True,default=None)
 
-    # @beforeinsert
-    # @beforeupdate
-    # def create_hash_code(self):
-    #     # Concatenate relevant fields to create input string
-    #     input_string = f"{self.title.name}-{self.year_of_exam}-{self.institution.name}-{self.description.name}-{str(self.exam_date.strftime('%Y-%m-%d'))}-{str(self.exam_duration)}-{''.join(str(m) for m in self.modules)}-{''.join(str(i) for i in self.instructions)}"
     @property
     def calculate_hash(self):
         input_string = input_string = (
@@ -161,7 +164,7 @@ class ExamPaper(BaseUUIDModel,ExamPaperBase, table=True):
         hash_value = hash_object.hexdigest()
         print(hash_value)
         return hash_value
- 
+
 
 # -----------------------------------------------------------------------
 # Instruction model
