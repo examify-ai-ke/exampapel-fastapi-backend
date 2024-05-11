@@ -82,7 +82,6 @@ class CRUDExamPaper(CRUDBase[ExamPaper, ExamPaperCreate, ExamPaperUpdate]):
             ModuleExamsLink.exam_id == exampaper.id,
             ModuleExamsLink.module_id == module.id,
         )
-
         result = await db_session.execute(query)
         # Retrieve the first result or None if no result
         existing_association = result.scalar_one_or_none()

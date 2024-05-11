@@ -67,6 +67,7 @@ class ExamPaperRead(ExamPaperBase):
     modules: Optional[List[ModulesReadForExam]] = []
     created_by_id: UUID
     institution: InstitutionReadForExamPaper
+    # hash_code: Optional[str]
 
     class Config:
         from_attributes = True  # Allows ORM-based data to be converted to Pydantic

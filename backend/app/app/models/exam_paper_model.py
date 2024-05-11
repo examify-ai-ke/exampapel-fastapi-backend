@@ -1,4 +1,6 @@
-from sqlmodel import Field, Relationship, SQLModel, Column,JSON, String
+import hashlib
+from sqlalchemy import String
+from sqlmodel import Field, Relationship, SQLModel, Column, JSON
 from app.models.base_uuid_model import BaseUUIDModel
 from uuid import UUID
 import enum
@@ -140,9 +142,28 @@ class ExamPaper(BaseUUIDModel,ExamPaperBase, table=True):
         sa_relationship_kwargs={"lazy": "joined"},
     )
 
+    # Hash value field
+    hash_code: Optional[str] = Field(nullable=False, unique=True,default=None)
+
+    # @beforeinsert
+    # @beforeupdate
+    # def create_hash_code(self):
+    #     # Concatenate relevant fields to create input string
+    #     input_string = f"{self.title.name}-{self.year_of_exam}-{self.institution.name}-{self.description.name}-{str(self.exam_date.strftime('%Y-%m-%d'))}-{str(self.exam_duration)}-{''.join(str(m) for m in self.modules)}-{''.join(str(i) for i in self.instructions)}"
+    @property
+    def calculate_hash(self):
+        input_string = input_string = (
+            f"{self.title_id}-{self.year_of_exam}-{self.institution_id}-{self.description_id}-{str(self.exam_date.strftime('%Y-%m-%d'))}-{str(self.exam_duration)}-{''.join(str(m.name) for m in self.modules)}-{''.join(str(i.name) for i in self.instructions)}"
+        )
+        # Add more fields as needed
+        # Compute SHA-256 hash
+        hash_object = hashlib.sha256(input_string.encode())
+        hash_value = hash_object.hexdigest()
+        print(hash_value)
+        return hash_value
+ 
 
 # -----------------------------------------------------------------------
-
 # Instruction model
 class ExamInstruction(BaseUUIDModel,SQLModel, table=True):
     name: str = Field(nullable=False,unique=True)
@@ -169,7 +190,7 @@ class ExamInstruction(BaseUUIDModel,SQLModel, table=True):
 # ------------------------------------------------------------------------
 class ExamTitleBase(SQLModel):
     name: str = Field(nullable=False, unique=True)  # e.g UNIVERSITY EXAMINATIONS
-    slug: Optional[str] = Field(default=None, unique=True)
+    
     description: Optional[str] = Field(
         nullable=True,
         default='''The title or name typically refers to the overarching categorization or identity of the exam. e.g "UNIVERSITY EXAMINATIONS:"''',
@@ -179,12 +200,12 @@ class ExamTitle(BaseUUIDModel, ExamTitleBase,  table=True):
     """
     Model for exam titles.
     """
-    
+    slug: Optional[str] = Field(default=None, unique=True)
     exam_papers: List["ExamPaper"] = Relationship(
         back_populates="title",
         sa_relationship_kwargs={"lazy": "joined"},
     )
-    
+
     created_by_id: UUID | None = Field(default=None, foreign_key="User.id")
     created_by: "User" = Relationship(  # noqa: F821
         sa_relationship_kwargs={

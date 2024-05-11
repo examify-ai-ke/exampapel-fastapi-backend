@@ -10,6 +10,7 @@ from sqlmodel import SQLModel, select, func
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel.sql.expression import Select
 from sqlalchemy import exc
+import hashlib
 
 ModelType = TypeVar("ModelType", bound=SQLModel)
 CreateSchemaType = TypeVar("CreateSchemaType", bound=BaseModel)
@@ -172,6 +173,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         await db_session.refresh(db_obj)
         return db_obj
 
+
     async def create_with_related_list(
         self,
         *,
@@ -199,6 +201,8 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             # db_obj.modules.extend(related_list_object2)
             # getattr(db_obj.get(items2,""), "extend")(related__list_object2)
         try:
+            # Calculate the Hash for all the Table fields: this prevents us from dublicates.
+            db_obj.hash_code = db_obj.calculate_hash
             db_session.add(db_obj)
             await db_session.commit()
         except exc.IntegrityError:
