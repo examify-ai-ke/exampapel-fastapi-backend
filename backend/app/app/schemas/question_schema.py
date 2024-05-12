@@ -35,6 +35,7 @@ class MainQuestionBase(BaseModel):
 
 class MainQuestionCreate(MainQuestionBase):
     question_set_id:UUID 
+    exam_paper_id:UUID
     pass
 
 @optional()

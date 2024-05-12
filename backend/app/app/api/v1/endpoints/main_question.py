@@ -120,8 +120,8 @@ async def create_main_question(
     - admin
     - manager
     """
-
-    quiz = await crud.main_question.create(
+    # related_quiz_set = await crud.question_set.get(id=question.question_set_id)
+    quiz = await crud.main_question.create_with_alpha_numbering(
         obj_in=question, created_by_id=current_user.id
     )
     return create_response(data=quiz)

@@ -4,12 +4,13 @@ from sqlmodel import Field, Relationship, SQLModel, Enum, Column, DateTime, Stri
 from app.models.base_uuid_model import BaseUUIDModel
 from uuid import UUID
 from sqlalchemy.dialects.postgresql import TEXT
-from typing import List, Optional
+from typing import ClassVar, List, Optional
 # from app.models.image_media_model import ImageMedia
 from sqlalchemy_utils import ChoiceType
-from pydantic import  field_validator, validator
+from pydantic import  field_validator, validator, model_validator
 from app.utils.slugify_string import   generate_slug, generate_slug_for_question_text
 import enum
+from sqlalchemy import UniqueConstraint, event
 
 class QuestionSetTitleEnum(enum.Enum):
     QUESTION_ONE = "Question One"
@@ -67,14 +68,29 @@ class QuestionBase(SQLModel):
     text: str = Field(sa_column=Column(TEXT,nullable=False, unique=False))
     marks: Optional[int] =None # marks given to a Question
 
-class MainQuestion(BaseUUIDModel, QuestionBase, table=True): 
 
+class MainQuestion(BaseUUIDModel, QuestionBase, table=True): 
+    order_within_question_set: Optional[str] = Field(nullable=False, default=None)
+    # Changed to String for alphabetical ordering
     slug: Optional[str] = Field(default=None, unique=False)
     question_set_id: UUID | None = Field(default=None, foreign_key="QuestionSet.id")    
     question_set: QuestionSet = Relationship(
         back_populates="main_questions",
-        sa_relationship_kwargs={"lazy": "joined"}
+        sa_relationship_kwargs={
+            "lazy": "joined",
+            "primaryjoin": "MainQuestion.question_set_id==QuestionSet.id",
+        },
     )
+
+    # This is added for integrigy checks and Constraints for Numbering purposes
+    exam_paper_id: UUID | None = Field(default=None, foreign_key="ExamPaper.id")
+    # exam_paper: "ExamPaper" = Relationship(
+    #     back_populates="main_questions",
+    #     sa_relationship_kwargs={
+    #         "lazy": "joined",
+    #         "primaryjoin": "MainQuestion.exam_paper_id==ExamPaper.id",
+    #     },
+    # )
 
     subquestions: List["SubQuestion"] = Relationship(
         back_populates="main_question",
@@ -92,6 +108,15 @@ class MainQuestion(BaseUUIDModel, QuestionBase, table=True):
             "lazy": "joined",
             "primaryjoin": " MainQuestion.created_by_id==User.id",
         }
+    )
+    # Define unique constraint
+    __table_args__ = (
+        UniqueConstraint(
+            "exam_paper_id",
+            "order_within_question_set",
+            "question_set_id",
+            name="_questions_order_per_question_set_uc",
+        ),
     )
 
 
@@ -115,3 +140,9 @@ class SubQuestion(BaseUUIDModel,SQLModel, table=True):
             "primaryjoin": "SubQuestion.created_by_id==User.id",
         }
     )
+
+
+# Define event listener to call the method before insertion
+# @event.listens_for(MainQuestion, "before_insert")
+# def before_insert_listener(mapper, connection, target):
+#     target.assign_alphabetical_ordering()
