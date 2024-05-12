@@ -74,7 +74,6 @@ class ExamPaperRead(ExamPaperBase):
     institution: InstitutionReadForExamPaper
     # hash_code: Optional[str]
     course:Optional[CourseReadForExamPaper]
-
     question_sets: Optional[List[QuestionSetRead]] = []
 
     class Config:

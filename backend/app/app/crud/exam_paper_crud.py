@@ -2,7 +2,7 @@ from typing import Any
 from app.schemas.exam_paper_schema import ExamPaperCreate, ExamPaperUpdate
 from datetime import datetime
 from app.crud.base_crud import CRUDBase
-from app.models.exam_paper_model import ExamPaper, ExamInstruction, ModuleExamsLink, InstructionExamsLink
+from app.models.exam_paper_model import ExamPaper, ExamInstruction, ExamPaperQuestionLink, ModuleExamsLink, InstructionExamsLink
 from app.schemas.media_schema import IMediaCreate
 from app.models.image_media_model import ImageMedia
 from app.models.media_model import Media
@@ -10,6 +10,7 @@ from app.models.faculty_model import Faculty
 
 from fastapi import HTTPException
 from app.models.module_model import Module
+from app.models.question_model import QuestionSet
 from sqlmodel import select, func, and_, col
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -103,6 +104,29 @@ class CRUDExamPaper(CRUDBase[ExamPaper, ExamPaperCreate, ExamPaperUpdate]):
         query = select(ModuleExamsLink).where(
             InstructionExamsLink.exam_id == exampaper.id,
             InstructionExamsLink.instruction_id == instruction.id,
+        )
+
+        result = await db_session.execute(query)
+        # Retrieve the first result or None if no result
+        existing_association = result.scalar_one_or_none()
+
+        if existing_association is None:
+            return None  # Handle the case where no record is found
+        else:
+            return existing_association  # Return the existing record
+
+    async def check_existing_association_with_question_set(
+        self,
+        *,
+        exampaper: ExamPaper,
+        question_set: QuestionSet,
+        db_session: AsyncSession | None = None,
+    ) -> Any:
+        db_session = super().get_db().session
+        # Check if the relationship already exists in the join table
+        query = select(ExamPaperQuestionLink).where(
+            ExamPaperQuestionLink.exam_id == exampaper.id,
+            ExamPaperQuestionLink.question_set_id == question_set.id,
         )
 
         result = await db_session.execute(query)

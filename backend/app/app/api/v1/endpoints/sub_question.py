@@ -22,13 +22,13 @@ from fastapi import (
 )
 from app import crud
 from app.api import deps
-from app.models.question_model import MainQuestion
+from app.models.question_model import SubQuestion
 from app.models.user_model import User
 from app.schemas.common_schema import IOrderEnum
 from app.schemas.question_schema import (
-    MainQuestionCreate,
-    MainQuestionRead,
-    MainQuestionUpdate,
+    SubQuestionCreate,
+    SubQuestionRead,
+    SubQuestionUpdate,
 )
 from app.schemas.response_schema import (
     IDeleteResponseBase,
@@ -46,14 +46,14 @@ router = APIRouter()
 
 
 @router.get("")
-async def get_main_question_list(
+async def get_sub_question_list(
     params: Params = Depends(),
     current_user: User = Depends(deps.get_current_user()),
-) -> IGetResponsePaginated[MainQuestionRead]:
+) -> IGetResponsePaginated[SubQuestionRead]:
     """
-    Gets a paginated list of MainQuestion
+    Gets a paginated list of SubQuestion
     """
-    questions = await crud.main_question.get_multi_paginated(params=params)
+    questions = await crud.sub_question.get_multi_paginated(params=params)
     return create_response(data=questions)
 
 
@@ -75,17 +75,17 @@ async def get_main_question_list(
 #     return create_response(data=programmes)
 
 
-@router.get("/get_by_id/{main_question_id}")
-async def get_main_question_by_id(
-    main_question_id: UUID,
+@router.get("/get_by_id/{sub_question_id}")
+async def get_sub_question_by_id(
+    sub_question_id: UUID,
     current_user: User = Depends(deps.get_current_user()),
-) -> IGetResponseBase[MainQuestionRead]:
+) -> IGetResponseBase[SubQuestionRead]:
     """
-    Gets a MainQuestion by its id
+    Gets a SubQuestion by its id
     """
-    question = await crud.main_question.get(id=main_question_id)
+    question = await crud.sub_question.get(id=sub_question_id)
     if not question:
-        raise IdNotFoundException(MainQuestion, main_question_id)
+        raise IdNotFoundException(SubQuestion, sub_question_id)
 
     # print_hero.delay(hero.id)
     return create_response(data=question)
@@ -107,74 +107,74 @@ async def get_main_question_by_id(
 
 
 @router.post("")
-async def create_main_question(
-    question: MainQuestionCreate,
+async def create_sub_question(
+    question: SubQuestionCreate,
     current_user: User = Depends(
         deps.get_current_user(required_roles=[IRoleEnum.admin, IRoleEnum.manager])
     ),
-) -> IPostResponseBase[MainQuestionRead]:
+) -> IPostResponseBase[SubQuestionRead]:
     """
-    Creates a new MainQuestion
+    Creates a new SubQuestion
 
     Required roles:
     - admin
     - manager
     """
 
-    quiz = await crud.main_question.create(
+    quiz = await crud.sub_question.create(
         obj_in=question, created_by_id=current_user.id
     )
     return create_response(data=quiz)
 
 
-@router.put("/{main_question_id}")
-async def update_main_question(
-    main_question_id: UUID,
-    main_question: MainQuestionUpdate,
+@router.put("/{sub_question_id}")
+async def update_sub_question(
+    sub_question_id: UUID,
+    sub_question: SubQuestionUpdate,
     current_user: User = Depends(
         deps.get_current_user(required_roles=[IRoleEnum.admin, IRoleEnum.manager])
     ),
-) -> IPutResponseBase[MainQuestionRead]:
+) -> IPutResponseBase[SubQuestionRead]:
     """
-    Updates a Main Question by its id
+    Updates a Sub Question by its id
 
     Required roles:
     - admin
     - manager
     """
-    current_question_main = await crud.main_question.get(id=main_question_id)
-    if not current_question_main:
-        raise IdNotFoundException(MainQuestion, main_question_id)
-    # if not is_authorized(current_user, "read", current_question_main):
+    current_question_sub = await crud.sub_question.get(id=sub_question_id)
+    if not current_question_sub:
+        raise IdNotFoundException(SubQuestion, sub_question_id)
+    # if not is_authorized(current_user, "read", current_question_sub):
     #     raise HTTPException(
     #         status_code=403,
-    #         detail="You are not Authorized to update this Main Question because you did not created it",
+    #         detail="You are not Authorized to update this Sub Question because you did not created it",
     #     )
 
-    quiz_updated = await crud.main_question.update(
-        obj_new=main_question, obj_current=current_question_main
+    quiz_updated = await crud.sub_question.update(
+        obj_new=sub_question, obj_current=current_question_sub
     )
     return create_response(data=quiz_updated)
 
 
-@router.delete("/{main_question_id}")
-async def remove_main_question(
-    main_question_id: UUID,
+@router.delete("/{sub_question_id}")
+async def remove_sub_question(
+    sub_question_id: UUID,
     current_user: User = Depends(
         deps.get_current_user(required_roles=[IRoleEnum.admin, IRoleEnum.manager])
     ),
-) -> IDeleteResponseBase[MainQuestionRead]:
+) -> IDeleteResponseBase[SubQuestionRead]:
     """
-    Deletes a MainQuestion  by its id
+    Deletes a Sub Question  by its id
 
     Required roles:
     - admin
     - manager
     """
-    current_quiz = await crud.main_question.get(id=main_question_id)
+    current_quiz = await crud.sub_question.get(id=sub_question_id)
     if not current_quiz:
-        raise IdNotFoundException(MainQuestion, main_question_id)
-    quiz = await crud.main_question.remove(id=main_question_id)
+        raise IdNotFoundException(SubQuestion, sub_question_id)
+    quiz = await crud.sub_question.remove(id=sub_question_id)
     return create_response(data=quiz)
 
 

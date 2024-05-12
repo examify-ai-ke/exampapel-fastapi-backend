@@ -1,5 +1,5 @@
 import hashlib
-from sqlalchemy import String
+from sqlalchemy import String, UniqueConstraint
 from sqlmodel import Field, Relationship, SQLModel, Column, JSON
 from app.models.base_uuid_model import BaseUUIDModel
 from uuid import UUID
@@ -79,6 +79,12 @@ class ExamPaperQuestionLink(BaseUUIDModel, SQLModel, table=True):
         foreign_key="ExamPaper.id",
         primary_key=True,
         default=None,
+    )
+    # Define unique constraint
+    __table_args__ = (
+        UniqueConstraint(
+            "exam_id", "question_set_id", name="_exam_paper_question_set_uc"
+        ),
     )
 
 

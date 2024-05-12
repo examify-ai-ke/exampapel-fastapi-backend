@@ -201,45 +201,44 @@ async def remove_exam_paper(
     return create_response(data=exam)
 
 
-# # Associate faculty with institution
-# @router.post("/{institution_id}/faculties/{faculty_id}")
-# async def add_faculty_to_institution(
-#     institution_id: UUID,
-#     faculty_id: UUID,
-#     current_user: User = Depends(
-#         deps.get_current_user(required_roles=[IRoleEnum.admin, IRoleEnum.manager])
-#     ),
-#     ) -> IDeleteResponseBase[InstitutionRead]:
-#     """
-#     Add a Faculty to an Institution by id
+# # Associate ExamPaper with A QuestionSet
+@router.post("/{exampaper_id}/questions/{question_set_id}")
+async def add_question_set_to_exam_paper(
+    exampaper_id: UUID,
+    question_set_id: UUID,
+    current_user: User = Depends(
+        deps.get_current_user(required_roles=[IRoleEnum.admin, IRoleEnum.manager])
+    ),
+) -> IPostResponseBase[ExamPaperRead]:
+    """
+    Add a QuestionSet to an ExamPaper by ids
 
-#     Required roles:
-#     - admin
-#     - manager
-#     """
-#     institution = await crud.institution.get(id=institution_id)
-#     faculty = await crud.faculty.get(id=faculty_id)
-#     if not institution or not faculty:
-#         raise HTTPException(status_code=404, detail="Institution or Faculty not found")
+    Required roles:
+    - admin
+    - manager
+    """
+    exam_paper = await crud.exam_paper.get(id=exampaper_id)
+    question_set = await crud.question_set.get(id=question_set_id)
+    if not exam_paper or not question_set:
+        raise HTTPException(status_code=404, detail="ExamPaper or QuestionSet not found")
 
-#     # Check if association already exist
-#     _association = await crud.institution.check_existing_association(
-#         institution=institution, faculty=faculty
-#     )
+    # Check if association already exist
+    _association = await crud.exam_paper.check_existing_association_with_question_set(
+        exampaper=exam_paper, question_set=question_set
+    )
 
-#     if _association is not None:
-#         # If an association already exists, raise an error or return a suitable response
-#         raise HTTPException(
-#             status_code=400,
-#             detail=f"Faculty '{faculty_id}' is already associated with Institution '{institution_id}'"
-#         )
-#     else:
-
-#         institution.faculties.append(faculty)
-#         institution_with_faculty = await crud.institution.add_related(
-#             appended_parent_object=institution
-#         )
-#         return create_response(data=institution_with_faculty)
+    if _association is not None:
+        # If an association already exists, raise an error or return a suitable response
+        raise HTTPException(
+            status_code=400,
+            detail=f"ExamPaper '{exampaper_id}' is already associated with QuestionSet '{question_set_id}'",
+        )
+    else:
+        exam_paper.question_sets.append(question_set)
+        exampaper_with_quizset = await crud.exam_paper.add_related(
+            appended_parent_object=exam_paper
+        )
+        return create_response(data=exampaper_with_quizset)
 
 
 # @router.post("/{institution_id}/logo")

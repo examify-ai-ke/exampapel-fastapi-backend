@@ -70,7 +70,7 @@ class QuestionSetUpdate(QuestionSetBase):
 class QuestionSetRead(QuestionSetBase):
     id: UUID
     slug:str
-    # main_questions: Optional[list[MainQuestionRead]] = []
+    main_questions: Optional[list[MainQuestionRead]] = []
     main_questions_count: int | None = 0
     class Config:
         from_attributes = True
