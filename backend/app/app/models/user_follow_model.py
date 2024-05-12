@@ -13,3 +13,6 @@ class UserFollow(BaseUUIDModel, UserFollowBase, table=True):
     is_mutual: bool | None = Field(
         default=None, sa_column=Column(Boolean(), server_default="0")
     )
+
+
+

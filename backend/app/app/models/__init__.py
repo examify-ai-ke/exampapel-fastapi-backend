@@ -24,5 +24,13 @@ from .exam_paper_model import (
     ModuleExamsLink,
     InstructionExamsLink,
     ExamDescription,
-    ExamTitle
+    ExamTitle,
+    ExamPaperQuestionLink,
+)
+
+from .question_model import (
+    QuestionSet,
+    MainQuestion,
+    SubQuestion,
+    QuestionBase
 )

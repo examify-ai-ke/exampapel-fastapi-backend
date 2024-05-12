@@ -1,0 +1,107 @@
+from typing import List, Optional
+
+from app.utils.partial import optional
+from uuid import UUID
+from app.models.question_model import QuestionSetBase
+from pydantic import field_validator, BaseModel
+
+
+class SubQuestionBase(BaseModel):
+    text: str
+    marks: Optional[int] = None
+
+
+class SubQuestionCreate(SubQuestionBase):
+    main_question_id: UUID
+    pass
+
+@optional()
+class SubQuestionUpdate(SubQuestionBase):
+    pass
+
+
+class SubQuestionRead(SubQuestionBase):
+    id: UUID
+    main_question_id: UUID
+
+    class Config:
+        from_attributes = True
+
+# ------------------------------Main Question-----------
+class MainQuestionBase(BaseModel):
+    text: str
+    marks: int
+
+
+class MainQuestionCreate(MainQuestionBase):
+    question_set_id:UUID 
+    pass
+
+@optional()
+class MainQuestionUpdate(MainQuestionBase):
+    pass
+
+class QuestionSetReadForMain(BaseModel):
+    title:str
+
+class MainQuestionRead(MainQuestionBase):
+    id: UUID
+    slug:str
+    marks:int | None
+    question_set: Optional[QuestionSetReadForMain]
+    subquestions: Optional[List[SubQuestionBase]] = []
+
+    class Config:
+        from_attributes = True
+
+
+# ---------------------------QuestionSet ------------------------
+
+
+class QuestionSetCreate(QuestionSetBase):
+    pass
+
+
+@optional()
+class QuestionSetUpdate(QuestionSetBase):
+    pass
+
+
+class QuestionSetRead(QuestionSetBase):
+    id: UUID
+    slug:str
+    # main_questions: Optional[list[MainQuestionRead]] = []
+    main_questions_count: int | None = 0
+    class Config:
+        from_attributes = True
+
+
+# # Create schema for Department
+# class DepartmentCreate(DepartmentBase):
+#     faculty_id: UUID # Needed to create a Department in a specific Faculty
+
+# class ProgrammeReadForDepartments(BaseModel):
+#     id: UUID
+#     name: str
+#     slug: str
+# # Read schema for Department
+# class DepartmentRead(DepartmentBase):
+#     id: Optional[UUID] # Read schema includes the unique identifier
+#     faculty_id: Optional[UUID]   # Read schema has faculty reference
+#     programmes: Optional[List[ProgrammeReadForDepartments]]
+#     class Config:
+#         from_attributes = True
+
+
+# class DepartmentReadForFaculty(BaseModel):
+#     id: Optional[UUID]  # Read schema includes the unique identifier
+#     name: str
+#     slug:Optional[str]
+#     programmes: Optional[List[ProgrammeReadForDepartments]]
+
+
+# # Update schema for Department
+# class DepartmentUpdate(BaseModel):
+#     name: Optional[str]  # Optional fields for updating
+#     description: Optional[str]
+#     slug:Optional[str]

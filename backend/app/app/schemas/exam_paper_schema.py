@@ -6,6 +6,8 @@ from uuid import UUID
 from app.models.exam_paper_model import ExamPaperBase, ExamTitleBase
 from pydantic import field_validator, BaseModel
 
+from  app.schemas.question_schema import QuestionSetRead
+
 
 class ExamPaperCreate(ExamPaperBase):
     instruction_ids: List[UUID]
@@ -67,12 +69,13 @@ class ExamPaperRead(ExamPaperBase):
     instructions: Optional[List[InstructionRead]] = []  # To represent the relationship
     title: "ExamTitleReadForExamPaperRead"
     description: "ExamDescriptionReadForExamPaper"
-    # questions: Optional[List[QuestionsRead]] = []
     modules: Optional[List[ModuleReadForExamPaper]] = []
     created_by_id: UUID
     institution: InstitutionReadForExamPaper
     # hash_code: Optional[str]
     course:Optional[CourseReadForExamPaper]
+
+    question_sets: Optional[List[QuestionSetRead]] = []
 
     class Config:
         from_attributes = True  # Allows ORM-based data to be converted to Pydantic

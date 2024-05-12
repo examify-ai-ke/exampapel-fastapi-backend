@@ -5,12 +5,12 @@ from app.models.base_uuid_model import BaseUUIDModel
 from uuid import UUID
 import enum
 from typing import List, Optional
-from app.models.image_media_model import ImageMedia
+# from app.models.image_media_model import ImageMedia
 
-from pydantic import EmailStr, field_validator, validator 
+from pydantic import  field_validator, validator 
 from app.utils.slugify_string import generate_slug
 from datetime import date
-from sqlalchemy.dialects.postgresql import JSONB
+
 
 # Define an Enum with valid member names extended to 2025
 #  to fix the generation o fthe year
@@ -67,6 +67,20 @@ class InstructionExamsLink(BaseUUIDModel, SQLModel, table=True):
         primary_key=True,
         default=None,
     )
+
+
+class ExamPaperQuestionLink(BaseUUIDModel, SQLModel, table=True):
+    question_set_id: UUID | None = Field(
+        foreign_key="QuestionSet.id",
+        primary_key=True,
+        default=None,
+    )
+    exam_id: UUID | None = Field(
+        foreign_key="ExamPaper.id",
+        primary_key=True,
+        default=None,
+    )
+
 
 class ExamPaperBase(SQLModel):
     # name: str = Field(nullable=False, unique=True)
@@ -138,11 +152,12 @@ class ExamPaper(BaseUUIDModel,ExamPaperBase, table=True):
         },
     )
     # One-to_many
-    # questions: Optional["Question"] = Relationship(
-    #     back_populates="exam_paper",
-    #     sa_relationship_kwargs={"lazy": "joined"},
-    # )
-
+    question_sets: List["QuestionSet"] = Relationship(
+        back_populates="exam_papers",
+        link_model=ExamPaperQuestionLink,
+        sa_relationship_kwargs={"lazy": "joined"},
+    )
+    
     # Many-to_Many
     modules: List["Module"] = Relationship(
         link_model=ModuleExamsLink,

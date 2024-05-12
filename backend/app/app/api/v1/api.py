@@ -21,7 +21,9 @@ from app.api.v1.endpoints import (
     exam_paper,
     instruction,
     exam_description,
-    exam_title
+    exam_title,
+    question_set,
+    main_question
     
 )
 
@@ -56,9 +58,13 @@ api_router.include_router(course.router, prefix="/course", tags=["course"])
 api_router.include_router(module.router, prefix="/module", tags=["modules/units"])
 
 
-api_router.include_router(exam_title.router, prefix="/exam_title", tags=["exam_title"])
+api_router.include_router(exam_title.router, prefix="/exam-title", tags=["exam-title"])
 api_router.include_router(
     exam_description.router, prefix="/exam_description", tags=["exam_description"]
 )
 api_router.include_router(instruction.router, prefix="/instruction", tags=["instruction"])
 api_router.include_router(exam_paper.router, prefix="/exampaper", tags=["exampaper"])
+api_router.include_router(question_set.router, prefix="/question-set", tags=["question-set"])
+api_router.include_router(
+    main_question.router, prefix="/main-question", tags=["main-question"]
+)

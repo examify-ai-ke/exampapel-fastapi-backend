@@ -18,3 +18,5 @@ from .exam_paper_crud import exam_paper
 from .instruction_crud import instruction
 from .exam_title_crud import exam_title
 from .exam_description_crud import exam_description
+from .question_set_crud import question_set
+from .main_question_crud import main_question
