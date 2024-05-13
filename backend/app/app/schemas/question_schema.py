@@ -6,9 +6,16 @@ from app.models.question_model import QuestionSetBase
 from pydantic import field_validator, BaseModel
 
 
+class AnswerRead(BaseModel):
+    id: UUID
+    text: Optional[str]
+
+
+
 class SubQuestionBase(BaseModel):
     text: str
     marks: Optional[int] = None
+    answers:Optional[list[AnswerRead]]= []
 
 
 class SubQuestionCreate(SubQuestionBase):
@@ -45,12 +52,14 @@ class MainQuestionUpdate(MainQuestionBase):
 class QuestionSetReadForMain(BaseModel):
     title:str
 
+
 class MainQuestionRead(MainQuestionBase):
     id: UUID
     slug:str
     marks:int | None
     question_set: Optional[QuestionSetReadForMain]
     subquestions: Optional[List[SubQuestionBase]] = []
+    answers:Optional[list[AnswerRead]]= []
 
     class Config:
         from_attributes = True

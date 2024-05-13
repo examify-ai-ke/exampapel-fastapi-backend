@@ -24,7 +24,8 @@ from app.api.v1.endpoints import (
     exam_title,
     question_set,
     main_question,
-    sub_question
+    sub_question,
+    answer
     
 )
 
@@ -71,4 +72,8 @@ api_router.include_router(
 )
 api_router.include_router(
     sub_question.router, prefix="/sub-question", tags=["sub-question"]
+)
+
+api_router.include_router(
+    answer.router, prefix="/answer", tags=["answer"]
 )

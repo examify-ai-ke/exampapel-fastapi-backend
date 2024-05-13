@@ -109,6 +109,10 @@ class MainQuestion(BaseUUIDModel, QuestionBase, table=True):
             "primaryjoin": " MainQuestion.created_by_id==User.id",
         }
     )
+    answers: List["Answer"] | None = Relationship(
+        back_populates="main_question",
+        sa_relationship_kwargs={"lazy": "joined"}
+    )
     # Define unique constraint
     __table_args__ = (
         UniqueConstraint(
@@ -139,6 +143,10 @@ class SubQuestion(BaseUUIDModel,SQLModel, table=True):
             "lazy": "joined",
             "primaryjoin": "SubQuestion.created_by_id==User.id",
         }
+    )
+    answers: List["Answer"] | None = Relationship(
+        back_populates="sub_question", 
+        sa_relationship_kwargs={"lazy": "joined"}
     )
 
 
