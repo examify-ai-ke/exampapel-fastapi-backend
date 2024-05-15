@@ -43,7 +43,7 @@ class Answer(BaseUUIDModel,AnswerBase, table=True):
         back_populates="parent",
         sa_relationship_kwargs={
             "lazy": "joined",
-            "remote_side": "Answer.parent_id"
+            "remote_side": "Answer.parent_id","join_depth":2
         },
     )
 

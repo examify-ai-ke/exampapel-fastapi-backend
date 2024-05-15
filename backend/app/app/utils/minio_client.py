@@ -25,13 +25,13 @@ class MinioClient:
         access_key: str,
         secret_key: str,
         bucket_name: str,
-        # secure:bool=True,
+        secure:bool=False,
     ):
         self.minio_url = minio_url
         self.access_key = access_key
         self.secret_key = secret_key
         self.bucket_name = bucket_name
-        # self.secure=secure
+        self.secure=secure
         self.client = Minio(
             self.minio_url,
             access_key=self.access_key,

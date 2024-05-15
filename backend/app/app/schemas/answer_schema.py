@@ -42,11 +42,10 @@ class AnswerRead(AnswerBase):
     reviewed: bool = False
     auto_answer: bool = False
     parent: Optional[ParentReadForAnswerRead] = None
-    # children: Optional[List[AnswerBase]] = []
+    children: Optional[List[ChildrenReadForAnswerRead]] = []
 
     class Config:
         from_attributes = True
 
 AnswerRead.model_rebuild(force=True)
 # Handle forward references for self-referential models
- 
