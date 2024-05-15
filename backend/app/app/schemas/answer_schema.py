@@ -20,11 +20,14 @@ class AnswerCreate(AnswerBase):
     pass
 
 class ChildrenReadForAnswerRead(BaseModel):
-    id: UUID
+    id: Optional[UUID]
     text: Optional[str]
     likes: int | None = 0
     dislikes: int | None = 0
     reviewed: bool = False
+    
+    class Config:
+        from_attributes = True
 
 
 class ParentReadForAnswerRead(BaseModel):
@@ -39,7 +42,11 @@ class AnswerRead(AnswerBase):
     reviewed: bool = False
     auto_answer: bool = False
     parent: Optional[ParentReadForAnswerRead] = None
-    children: Optional[list[ChildrenReadForAnswerRead]] = None
+    # children: Optional[List[AnswerBase]] = []
 
     class Config:
         from_attributes = True
+
+AnswerRead.model_rebuild(force=True)
+# Handle forward references for self-referential models
+ 
