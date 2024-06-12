@@ -42,7 +42,7 @@ class AnswerRead(AnswerBase):
     reviewed: bool = False
     auto_answer: bool = False
     parent: Optional[ParentReadForAnswerRead] = None
-    children: Optional[List[ChildrenReadForAnswerRead]] = []
+    children: Optional[List[ChildrenReadForAnswerRead]] = None
 
     class Config:
         from_attributes = True

@@ -111,7 +111,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-
+# print(settings.ASYNC_DATABASE_URI)
 app.add_middleware(
     SQLAlchemyMiddleware,
     db_url=str(settings.ASYNC_DATABASE_URI),
@@ -132,6 +132,7 @@ if settings.BACKEND_CORS_ORIGINS:
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[str(origin) for origin in settings.BACKEND_CORS_ORIGINS],
+ 
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],

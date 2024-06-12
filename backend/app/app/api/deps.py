@@ -109,6 +109,6 @@ def minio_auth() -> MinioClient:
         secret_key=settings.MINIO_ROOT_PASSWORD,
         bucket_name=settings.MINIO_BUCKET,
         minio_url=settings.MINIO_URL,
-        # secure=False
+        secure=False,
     )
     return minio_client
