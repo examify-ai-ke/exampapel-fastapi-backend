@@ -31,7 +31,15 @@ class QuestionSetBase(SQLModel):
     )
 
 class QuestionSet(BaseUUIDModel,QuestionSetBase, table=True):
+    """_summary_
 
+    Args:
+        BaseUUIDModel (_type_): _description_
+        QuestionSetBase (_type_): _description_
+        table (bool, optional): _description_. Defaults to True.
+
+        This is the Main Question Section of the question Paper. e.g "QUESTION ONE" section
+    """
     slug: Optional[str] = Field(default=None, unique=True)
     main_questions: List["MainQuestion"] = Relationship(
         back_populates="question_set",
@@ -70,6 +78,14 @@ class QuestionBase(SQLModel):
 
 
 class MainQuestion(BaseUUIDModel, QuestionBase, table=True): 
+    """
+    
+    Args:
+        BaseUUIDModel (_type_): _description_
+        QuestionBase (_type_): _description_
+        table (bool, optional): _description_. Defaults to True.
+      This is the parent Questions under the "QuestionSet" e.g (1), (I) e.t.c
+    """
     order_within_question_set: Optional[str] = Field(nullable=False, default=None)
     # Changed to String for alphabetical ordering
     slug: Optional[str] = Field(default=None, unique=False)
@@ -125,6 +141,15 @@ class MainQuestion(BaseUUIDModel, QuestionBase, table=True):
 
 
 class SubQuestion(BaseUUIDModel,SQLModel, table=True):
+    """_summary_
+
+    Args:
+        BaseUUIDModel (_type_): _description_
+        SQLModel (_type_): _description_
+        table (bool, optional): _description_. Defaults to True.
+        
+        This is the smallest/child question under the MainQuestion above. e.g (a), (b), (i) e.t.c
+    """
     text: str
     marks: Optional[int] = None
 

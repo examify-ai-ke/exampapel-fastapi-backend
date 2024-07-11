@@ -5,6 +5,7 @@ from app.api.v1.endpoints import (
     hero,
     team,
     login,
+    logout,
     role,
     group,
     cache,
@@ -31,6 +32,7 @@ from app.api.v1.endpoints import (
 
 api_router = APIRouter()
 api_router.include_router(login.router, prefix="/login", tags=["login"])
+api_router.include_router(logout.router, prefix="/logout", tags=["logout"])
 api_router.include_router(role.router, prefix="/role", tags=["role"])
 api_router.include_router(user.router, prefix="/user", tags=["user"])
 api_router.include_router(group.router, prefix="/group", tags=["group"])

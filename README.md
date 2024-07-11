@@ -455,3 +455,20 @@ PR are welcome ❤️
 [![License](http://img.shields.io/:license-mit-blue.svg?style=flat-square)](http://badges.mit-license.org)
 
 - This project is licensed under the terms of the **[MIT license](LICENSE)**
+
+
+
+## Clear all DB tables with Dummy Data
+This clears all sample data on database.
+dont run this in production
+# N/B: This has been disabled in production
+
+*Using docker compose command*
+```
+docker compose -f docker-compose-dev.yml exec fastapi_server python app/clear_all_dummy.py
+```
+
+*Using Makefile command*
+```sh
+make clear-dummy-db
+```

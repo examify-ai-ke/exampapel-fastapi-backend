@@ -41,7 +41,11 @@ services:
     restart: always
     expose:
       - 6379
+    ports:
+      - "6379:6379"
     env_file: .env
+    volumes:
+      - redis_data:/data
 
   celery_worker:
     container_name: celery_worker
@@ -120,3 +124,4 @@ volumes:
   db_docker:
   caddy_data:
   caddy_config:
+  redis_data:

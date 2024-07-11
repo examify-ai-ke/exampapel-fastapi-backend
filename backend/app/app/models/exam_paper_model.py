@@ -105,6 +105,16 @@ class ExamPaperBase(SQLModel):
 
 # ExamPaper model
 class ExamPaper(BaseUUIDModel,ExamPaperBase, table=True):    
+    """_summary_
+
+    Args:
+        BaseUUIDModel (_type_): _description_
+        ExamPaperBase (_type_): _description_
+        table (bool, optional): _description_. Defaults to True.
+
+    Returns:
+        Unique ExamPaper with Questions and SubQuestions And All Its Description.
+    """
     tags: Optional[List] = Field(sa_column=Column(JSON, nullable=True, default=None))
     # tags: Optional[List] = Field(nullable=True, sa_type=JSONB, default_factory=dict)
 

@@ -8,7 +8,7 @@ from typing import Optional
 from sqlalchemy_utils import ChoiceType
 from pydantic import EmailStr
 from uuid import UUID
-
+from sqlmodel import Enum
 
 class UserBase(SQLModel):
     first_name: str
@@ -23,8 +23,8 @@ class UserBase(SQLModel):
     phone: str | None = None
     gender: IGenderEnum | None = Field(
         default=IGenderEnum.other,
-        sa_column=Column(ChoiceType(IGenderEnum, impl=String())),
-    )
+        sa_column=Column(Enum(IGenderEnum), nullable=False, default=IGenderEnum.male))
+    
     state: str | None = None
     country: str | None = None
     address: str | None = None

@@ -6,7 +6,7 @@ define SERVERS_JSON
 {
 	"Servers": {
 		"1": {
-			"Name": "fastapi-alembic",
+			"Name": "exampapel-api",
 			"Group": "Servers",
 			"Host": "$(DATABASE_HOST)",
 			"Port": 5432,
@@ -36,6 +36,8 @@ help:
 	@echo "        Run production docker compose."
 	@echo "    init-db"
 	@echo "        Init database with sample data."	
+	@echo "    clear-dummy-db"
+	@echo "        Clear all database tables with sample data. Take coution."	
 	@echo "    add-dev-migration"
 	@echo "        Add new database migration using alembic."
 	@echo "    upgrade-migration"
@@ -90,6 +92,11 @@ create-celery-db:
 init-db:
 	docker compose -f docker-compose-dev.yml exec fastapi_server python app/initial_data.py && \
 	echo "Initial data created." 
+
+clear-dummy-db:
+	docker compose -f docker-compose-dev.yml exec fastapi_server python app/clear_all_dummy.py && \
+	echo "All dummy data in all Tables are being Cleared ::-:." 
+
 
 formatter:
 	cd backend/app && \
