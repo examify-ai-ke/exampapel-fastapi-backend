@@ -52,13 +52,13 @@ class Programme(BaseUUIDModel, ProgrammeBase, table=True):
     departments: List["Department"] = Relationship(
         back_populates="programmes",
         link_model=ProgrammeDepartmentLink,
-        sa_relationship_kwargs={"lazy": "joined"},
+        sa_relationship_kwargs={"lazy": "selectin"},
     )
 
     # Relationship with courses
     courses: List["Course"] = Relationship(
         back_populates="programme",
-        sa_relationship_kwargs={"lazy": "joined"},
+        sa_relationship_kwargs={"lazy": "selectin"},
     )
 
     slug: Optional[str] = Field(default=None, unique=True)

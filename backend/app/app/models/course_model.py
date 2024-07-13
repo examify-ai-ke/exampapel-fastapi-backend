@@ -28,7 +28,8 @@ class Course(BaseUUIDModel, CourseBase, table=True):
 
     # Relationship with Programme
     programme: "Programme" = Relationship(
-        back_populates="courses"        
+        back_populates="courses",
+        sa_relationship_kwargs={"lazy": "selectin"}     
     )
     
     exam_papers: List["ExamPaper"] = Relationship(
@@ -56,7 +57,7 @@ class Course(BaseUUIDModel, CourseBase, table=True):
     modules: List["Module"] = Relationship(
         link_model=CourseModuleLink,
         back_populates="courses",
-        sa_relationship_kwargs={"lazy": "joined"},
+        sa_relationship_kwargs={"lazy": "selectin"},
     )
 
     @validator("slug", pre=True, always=True)

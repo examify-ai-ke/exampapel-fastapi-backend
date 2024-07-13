@@ -70,11 +70,11 @@ class Institution(BaseUUIDModel, InstitutionBase, table=True):
     faculties: List["Faculty"] = Relationship(
         link_model=InstitutionFacultyLink,
         back_populates="institutions",
-        sa_relationship_kwargs={"lazy": "joined"},
+        sa_relationship_kwargs={"lazy": "selectin"},
     )
 
     exam_papers: List["ExamPaper"] = Relationship(
-        back_populates="institution", sa_relationship_kwargs={"lazy": "joined"}
+        back_populates="institution", sa_relationship_kwargs={"lazy": "selectin"}
     )
 
     @validator("slug")

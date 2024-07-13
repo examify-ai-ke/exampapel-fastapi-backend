@@ -66,8 +66,8 @@ class CourseReadForExamPaper(BaseModel):
 class ExamPaperRead(ExamPaperBase):
     id: UUID
     tags: Optional[List] 
-    instructions: Optional[List[InstructionRead]] = []  # To represent the relationship
-    title: "ExamTitleReadForExamPaperRead"
+    instructions: Optional[List[InstructionRead]]   = []  # To represent the relationship
+    title: "ExamTitleReadForExamPaperRead"   = []
     description: "ExamDescriptionReadForExamPaper"
     modules: Optional[List[ModuleReadForExamPaper]] = []
     created_by_id: UUID
@@ -109,6 +109,8 @@ class ExamTitleReadForExamPaperRead(BaseModel):
     id: UUID
     name: str
     slug: str
+    
+    
 # ExamDescription
 # ------------------------------------------------------------------------
 class ExamDescriptionCreate(BaseModel):

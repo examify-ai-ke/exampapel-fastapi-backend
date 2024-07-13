@@ -160,9 +160,9 @@ async def init_db_institution(db: AsyncSession) -> None:
     current_admin = await crud.user.get_by_email(
         email=settings.FIRST_SUPERUSER_EMAIL, db_session=db
     )
-    
+
     ADMIN_USER_ID=current_admin.id
-    
+
     try:
         # Check if there are any records in the Institution table
         institution_count = await crud.institution.get_count_of_institutions(
@@ -386,26 +386,14 @@ async def init_db_institution(db: AsyncSession) -> None:
             exam_description.exam_papers.append(exam_paper)
             exam_paper.instructions.append(exam_instruction)
             exam_paper.question_sets.append(question_set)
+            exam_paper.modules.append(module)
 
             # Append examPaper to the Course
             course.exam_papers.append(exam_paper)
 
-            # Append the MainQuestions to the QuestionSet
-            for main_question in main_questions:
-                question_set.main_questions.append(main_question)
-
-            # Add the All Sub Questions to MainQuestion 1.
-            for sub_question in sub_questions:
-                main_questions[0].subquestions.append(sub_question)
             # ---------------------------------------------------------
             # Institutions
-
-            exam_paper.modules.append(module)          
             institution_create.exam_papers.append(exam_paper)
-
-            # Add ExamPaper Id in each MainQuestion---Its required
-            for main_question in main_questions:
-                main_question.exam_paper_id=exam_paper.id
 
             department.faculty_id=faculty_create.id
             faculty_create.departments.append(department)
@@ -415,15 +403,40 @@ async def init_db_institution(db: AsyncSession) -> None:
             department.programmes.append(programme)
             course.modules.append(module)
             institution_create.faculties.append(faculty_create)
-            db.add(institution_create)
+
+            # # Add ExamPaper Id in each MainQuestion---Its required
+            # for main_question in main_questions:
+            #     main_question.exam_paper_id = exam_paper.id
+
+            # # Add the All Sub Questions to MainQuestion 1.
+            # for sub_question in sub_questions:
+            #     main_questions[0].subquestions.append(sub_question)
+
+            # # Append the MainQuestions to the QuestionSet
+            # for main_question in main_questions:
+            #     question_set.main_questions.append(main_question)
+            # # TODO
+            # # ExamPaper should have a list of all MainQuestions that belong to it
 
             # ---------------------------------------------------------
             # Questions now
 
             # ----------------------------------------------------------
 
+            # for main_question in main_questions:
+            #     main_question.exam_paper_id = exam_paper.id
+
+            for sub_question in sub_questions:
+                main_questions[0].subquestions.append(sub_question)
+
+            for main_question in main_questions:
+                question_set.main_questions.append(main_question)
+            
+            db.add(institution_create)
+            # Commit the MainQuestions and SubQuestions
             await db.commit()
             await db.flush()
+
             print("Institution & Faculty created.")
             print("Instritution ID:", institution_create.id)
             print("Faculty ID: ", faculty_create.id)

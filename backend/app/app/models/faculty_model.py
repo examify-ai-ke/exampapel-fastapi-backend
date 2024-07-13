@@ -32,17 +32,17 @@ class Faculty(BaseUUIDModel, SQLModel, table=True):
     institutions: List[Institution] = Relationship(
         back_populates="faculties",
         link_model=InstitutionFacultyLink,
-        sa_relationship_kwargs={"lazy": "joined"},
+        sa_relationship_kwargs={"lazy": "selectin"},
     )
 
     departments: List[Department] = Relationship(
-        back_populates="faculty", sa_relationship_kwargs={"lazy": "joined"}
+        back_populates="faculty", sa_relationship_kwargs={"lazy": "selectin"}
     )
 
     created_by_id: UUID | None = Field(default=None, foreign_key="User.id")
     created_by: "User" = Relationship(  # noqa: F821
         sa_relationship_kwargs={
-            "lazy": "joined",
+            "lazy": "joined",    
             "primaryjoin": "Faculty.created_by_id==User.id",
         }
     )

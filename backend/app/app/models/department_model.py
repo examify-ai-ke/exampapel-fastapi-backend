@@ -35,7 +35,7 @@ class Department(BaseUUIDModel, SQLModel, table=True):
     programmes: List["Programme"] = Relationship(
         link_model=ProgrammeDepartmentLink,
         back_populates="departments",
-        sa_relationship_kwargs={"lazy": "joined"},
+        sa_relationship_kwargs={"lazy": "selectin"},
     )
 
     created_by_id: UUID | None = Field(default=None, foreign_key="User.id")

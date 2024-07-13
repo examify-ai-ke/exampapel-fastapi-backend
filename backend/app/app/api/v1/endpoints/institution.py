@@ -49,7 +49,7 @@ router = APIRouter()
 async def get_institution_list(
     params: Params = Depends(),
     # current_user: User = Depends(deps.get_current_user()),
-    current_user: User = None
+    # current_user: User = None
 ) -> IGetResponsePaginated[InstitutionRead]:
     """
     Gets a paginated list of institution
@@ -65,7 +65,8 @@ async def get_institution_list_order_by_created_at(
         default=IOrderEnum.ascendent, description="It is optional. Default is ascendent"
     ),
     params: Params = Depends(),
-    current_user: User = Depends(deps.get_current_user()),
+    # current_user: User = Depends(deps.get_current_user()),
+    # current_user: User =None
 ) -> IGetResponsePaginated[InstitutionRead]:
     """
     Gets a paginated list of institutions ordered by created at datetime
@@ -80,7 +81,7 @@ async def get_institution_list_order_by_created_at(
 async def get_institution_by_id(
     institution_id: UUID,
     # current_user: User = Depends(deps.get_current_user()),
-    current_user: User = None
+    # current_user: User = None
 ) -> IGetResponseBase[InstitutionRead]:
     """
     Gets a institution by its id
@@ -97,7 +98,6 @@ async def get_institution_by_id(
 async def get_institution_by_slug(
     institution_slug: str,
     # current_user: User = Depends(deps.get_current_user()),
-    current_user: User = None,
 ) -> IGetResponseBase[list[InstitutionRead]]:
     """
     Gets a institution by slug

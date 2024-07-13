@@ -66,7 +66,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         self,
         *,
         skip: int = 0,
-        limit: int = 100,
+        limit: int = 50,
         query: T | Select[T] | None = None,
         db_session: AsyncSession | None = None,
     ) -> list[ModelType]:

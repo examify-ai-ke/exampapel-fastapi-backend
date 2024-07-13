@@ -3,6 +3,7 @@ from app.utils.partial import optional
 from uuid import UUID
 from app.schemas.image_media_schema import IImageMediaRead
 
+from app.schemas.exam_paper_schema import ExamPaperRead
 from pydantic import field_validator, BaseModel
 
 
@@ -35,17 +36,18 @@ class ModuleReadForCourse(BaseModel):
 
 class ExamPapersReadForCourse(BaseModel):
     id:UUID
-    name:str
-    slug: str
-    
+    # title: str
+    # description: str
+
+
 # Schema for reading a Course
 class CourseRead(CourseBase):
     id: UUID
     slug:str
     programme_id: UUID
     modules: Optional[list[ModuleReadForCourse]]
-    image: IImageMediaRead | None
     exam_papers: Optional[List[ExamPapersReadForCourse]]
+    image: IImageMediaRead | None
 
     class Config:
         from_attributes = True  # Allows the schema to work with ORM objects
