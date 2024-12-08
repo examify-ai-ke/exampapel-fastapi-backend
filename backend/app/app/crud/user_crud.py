@@ -4,6 +4,7 @@ from app.models.user_model import User
 from app.models.media_model import Media
 from app.models.image_media_model import ImageMedia
 from app.core.security import verify_password, get_password_hash
+from app.schemas.common_schema import AuthProvider
 from pydantic.networks import EmailStr
 from typing import Any
 from app.crud.base_crud import CRUDBase
@@ -11,6 +12,8 @@ from app.crud.user_follow_crud import user_follow as UserFollowCRUD
 from sqlmodel import select
 from uuid import UUID
 from sqlmodel.ext.asyncio.session import AsyncSession
+from sqlalchemy import and_
+ 
 
 
 class CRUDUser(CRUDBase[User, IUserCreate, IUserUpdate]):
@@ -113,6 +116,24 @@ class CRUDUser(CRUDBase[User, IUserCreate, IUserUpdate]):
         await db_session.delete(obj)
         await db_session.commit()
         return obj
+
+    async def get_by_provider_id(
+        self,
+        *,
+        provider: AuthProvider,
+        provider_user_id: str,
+        db_session: AsyncSession | None = None
+    ) -> User | None:
+        db_session = db_session or super().get_db().session
+        users = await db_session.execute(
+            select(User).where(
+                and_(
+                    User.provider == provider,
+                    User.provider_user_id == provider_user_id
+                )
+            )
+        )
+        return users.scalar_one_or_none()
 
 
 user = CRUDUser(User)

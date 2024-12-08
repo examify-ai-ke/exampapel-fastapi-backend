@@ -1,4 +1,5 @@
 import os
+from uuid import UUID
 from pydantic_core.core_schema import FieldValidationInfo
 from pydantic import PostgresDsn, EmailStr, AnyHttpUrl, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -16,9 +17,10 @@ class ModeEnum(str, Enum):
 class Settings(BaseSettings):
     MODE: ModeEnum = ModeEnum.development
     API_VERSION: str = "v1"
-    API_V1_STR: str = f"/api/{API_VERSION}"
+    # API_V1_STR: str = f"/api/{API_VERSION}"
+    API_V1_STR: str = "/admin/api"
     PROJECT_NAME: str
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 1 # 1 hour
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 5 # 1 hour
     REFRESH_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 100  # 100 days
     OPENAI_API_KEY: str
     DATABASE_USER: str
@@ -28,13 +30,22 @@ class Settings(BaseSettings):
     DATABASE_NAME: str
     DATABASE_CELERY_NAME: str = "celery_schedule_jobs"
     REDIS_HOST: str
-    REDIS_PORT: str
+    REDIS_PORT: int
+    REDIS_PASSWORD: str
+    REDIS_DB: int = 0
+    # REDIS_SSL: bool = False
+    # REDIS_SSL_CERT_REQS: str | None = None
+    REDIS_POOL_SIZE: int = 10
+    REDIS_POOL_TIMEOUT: int = 20
     DB_POOL_SIZE: int = 83
     WEB_CONCURRENCY: int = 9
     POOL_SIZE: int = max(DB_POOL_SIZE // WEB_CONCURRENCY, 5)
     ASYNC_DATABASE_URI: PostgresDsn | str = ""
     # MINIO_ACCESS_KEY: str
     # MINIO_SECRET_KEY: str
+    JWT_ISSUER: str = "your-application-name"
+    JWT_AUDIENCE: str = "your-frontend-url"
+    DEFAULT_ROLE_NAME:  str ="user"
 
     @field_validator("ASYNC_DATABASE_URI", mode="after")
     def assemble_db_connection(cls, v: str | None, info: FieldValidationInfo) -> Any:

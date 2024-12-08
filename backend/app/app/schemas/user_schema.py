@@ -6,6 +6,7 @@ from uuid import UUID
 from enum import Enum
 from .image_media_schema import IImageMediaRead
 from .role_schema import IRoleRead
+from pydantic import EmailStr
 
 
 class IUserCreate(UserBase):
@@ -52,3 +53,13 @@ class IUserBasicInfo(BaseModel):
 class IUserStatus(str, Enum):
     active = "active"
     inactive = "inactive"
+
+
+class ISocialAuthResponse(BaseModel):
+    access_token: str
+    token_type: str
+    user: IUserRead
+
+
+class IEmailVerification(BaseModel):
+    email: EmailStr

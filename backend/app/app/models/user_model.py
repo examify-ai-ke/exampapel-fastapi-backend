@@ -1,16 +1,34 @@
+ 
 from app.models.base_uuid_model import BaseUUIDModel
 from app.models.links_model import LinkGroupUser
 from app.models.image_media_model import ImageMedia
-from app.schemas.common_schema import IGenderEnum
+from app.schemas.common_schema import  AuthProvider, IGenderEnum
 from datetime import datetime
-from sqlmodel import BigInteger, Field, SQLModel, Relationship, Column, DateTime, String
+from sqlmodel import BigInteger, Field, SQLModel, Relationship, Column, DateTime, String, Enum
 from typing import Optional
-from sqlalchemy_utils import ChoiceType
+# from sqlalchemy_utils import ChoiceType
 from pydantic import EmailStr
 from uuid import UUID
-from sqlmodel import Enum
+ 
+ 
+
+# Add Provider Enum
+
 
 class UserBase(SQLModel):
+    # Add model config for arbitrary types
+    # model_config = {
+    #     "arbitrary_types_allowed": True,
+    #     "json_schema_extra": {
+    #         "example": {
+    #             "first_name": "John",
+    #             "last_name": "Doe",
+    #             "email": "johndoe@example.com",
+    #             "provider": AuthProvider.EMAIL,
+    #         }
+    #     }
+    # }
+
     first_name: str
     last_name: str
     email: EmailStr = Field(sa_column=Column(String, index=True, unique=True))
@@ -24,10 +42,21 @@ class UserBase(SQLModel):
     gender: IGenderEnum | None = Field(
         default=IGenderEnum.other,
         sa_column=Column(Enum(IGenderEnum), nullable=False, default=IGenderEnum.male))
+    email_verified: bool = Field(default=False)
     
     state: str | None = None
     country: str | None = None
     address: str | None = None
+    
+    # Add new fields for auth provider tracking
+    provider: AuthProvider = Field(
+        default=AuthProvider.email,
+        sa_column=Column(Enum(AuthProvider), nullable=False, default=AuthProvider.email)
+    )
+    provider_user_id: str | None = Field(
+        default=None, 
+        sa_column=Column(String, nullable=True)
+    )  # Store provider's user ID
 
 
 class User(BaseUUIDModel, UserBase, table=True):

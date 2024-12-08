@@ -88,19 +88,22 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             query = select(self.model)
 
         output = await paginate(db_session, query, params)
+        print("get_multi_paginated()....called...........")
+        print(output)
         return output
 
     async def get_multi_paginated_ordered(
         self,
         *,
-        params: Params | None = Params(),
+        skip: int = 0,
+        limit: int = 50,
         order_by: str | None = None,
         order: IOrderEnum | None = IOrderEnum.ascendent,
         query: T | Select[T] | None = None,
         db_session: AsyncSession | None = None,
     ) -> Page[ModelType]:
         db_session = db_session or self.db.session
-
+        params = Params(page=skip // limit + 1, size=limit)  # Convert skip/limit to page/size
         columns = self.model.__table__.columns
 
         if order_by is None or order_by not in columns:
@@ -111,14 +114,14 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
                 query = select(self.model).order_by(columns[order_by].asc())
             else:
                 query = select(self.model).order_by(columns[order_by].desc())
-
+        print("multi paginated called......")
         return await paginate(db_session, query, params)
 
     async def get_multi_ordered(
         self,
         *,
         skip: int = 0,
-        limit: int = 100,
+        limit: int = 50,
         order_by: str | None = None,
         order: IOrderEnum | None = IOrderEnum.ascendent,
         db_session: AsyncSession | None = None,
@@ -144,9 +147,10 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
                 .limit(limit)
                 .order_by(columns[order_by].desc())
             )
-
+        print("get_multi_ordered......called.............")
         response = await db_session.execute(query)
-        return response.scalars().all()
+        # print(response)
+        return response.scalars().unique().all()
 
     async def create(
         self,

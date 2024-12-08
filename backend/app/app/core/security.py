@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 from typing import Any
+import uuid
 
 import bcrypt
 import jwt
@@ -19,7 +20,15 @@ def create_access_token(subject: str | Any, expires_delta: timedelta = None) -> 
         expire = datetime.utcnow() + timedelta(
             minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
         )
-    to_encode = {"exp": expire, "sub": str(subject), "type": "access"}
+    to_encode = {
+        "exp": expire,
+        "sub": str(subject),
+        "type": "access",
+        "iat": datetime.utcnow(),
+        "jti": str(uuid.uuid4()),
+        "iss": "your-application-name",
+        "aud": "your-frontend-url"
+    }
 
     return jwt.encode(
         payload=to_encode,
@@ -35,7 +44,13 @@ def create_refresh_token(subject: str | Any, expires_delta: timedelta = None) ->
         expire = datetime.utcnow() + timedelta(
             minutes=settings.REFRESH_TOKEN_EXPIRE_MINUTES
         )
-    to_encode = {"exp": expire, "sub": str(subject), "type": "refresh"}
+    to_encode = {
+        "exp": expire,
+        "sub": str(subject),
+        "type": "refresh",
+        "iat": datetime.utcnow(),
+        "jti": str(uuid.uuid4()),
+    }
 
     return jwt.encode(
         payload=to_encode,
@@ -45,11 +60,36 @@ def create_refresh_token(subject: str | Any, expires_delta: timedelta = None) ->
 
 
 def decode_token(token: str) -> dict[str, Any]:
-    return jwt.decode(
-        jwt=token,
-        key=settings.ENCRYPT_KEY,
-        algorithms=[JWT_ALGORITHM],
-    )
+    # First decode without verification to check token type
+    unverified_payload = jwt.decode(token, options={"verify_signature": False})
+    token_type = unverified_payload.get("type")
+
+    # Set options based on token type
+    options = {
+        'verify_signature': True,
+        'verify_exp': True,
+        'verify_iat': True,
+        'require': ['exp', 'iat', 'sub']
+    }
+    
+    # Only verify audience for access tokens
+    if token_type == "access":
+        options['verify_aud'] = True
+        return jwt.decode(
+            jwt=token,
+            key=settings.ENCRYPT_KEY,
+            algorithms=[JWT_ALGORITHM],
+            options=options,
+            audience="your-frontend-url"
+        )
+    else:
+        # For refresh tokens, don't verify audience
+        return jwt.decode(
+            jwt=token,
+            key=settings.ENCRYPT_KEY,
+            algorithms=[JWT_ALGORITHM],
+            options=options
+        )
 
 
 def verify_password(plain_password: str | bytes, hashed_password: str | bytes) -> bool:

@@ -44,8 +44,11 @@ services:
     ports:
       - "6379:6379"
     env_file: .env
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
     volumes:
       - redis_data:/data
+    command: redis-server --appendonly yes
 
   celery_worker:
     container_name: celery_worker

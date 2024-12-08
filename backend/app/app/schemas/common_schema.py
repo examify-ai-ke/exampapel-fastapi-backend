@@ -32,6 +32,14 @@ class IUserMessage(BaseModel):
     message: str
 
 
+class AuthProvider(str, Enum):
+    email = "email"
+    google = "google"
+    github = "github"
+    facebook = "facebook"
+    twitter = "twitter"
+    # Add more providers as needed
+
 class IChatResponse(BaseModel):
     """Chat response schema."""
 

@@ -45,5 +45,7 @@ class InstitutionRead(InstitutionBase):
     campuses: list[CampusRead] | None = []
     exam_papers: list[ExamPaperRead] | None = []
     exams_count: int | None = 0
+    campuses_count: int | None =0
+    faculties_count: int | None =0
     class Config:
         from_attributes = True  # This allows the schema to work with ORM objects

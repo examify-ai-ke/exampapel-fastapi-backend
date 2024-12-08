@@ -1,8 +1,8 @@
 """empty message
 
-Revision ID: 5e0be4d42216
+Revision ID: 6f9b3507a919
 Revises: 
-Create Date: 2024-07-02 19:42:23.748096
+Create Date: 2024-12-04 23:00:12.331448
 
 """
 from alembic import op
@@ -12,7 +12,7 @@ import sqlmodel # added
 
 
 # revision identifiers, used by Alembic.
-revision = '5e0be4d42216'
+revision = '6f9b3507a919'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -72,9 +72,12 @@ def upgrade():
     sa.Column('role_id', sqlmodel.sql.sqltypes.GUID(), nullable=True),
     sa.Column('phone', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
     sa.Column('gender', sa.Enum('female', 'male', 'other', name='igenderenum'), nullable=False),
+    sa.Column('email_verified', sa.Boolean(), nullable=False),
     sa.Column('state', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
     sa.Column('country', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
     sa.Column('address', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+    sa.Column('provider', sa.Enum('email', 'google', 'github', 'facebook', 'twitter', name='authprovider'), nullable=False),
+    sa.Column('provider_user_id', sa.String(), nullable=True),
     sa.Column('id', sqlmodel.sql.sqltypes.GUID(), nullable=False),
     sa.Column('updated_at', sa.DateTime(), nullable=True),
     sa.Column('created_at', sa.DateTime(), nullable=True),

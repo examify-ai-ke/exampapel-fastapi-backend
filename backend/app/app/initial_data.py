@@ -6,7 +6,7 @@ from app.db.session import SessionLocal
 async def create_init_data() -> None:
     async with SessionLocal() as session:
         await init_db(session)
-    # async with SessionLocal() as db_session:
+        # async with SessionLocal() as db_session:
         await init_db_institution(session)
 
 

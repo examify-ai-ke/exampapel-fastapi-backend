@@ -4,9 +4,13 @@ from contextlib import asynccontextmanager
 from typing import Any
 from uuid import UUID, uuid4
 
+from app.models.institution_model import Institution, InstitutionView
+
+# from app.deps.custom_model_view import CustomModelView
 from fastapi import (
     FastAPI,
     HTTPException,
+    Path,
     Request,
     WebSocket,
     WebSocketDisconnect,
@@ -32,6 +36,9 @@ from app.core.security import decode_token
 from app.schemas.common_schema import IChatResponse, IUserMessage
 from app.utils.fastapi_globals import GlobalsMiddleware, g
 from app.utils.uuid6 import uuid7
+from starlette_admin.contrib.sqlmodel import Admin 
+
+from app.db.session import engine
 
 
 async def user_id_identifier(request: Request):
@@ -103,12 +110,27 @@ async def lifespan(app: FastAPI):
     gc.collect()
 
 
+# Create an empty admin interface
+admin = Admin(
+    engine,
+    title="ExamPapel Admin Panel",
+    base_url="/admin",
+    route_name="admin",
+    # statics_dir="statics/admin",
+    templates_dir="templates",
+)
+
+# Add view
+admin.add_view(InstitutionView(Institution, icon="fas fa-list"))
+
+
 # Core Application Instance
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.API_VERSION,
-    openapi_url=f"{settings.API_V1_STR}/openapi.json",
+    # openapi_url=f"{settings.API_V1_STR}/openapi.json",
     lifespan=lifespan,
+    # root_path="",
 )
 
 # print(settings.ASYNC_DATABASE_URI)
@@ -127,12 +149,12 @@ app.add_middleware(
 )
 app.add_middleware(GlobalsMiddleware)
 
+
 # Set all CORS origins enabled
 if settings.BACKEND_CORS_ORIGINS:
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[str(origin) for origin in settings.BACKEND_CORS_ORIGINS],
- 
+        allow_origins=[str(origin) for origin in settings.BACKEND_CORS_ORIGINS], 
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -158,10 +180,10 @@ class CustomException(Exception):
 @app.get("/")
 async def root():
     """
-    An example "Hello world" FastAPI route.
+    Helloo, Welcome to ExamPapel.
     """
     # if oso.is_allowed(user, "read", message):
-    return {"message": "Hello World"}
+    return {"message": "Hello and Welcome to ExamPapel Backend"}
 
 
 @app.websocket("/chat/{user_id}")
@@ -238,3 +260,6 @@ async def websocket_endpoint(websocket: WebSocket, user_id: UUID):
 
 # Add Routers
 app.include_router(api_router_v1, prefix=settings.API_V1_STR)
+# Mount admin to your app
+
+admin.mount_to(app)

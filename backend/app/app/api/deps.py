@@ -23,13 +23,24 @@ reusable_oauth2 = OAuth2PasswordBearer(
 
 
 async def get_redis_client() -> Redis:
-    redis = await aioredis.from_url(
-        f"redis://{settings.REDIS_HOST}:{settings.REDIS_PORT}",
-        max_connections=10,
-        encoding="utf8",
-        decode_responses=True,
-    )
-    return redis
+    try:
+        redis = await aioredis.from_url(
+            f"redis://{settings.REDIS_HOST}:{settings.REDIS_PORT}",
+            db=settings.REDIS_DB,
+            # password=settings.REDIS_PASSWORD,
+            max_connections=settings.REDIS_POOL_SIZE,
+            socket_timeout=settings.REDIS_POOL_TIMEOUT,
+            socket_connect_timeout=2,
+            encoding="utf8",
+            decode_responses=True,
+            # ssl=settings.REDIS_SSL,
+            # ssl_cert_reqs=settings.REDIS_SSL_CERT_REQS if settings.REDIS_SSL else None,
+        )
+        await redis.ping()
+        return redis
+    except Exception as e:
+        print(f"Failed to connect to Redis: {str(e)}")
+        raise
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
@@ -43,7 +54,7 @@ async def get_jobs_db() -> AsyncGenerator[AsyncSession, None]:
 
 
 async def get_general_meta() -> IMetaGeneral:
-    current_roles = await crud.role.get_multi(skip=0, limit=100)
+    current_roles = await crud.role.get_multi(skip=0, limit=50)
     return IMetaGeneral(roles=current_roles)
 
 

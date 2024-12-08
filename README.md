@@ -420,7 +420,7 @@ To begin experimenting with the basic chatbot, follow these steps:
 - [x] Add static code analysis using SonarQube
 - [x] Function return type annotations to declare the response_model (fastapi > 0.89.0)
 - [x] Add export report api in csv/xlsx files using StreamingResponse
-- [x] Add Github actions automation for deploy on Elastic Beanstalk - AWS
+- [x] Add Github actions automation for deploy on Elastic Beanstalk-AWS
 - [x] Database query optimization. Many-Many use "selectin" and One-One and One-Many use "joined" [issue](https://github.com/jonra1993/fastapi-alembic-sqlmodel-async/issues/20)
 - [x] Add Enum sample column
 - [x] Add docstrings

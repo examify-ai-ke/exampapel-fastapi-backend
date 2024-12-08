@@ -1,4 +1,6 @@
+from http.client import HTTPException
 from io import BytesIO
+
 from typing import Annotated
 from uuid import UUID
 from app.utils.exceptions import (
@@ -15,6 +17,8 @@ from app.models import User, UserFollow
 from app.models.role_model import Role
 from app.utils.minio_client import MinioClient
 from app.utils.resize_image import modify_image
+from app.core import security
+from app.schemas.common_schema import AuthProvider
 from fastapi import (
     APIRouter,
     Body,
@@ -42,12 +46,17 @@ from app.schemas.user_schema import (
     IUserReadWithoutGroups,
     IUserStatus,
 )
+from app.schemas.token_schema import Token
 from app.schemas.user_follow_schema import (
     IUserFollowReadCommon,
 )
 from fastapi_pagination import Params
 from sqlmodel import and_, select, col, or_, text
-
+from app.utils.social_auth import verify_social_token
+from redis.asyncio import Redis
+from datetime import timedelta
+from app.core.config import settings
+import logging
 router = APIRouter()
 
 
@@ -376,18 +385,155 @@ async def get_my_data(
 @router.post("", status_code=status.HTTP_201_CREATED)
 async def create_user(
     new_user: IUserCreate = Depends(user_deps.user_exists),
+    provider: AuthProvider = Body(default=AuthProvider.email),
+    provider_user_id: str | None = Body(default=None),
     current_user: User = Depends(
         deps.get_current_user(required_roles=[IRoleEnum.admin])
     ),
 ) -> IPostResponseBase[IUserRead]:
     """
-    Creates a new user
-
-    Required roles:
-    - admin
+    Creates a new user with provider support
     """
-    user = await crud.user.create_with_role(obj_in=new_user)
+    # Add provider information to new user
+    new_user_dict = new_user.dict()
+    new_user_dict.update({
+        "provider": provider,
+        "provider_user_id": provider_user_id,
+        "email_verified": provider != AuthProvider.email # Auto-verify for social logins
+    })
+    
+    user = await crud.user.create_with_role(obj_in=new_user_dict)
     return create_response(data=user)
+
+
+@router.post("/verify-email/{token}")
+async def verify_email(
+    token: str,
+) -> IPostResponseBase:
+    """
+    Verify user email with verification token
+    """
+    try:
+        payload = security.decode_token(token)
+        user_id = payload.get("sub")
+        if not user_id:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid verification token"
+            )
+        
+        user = await crud.user.get(id=user_id)
+        if not user:
+            raise HTTPException(
+                status_code=404,
+                detail="User not found"
+            )
+        
+        if user.email_verified:
+            return create_response(message="Email already verified")
+        
+        # Update user's email verification status
+        await crud.user.update(
+            obj_current=user,
+            obj_new={"email_verified": True}
+        )
+        
+        return create_response(message="Email verified successfully")
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid verification token"
+        )
+
+
+@router.post("/social-auth/{provider}")
+async def social_auth(
+    provider: AuthProvider,
+    access_token: str = Body(...),
+    redis_client: Redis = Depends(deps.get_redis_client),
+) -> IPostResponseBase[Token]:
+    """
+    Handle social authentication
+    """
+    try:
+        # Verify token with provider and get user info
+        user_info = await verify_social_token(provider, access_token)
+        
+        # Check if user exists
+        user = await crud.user.get_by_email(email=user_info["email"])
+        
+        if not user:
+            # Get the default role
+            default_role = await crud.role.get_role_by_name(name=settings.DEFAULT_ROLE_NAME)
+            if not default_role:
+                logging.error(f"Default role '{settings.DEFAULT_ROLE_NAME}' not found")
+                raise HTTPException(
+                    status_code=500,
+                    detail="Error setting up user role"
+                )
+            
+            # Create new user if doesn't exist
+            new_user = {
+                "email": user_info["email"],
+                "first_name": user_info.get("given_name", ""),
+                "last_name": user_info.get("family_name", ""),
+                "provider": provider,
+                "provider_user_id": user_info["sub"],
+                "email_verified": True,
+                "is_active": True,
+                "role_id": default_role.id  # Use the fetched role ID
+            }
+            user = await crud.user.create_with_role(obj_in=new_user)
+        
+        # Check if user is active
+        if not user.is_active:
+            raise HTTPException(
+                status_code=400,
+                detail="Inactive user"
+            )
+            
+        # Generate tokens
+        access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        refresh_token_expires = timedelta(minutes=settings.REFRESH_TOKEN_EXPIRE_MINUTES)
+        
+        access_token = security.create_access_token(
+            user.id, expires_delta=access_token_expires
+        )
+        refresh_token = security.create_refresh_token(
+            user.id, expires_delta=refresh_token_expires
+        )
+        
+        # Store refresh token in Redis
+        await redis_client.set(
+            f"refresh_token:{user.id}",
+            refresh_token,
+            ex=settings.REFRESH_TOKEN_EXPIRE_MINUTES * 60
+        )
+        
+        # Create token response
+        token_data = Token(
+            access_token=access_token,
+            token_type="bearer",
+            refresh_token=refresh_token,
+            user=user
+        )
+        
+        return create_response(
+            data=token_data,
+            message=f"Successfully authenticated with {provider}"
+        )
+        
+    except ValueError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Error during social authentication: {str(e)}"
+        )
+    except Exception as e:
+        logging.error(f"Social auth error: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail="Internal server error during authentication"
+        )
 
 
 @router.delete("/{user_id}")

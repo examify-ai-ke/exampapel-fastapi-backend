@@ -29,10 +29,28 @@ async def logout(
 ) -> IPostResponseBase:
     """
     Logout user by deleting their tokens from Redis
+    Works for both traditional and social authentication
     """
-    await delete_tokens(redis_client, current_user, TokenType.ACCESS)
-    await delete_tokens(redis_client, current_user, TokenType.REFRESH)
-    return create_response(message="Logged out successfully")
+    try:
+        # Delete access tokens
+        await delete_tokens(redis_client, current_user, TokenType.ACCESS)
+        
+        # Delete refresh tokens
+        await delete_tokens(redis_client, current_user, TokenType.REFRESH)
+        
+        # If user is social auth, you might want to add additional cleanup
+        if current_user.provider != "email":
+            # Delete any provider-specific session data if needed
+            provider_key = f"social_auth:{current_user.provider}:{current_user.id}"
+            await redis_client.delete(provider_key)
+        
+        return create_response(message="Logged out successfully")
+    
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error during logout: {str(e)}"
+        )
 
 
 # async def login(
