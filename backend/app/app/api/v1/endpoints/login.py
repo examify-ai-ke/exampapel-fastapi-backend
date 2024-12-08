@@ -190,7 +190,7 @@ async def get_new_access_token(
         valid_refresh_tokens = await get_valid_tokens(
             redis_client, user_id, TokenType.REFRESH
         )
-        print(valid_refresh_tokens)
+        # print(valid_refresh_tokens)
         if not valid_refresh_tokens or body.refresh_token not in valid_refresh_tokens:
             raise HTTPException(status_code=403, detail="Refresh token invalid")
 

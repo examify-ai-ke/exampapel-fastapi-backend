@@ -11,7 +11,14 @@ from app.schemas.exam_paper_schema import ExamPaperRead
 
 
 class InstitutionCreate(InstitutionBase):
-    pass  # No extra fields required for creating an institution
+    pass
+    # name: str = Field(nullable=False, unique=True)
+    # description: Optional[str] = Field(nullable=True, default="An Institution of choice")
+    # institution_type: InstitutionTypes = Field(
+    #     sa_column=Column(Enum(InstitutionTypes), nullable=False))
+    # email: EmailStr = Field(sa_column=Column(String, index=True, unique=True))
+    # phone_number: Optional[str] = Field(nullable=False)
+    # # pass  # No extra fields required for creating an institution
 
 
 @optional()

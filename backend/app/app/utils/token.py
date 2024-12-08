@@ -52,7 +52,7 @@ async def get_valid_tokens(
     Retrieves valid tokens from Redis for a specific user and token type.
     """
     token_key = f"user:{user_id}:{token_type}"
-    print(f"Fetching tokens from Redis with key: {token_key}")
+    # print(f"Fetching tokens from Redis with key: {token_key}")
 
     try:
         # Get the set of tokens for the given key
@@ -60,14 +60,14 @@ async def get_valid_tokens(
 
         # Debugging output
         if sorted(valid_tokens):
-            print(f"Valid tokens found for {token_key}: {valid_tokens}")
+            # print(f"Valid tokens found for {token_key}: {valid_tokens}")
             return True
         else:
             # print(sorted(valid_tokens))
-            print(f"No tokens found for {token_key}.")
+            # print(f"No tokens found for {token_key}.")
             return False
     except Exception as e:
-        print(f"Error fetching tokens from Redis for {token_key}: {e}")
+        # print(f"Error fetching tokens from Redis for {token_key}: {e}")
         return False
 
 

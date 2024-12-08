@@ -129,10 +129,12 @@ async def create_institution(
     - admin
     - manager
     """
-    
+    # print("Create instituion..........")
+    # print(current_user)
     inst = await crud.institution.create(
         obj_in=institution, created_by_id=current_user.id
     )
+    
     return create_response(data=inst)
 
 
