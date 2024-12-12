@@ -50,7 +50,7 @@ router = APIRouter()
 @router.get("")
 async def get_department_list(
     params: Params = Depends(),
-    current_user: User = Depends(deps.get_current_user()),
+    # current_user: User = Depends(deps.get_current_user()),
 ) -> IGetResponsePaginated[DepartmentRead]:
     """
     Gets a paginated list of departments
@@ -66,7 +66,7 @@ async def get_departments_list_order_by_created_at(
         default=IOrderEnum.ascendent, description="It is optional. Default is ascendent"
     ),
     params: Params = Depends(),
-    current_user: User = Depends(deps.get_current_user()),
+    # current_user: User = Depends(deps.get_current_user()),
 ) -> IGetResponsePaginated[DepartmentRead]:
     """
     Gets a paginated list of  departments ordered by created at datetime
@@ -80,7 +80,7 @@ async def get_departments_list_order_by_created_at(
 @router.get("/get_by_id/{department_id}")
 async def get_department_by_id(
     department_id: UUID,
-    current_user: User = Depends(deps.get_current_user()),
+    # current_user: User = Depends(deps.get_current_user()),
 ) -> IGetResponseBase[DepartmentRead]:
     """
     Gets a deaprtment by its id
@@ -96,7 +96,7 @@ async def get_department_by_id(
 @router.get("/get_by_slug/{department_slug}")
 async def get_department_by_slug(
     department_slug: str,
-    current_user: User = Depends(deps.get_current_user()),
+    # current_user: User = Depends(deps.get_current_user()),
 ) -> IGetResponseBase[list[DepartmentRead]]:
     """
     Gets a department by slug
@@ -124,7 +124,7 @@ async def create_department(
     - admin
     - manager
     """
-
+    print(department)
     _department = await crud.department.create(
         obj_in=department, created_by_id=current_user.id
     )
@@ -149,11 +149,11 @@ async def update_department(
     current_dept = await crud.department.get(id=department_id)
     if not current_dept:
         raise IdNotFoundException(Department, department_id)
-    if not is_authorized(current_user, "read", current_dept):
-        raise HTTPException(
-            status_code=403,
-            detail="You are not Authorized to update this Department because you did not created it",
-        )
+    # if not is_authorized(current_user, "read", current_dept):
+    #     raise HTTPException(
+    #         status_code=403,
+    #         detail="You are not Authorized to update this Department because you did not created it",
+    #     )
 
     department_updated = await crud.department.update(
         obj_new=department, obj_current=current_dept

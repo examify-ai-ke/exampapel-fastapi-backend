@@ -13,7 +13,7 @@ class DepartmentBase(BaseModel):
 
 
 # Create schema for Department
-class DepartmentCreate(DepartmentBase):
+class DepartmentCreate(DepartmentBase):  
     faculty_id: UUID # Needed to create a Department in a specific Faculty
 
 class ProgrammeReadForDepartments(BaseModel):

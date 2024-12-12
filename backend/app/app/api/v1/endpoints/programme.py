@@ -48,7 +48,7 @@ router = APIRouter()
 @router.get("")
 async def get_programme_list(
     params: Params = Depends(),
-    current_user: User = Depends(deps.get_current_user()),
+    # current_user: User = Depends(deps.get_current_user()),
 ) -> IGetResponsePaginated[ProgrammeRead]:
     """
     Gets a paginated list of programmes
@@ -64,7 +64,7 @@ async def get_programme_list_order_by_created_at(
         default=IOrderEnum.ascendent, description="It is optional. Default is ascendent"
     ),
     params: Params = Depends(),
-    current_user: User = Depends(deps.get_current_user()),
+    # current_user: User = Depends(deps.get_current_user()),
 ) -> IGetResponsePaginated[ProgrammeRead]:
     """
     Gets a paginated list of programmes ordered by created at datetime
@@ -78,7 +78,7 @@ async def get_programme_list_order_by_created_at(
 @router.get("/get_by_id/{programme_id}")
 async def get_programme_by_id(
     programme_id: UUID,
-    current_user: User = Depends(deps.get_current_user()),
+    # current_user: User = Depends(deps.get_current_user()),
 ) -> IGetResponseBase[ProgrammeRead]:
     """
     Gets a programme by its id
@@ -94,7 +94,7 @@ async def get_programme_by_id(
 @router.get("/get_by_slug/{programme_slug}")
 async def get_programme_by_slug(
     programme_slug: str,
-    current_user: User = Depends(deps.get_current_user()),
+    # current_user: User = Depends(deps.get_current_user()),
 ) -> IGetResponseBase[list[ProgrammeRead]]:
     """
     Gets a programme by slug

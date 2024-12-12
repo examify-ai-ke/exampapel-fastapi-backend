@@ -48,7 +48,7 @@ router = APIRouter()
 @router.get("")
 async def get_faculty_list(
     params: Params = Depends(),
-    current_user: User = Depends(deps.get_current_user()),
+    # current_user: User = Depends(deps.get_current_user()),
 ) -> IGetResponsePaginated[FacultyRead]:
     """
     Gets a paginated list of faculties
@@ -78,7 +78,7 @@ async def get_faculty_list_order_by_created_at(
 @router.get("/get_by_id/{faculty_id}")
 async def get_faculty_by_id(
     faculty_id: UUID,
-    current_user: User = Depends(deps.get_current_user()),
+    # current_user: User = Depends(deps.get_current_user()),
 ) -> IGetResponseBase[FacultyRead]:
     """
     Gets a faculty by its id
@@ -94,7 +94,7 @@ async def get_faculty_by_id(
 @router.get("/get_by_slug/{faculty_slug}")
 async def get_faculty_by_slug(
     faculty_slug: str,
-    current_user: User = Depends(deps.get_current_user()),
+    # current_user: User = Depends(deps.get_current_user()),
 ) -> IGetResponseBase[list[FacultyRead]]:
     """
     Gets a faculty by slug
@@ -143,12 +143,13 @@ async def update_faculty(
     current_faculty = await crud.faculty.get(id=faculty_id)
     if not current_faculty:
         raise IdNotFoundException(Faculty, faculty_id)
-    if not is_authorized(current_user, "read", current_faculty):
-        raise HTTPException(
-            status_code=403,
-            detail="You are not Authorized to update this faculty because you did not created it",
-        )
-
+    print(current_user.role)
+    # if not is_authorized(current_user, "read", current_faculty):
+    #     raise HTTPException(
+    #         status_code=403,
+    #         detail="You are not Authorized to update this faculty because you did not created it",
+    #     )
+    # print(faculty)
     faculty_updated = await crud.faculty.update(
         obj_new=faculty, obj_current=current_faculty
     )

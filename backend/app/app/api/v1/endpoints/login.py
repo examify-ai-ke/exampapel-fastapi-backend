@@ -181,7 +181,8 @@ async def get_new_access_token(
     # print(redis_client)
     # First check if the refresh token exists in Redis
     try:
-
+        print("body.refresh_token")
+        print(body.refresh_token)
         # Decode without verification to get the user_id
         unverified_payload = decode_token(body.refresh_token)
         user_id = unverified_payload["sub"]
@@ -190,6 +191,7 @@ async def get_new_access_token(
         valid_refresh_tokens = await get_valid_tokens(
             redis_client, user_id, TokenType.REFRESH
         )
+        # print("valid_refresh_tokens")
         # print(valid_refresh_tokens)
         if not valid_refresh_tokens or body.refresh_token not in valid_refresh_tokens:
             raise HTTPException(status_code=403, detail="Refresh token invalid")
