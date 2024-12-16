@@ -6,7 +6,7 @@ from uuid import UUID
 import enum
 from typing import List, Optional
 # from app.models.image_media_model import ImageMedia
-
+from app.models.module_model import ModuleExamsLink
 from pydantic import  field_validator, validator 
 from app.utils.slugify_string import generate_slug
 from datetime import date
@@ -43,17 +43,6 @@ from datetime import date
 
 
 # Association table for many-to-many relationship between Unit and ExamPaper
-class ModuleExamsLink(BaseUUIDModel, SQLModel, table=True):
-    module_id: UUID | None = Field(
-        foreign_key="Module.id",
-        primary_key=True,
-        default=None,
-    )
-    exam_id: UUID | None = Field(
-        foreign_key="ExamPaper.id",
-        primary_key=True,
-        default=None,
-    )
 
 
 class InstructionExamsLink(BaseUUIDModel, SQLModel, table=True):

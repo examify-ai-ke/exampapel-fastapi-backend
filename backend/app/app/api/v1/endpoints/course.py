@@ -50,7 +50,7 @@ router = APIRouter()
 @router.get("")
 async def get_course_list(
     params: Params = Depends(),
-    current_user: User = Depends(deps.get_current_user()),
+    # current_user: User = Depends(deps.get_current_user()),
 ) -> IGetResponsePaginated[CourseRead]:
     """
     Gets a paginated list of courses
@@ -66,7 +66,7 @@ async def get_course_list_order_by_created_at(
         default=IOrderEnum.ascendent, description="It is optional. Default is ascendent"
     ),
     params: Params = Depends(),
-    current_user: User = Depends(deps.get_current_user()),
+    # current_user: User = Depends(deps.get_current_user()),
 ) -> IGetResponsePaginated[CourseRead]:
     """
     Gets a paginated list of courses ordered by created at datetime
@@ -80,7 +80,7 @@ async def get_course_list_order_by_created_at(
 @router.get("/get_by_id/{course_id}")
 async def get_course_by_id(
     course_id: UUID,
-    current_user: User = Depends(deps.get_current_user()),
+    # current_user: User = Depends(deps.get_current_user()),
 ) -> IGetResponseBase[CourseRead]:
     """
     Gets a course by its id
@@ -96,7 +96,7 @@ async def get_course_by_id(
 @router.get("/get_by_slug/{course_slug}")
 async def get_course_by_slug(
     course_slug: str,
-    current_user: User = Depends(deps.get_current_user()),
+    # current_user: User = Depends(deps.get_current_user()),
 ) -> IGetResponseBase[list[CourseRead]]:
     """
     Gets a course by slug
@@ -145,11 +145,11 @@ async def update_course(
     current_course = await crud.course.get(id=course_id)
     if not current_course:
         raise IdNotFoundException(Course, course_id)
-    if not is_authorized(current_user, "read", current_course):
-        raise HTTPException(
-            status_code=403,
-            detail="You are not Authorized to update this Course because you did not created it",
-        )
+    # if not is_authorized(current_user, "read", current_course):
+    #     raise HTTPException(
+    #         status_code=403,
+    #         detail="You are not Authorized to update this Course because you did not created it",
+    #     )
 
     course_updated = await crud.course.update(
         obj_new=course, obj_current=current_course

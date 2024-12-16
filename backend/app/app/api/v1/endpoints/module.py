@@ -48,12 +48,13 @@ router = APIRouter()
 @router.get("")
 async def get_course_module_list(
     params: Params = Depends(),
-    current_user: User = Depends(deps.get_current_user()),
+    # current_user: User = Depends(deps.get_current_user()),
 ) -> IGetResponsePaginated[ModuleRead]:
     """
     Gets a paginated list of course modules
     """
     modules = await crud.module.get_multi_paginated(params=params)
+    print(modules)
     return create_response(data=modules)
 
 
@@ -64,7 +65,7 @@ async def get_module_list_order_by_created_at(
         default=IOrderEnum.ascendent, description="It is optional. Default is ascendent"
     ),
     params: Params = Depends(),
-    current_user: User = Depends(deps.get_current_user()),
+    # current_user: User = Depends(deps.get_current_user()),
 ) -> IGetResponsePaginated[ModuleRead]:
     """
     Gets a paginated list of modules ordered by created at datetime
@@ -78,7 +79,7 @@ async def get_module_list_order_by_created_at(
 @router.get("/get_by_id/{module_id}")
 async def get_module_by_id(
     module_id: UUID,
-    current_user: User = Depends(deps.get_current_user()),
+    # current_user: User = Depends(deps.get_current_user()),
 ) -> IGetResponseBase[ModuleRead]:
     """
     Gets a course module by its id
@@ -94,7 +95,7 @@ async def get_module_by_id(
 @router.get("/get_by_slug/{module_slug}")
 async def get_module_by_slug(
     module_slug: str,
-    current_user: User = Depends(deps.get_current_user()),
+    # current_user: User = Depends(deps.get_current_user()),
 ) -> IGetResponseBase[list[ModuleRead]]:
     """
     Gets a module by slug

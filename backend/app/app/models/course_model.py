@@ -22,7 +22,7 @@ class Course(BaseUUIDModel, CourseBase, table=True):
         A Specific Course offered by an individual institution under a programme. e.g BSCIT
     """
     slug: Optional[str] = Field(default=None, unique=True)
-
+    course_acronym: Optional[str] = Field(default=None, unique=True)
     # Foreign key to Programme
     programme_id: UUID = Field(foreign_key="Programme.id", nullable=False)
 
@@ -31,7 +31,7 @@ class Course(BaseUUIDModel, CourseBase, table=True):
         back_populates="courses",
         sa_relationship_kwargs={"lazy": "selectin"}     
     )
-    
+
     exam_papers: List["ExamPaper"] = Relationship(
         back_populates="course",
         sa_relationship_kwargs={"lazy": "joined"},
