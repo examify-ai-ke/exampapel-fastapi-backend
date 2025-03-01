@@ -40,20 +40,25 @@ from app.schemas.response_schema import (
 )
 from app.schemas.role_schema import IRoleEnum
 from app.core.authz import is_authorized
-
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 router = APIRouter()
 
 
 @router.get("")
 async def get_answer_list(
-    params: Params = Depends(),
-    current_user: User = Depends(deps.get_current_user()),
+    # params: Params = Depends(),
+    # current_user: User = Depends(deps.get_current_user()),
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=50, ge=1),
+    db_session: AsyncSession = Depends(deps.get_db),
 ) -> IGetResponsePaginated[AnswerRead]:
     """
     Gets a paginated list of Answers
     """
-    answers = await crud.answer.get_multi_paginated(params=params)
+    answers = await crud.answer.get_multi_paginated_ordered(
+        db_session=db_session, skip=skip, limit=limit
+    )
     return create_response(data=answers)
 
 
@@ -63,7 +68,7 @@ async def get_answers_list_order_by_created_at(
         default=IOrderEnum.ascendent, description="It is optional. Default is ascendent"
     ),
     params: Params = Depends(),
-    current_user: User = Depends(deps.get_current_user()),
+    # current_user: User = Depends(deps.get_current_user()),
 ) -> IGetResponsePaginated[AnswerRead]:
     """
     Gets a paginated list of answers ordered by created at datetime
@@ -77,7 +82,7 @@ async def get_answers_list_order_by_created_at(
 @router.get("/get_by_id/{answer_id}")
 async def get_answer_by_id(
     answer_id: UUID,
-    current_user: User = Depends(deps.get_current_user()),
+    # current_user: User = Depends(deps.get_current_user()),
 ) -> IGetResponseBase[AnswerRead]:
     """
     Gets a answer by its id
@@ -154,5 +159,3 @@ async def remove_answer(
         raise IdNotFoundException(Answer, answer_id)
     answer = await crud.answer.remove(id=answer_id)
     return create_response(data=answer)
-
-

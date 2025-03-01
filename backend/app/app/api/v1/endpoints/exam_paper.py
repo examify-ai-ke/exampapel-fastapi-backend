@@ -43,21 +43,34 @@ from app.schemas.response_schema import (
 )
 from app.schemas.role_schema import IRoleEnum
 from app.core.authz import is_authorized
-
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 router = APIRouter()
 
 
 @router.get("")
 async def get_exam_paper_list(
-    params: Params = Depends(),
-    current_user: User = Depends(deps.get_current_user()),
-) -> IGetResponsePaginated[ExamPaperRead]: 
+    # params: Params = Depends(),
+    # current_user: User = Depends(deps.get_current_user()),
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=50, ge=1),
+    db_session: AsyncSession = Depends(deps.get_db),
+) -> IGetResponsePaginated[ExamPaperRead]:
     """
     Gets a paginated list of ExamPapers
     """
-    exams = await crud.exam_paper.get_multi_paginated(params=params)
+    exams = await crud.exam_paper.get_multi_paginated_ordered(
+        db_session=db_session, skip=skip, limit=limit
+    )
     return create_response(data=exams)
+
+@router.get("/get_exam_paper_properties")
+async def get_exam_paper_properties(
+    current_user: User = Depends(deps.get_current_user()),
+    db_session: AsyncSession = Depends(deps.get_db),
+    ):
+    exam_headers= await crud.exam_paper.get_all_exam_properties(db_session=db_session)
+    return exam_headers
 
 
 @router.get("/get_by_created_at")
@@ -81,7 +94,7 @@ async def get_exams_list_order_by_created_at(
 @router.get("/get_by_id/{exampaper_id}")
 async def get_exam_paper_by_id(
     exampaper_id: UUID,
-    current_user: User = Depends(deps.get_current_user()),
+    # current_user: User = Depends(deps.get_current_user()),
 ) -> IGetResponseBase[ExamPaperRead]:
     """
     Gets a ExamPaper by its id
@@ -97,7 +110,7 @@ async def get_exam_paper_by_id(
 @router.get("/get_by_slug/{exampaper_slug}")
 async def get_exam_paper_by_slug(
     exampaper_slug: str,
-    current_user: User = Depends(deps.get_current_user()),
+    # current_user: User = Depends(deps.get_current_user()),
 ) -> IGetResponseBase[list[ExamPaperRead]]:
     """
     Gets a ExamPaper by slug

@@ -40,21 +40,25 @@ from app.schemas.response_schema import (
 )
 from app.schemas.role_schema import IRoleEnum
 from app.core.authz import is_authorized
-
+from sqlmodel.ext.asyncio.session import AsyncSession
 
 router = APIRouter()
 
 
 @router.get("")
 async def get_course_module_list(
-    params: Params = Depends(),
+    # params: Params = Depends(),
     # current_user: User = Depends(deps.get_current_user()),
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=50, ge=1),
+    db_session: AsyncSession = Depends(deps.get_db),
 ) -> IGetResponsePaginated[ModuleRead]:
     """
     Gets a paginated list of course modules
     """
-    modules = await crud.module.get_multi_paginated(params=params)
-    print(modules)
+    modules = await crud.module.get_multi_paginated_ordered(
+        db_session=db_session, skip=skip, limit=limit
+    )
     return create_response(data=modules)
 
 
@@ -178,7 +182,7 @@ async def remove_course_module(
     module = await crud.module.remove(id=module_id)
     return create_response(data=module)
 
- 
+
 # @router.post("/{programme_id}/image")
 # async def upload_module_image(
 #     valid_module: Module = Depends(user_deps.is_valid_programme),
@@ -218,6 +222,3 @@ async def remove_course_module(
 #     except Exception as e:
 #         print(e)
 #         return Response("Internal server error", status_code=500)
-
-
-

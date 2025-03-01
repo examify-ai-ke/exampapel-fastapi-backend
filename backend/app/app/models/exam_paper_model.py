@@ -9,8 +9,8 @@ from typing import List, Optional
 from app.models.module_model import ModuleExamsLink
 from pydantic import  field_validator, validator 
 from app.utils.slugify_string import generate_slug
-from datetime import date
-
+# from datetime import date
+from datetime import datetime, date
 
 # Define an Enum with valid member names extended to 2025
 #  to fix the generation o fthe year
@@ -42,7 +42,22 @@ from datetime import date
 #     YEAR_2024_2025 = "2024/2025"
 
 
-# Association table for many-to-many relationship between Unit and ExamPaper
+def generate_academic_years(start_year: int = 1990) -> list:
+    """Generate academic years in the format 'YYYY/YYYY+1' from start_year to the current academic year."""
+    current_year = datetime.now().year
+    return [f"{y}/{y+1}" for y in range(start_year, current_year + 1)]
+
+
+# Generate the academic years list
+# academic_years = generate_academic_years()
+
+
+# Create a static Enum from 1990/1991 to the current year
+# class AcademicYearEnum(str, enum.Enum):
+#     """Enum for academic years from 1990/1991 to current year."""
+
+#     for year in academic_years:
+#         locals()[year.replace("/", "_")] = year  # Convert "YYYY/YYYY" to "YYYY_YYYY"
 
 
 class InstructionExamsLink(BaseUUIDModel, SQLModel, table=True):
@@ -85,6 +100,9 @@ class ExamPaperBase(SQLModel):
         unique=False,
         nullable=True,
     )
+    # year_of_exam: Optional[str] = Field(
+    #     default=academic_years[-1], nullable=True  # Default to the latest academic year
+    # )
     exam_duration: int = Field(
         default=2,
         nullable=True,
@@ -182,7 +200,7 @@ class ExamPaper(BaseUUIDModel,ExamPaperBase, table=True):
         # Compute SHA-256 hash
         hash_object = hashlib.sha256(input_string.encode())
         hash_value = hash_object.hexdigest()
-        print(hash_value)
+        # print(hash_value)
         return hash_value
 
 

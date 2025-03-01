@@ -74,6 +74,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         if query is None:
             query = select(self.model).offset(skip).limit(limit).order_by(self.model.id)
         response = await db_session.execute(query)
+        print("get_multi()...called....")
         return response.scalars().all()
 
     async def get_multi_paginated(
@@ -88,7 +89,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             query = select(self.model)
 
         output = await paginate(db_session, query, params)
-        # print("get_multi_paginated()....called...........")
+        print("get_multi_paginated()....called...........")
         # print(output)
         return output
 
@@ -114,7 +115,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
                 query = select(self.model).order_by(columns[order_by].asc())
             else:
                 query = select(self.model).order_by(columns[order_by].desc())
-        # print("multi paginated called......")
+        print("get_multi_paginated_ordered() called......")
         return await paginate(db_session, query, params)
 
     async def get_multi_ordered(
@@ -147,7 +148,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
                 .limit(limit)
                 .order_by(columns[order_by].desc())
             )
-        # print("get_multi_ordered......called.............")
+        print("get_multi_ordered()......called.............")
         response = await db_session.execute(query)
         # print(response)
         return response.scalars().unique().all()

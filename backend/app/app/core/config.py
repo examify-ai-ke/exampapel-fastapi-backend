@@ -37,8 +37,8 @@ class Settings(BaseSettings):
     # REDIS_SSL_CERT_REQS: str | None = None
     REDIS_POOL_SIZE: int = 10
     REDIS_POOL_TIMEOUT: int = 20
-    DB_POOL_SIZE: int = 83
-    WEB_CONCURRENCY: int = 9
+    DB_POOL_SIZE: int = 100
+    WEB_CONCURRENCY: int = 10
     POOL_SIZE: int = max(DB_POOL_SIZE // WEB_CONCURRENCY, 5)
     ASYNC_DATABASE_URI: PostgresDsn | str = ""
     # MINIO_ACCESS_KEY: str

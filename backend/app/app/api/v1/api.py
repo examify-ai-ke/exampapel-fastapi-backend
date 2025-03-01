@@ -64,7 +64,7 @@ api_router.include_router(module.router, prefix="/module", tags=["modules/units"
 
 api_router.include_router(exam_title.router, prefix="/exam-title", tags=["exam-title"])
 api_router.include_router(
-    exam_description.router, prefix="/exam_description", tags=["exam_description"]
+    exam_description.router, prefix="/exam-description", tags=["exam-description"]
 )
 api_router.include_router(instruction.router, prefix="/instruction", tags=["instruction"])
 api_router.include_router(exam_paper.router, prefix="/exampaper", tags=["exampaper"])

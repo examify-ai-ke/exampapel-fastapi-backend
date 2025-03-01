@@ -7,14 +7,16 @@ from app.schemas.media_schema import IMediaCreate
 from app.models.image_media_model import ImageMedia
 from app.models.media_model import Media
 from app.models.faculty_model import Faculty
-
+from app.models.module_model import   Module
 from fastapi import HTTPException
 from app.models.module_model import Module
 from app.models.question_model import QuestionSet
 from sqlmodel import select, func, and_, col
 from sqlmodel.ext.asyncio.session import AsyncSession
-
-
+from app.models.exam_paper_model import  ExamTitle
+from app.models.course_model import Course
+from app.models.exam_paper_model import  ExamDescription
+from app.models.institution_model import Institution
 class CRUDExamPaper(CRUDBase[ExamPaper, ExamPaperCreate, ExamPaperUpdate]):
 
     async def get_exam_paper_by_slug(
@@ -25,6 +27,46 @@ class CRUDExamPaper(CRUDBase[ExamPaper, ExamPaperCreate, ExamPaperUpdate]):
             select(ExamPaper).where(col(ExamPaper.slug).ilike(f"%{slug}%"))
         )
         return exampaper.unique().scalars().all()
+
+    async def get_all_exam_properties(self, *, db_session: AsyncSession | None = None) -> dict:
+        """
+        Fetch all properties related to exams from the database.
+        """
+        # Track if we need to close the session
+        should_close_session = db_session is None
+
+        try:
+            # Get database session if not provided
+            db_session = db_session or super().get_db().session
+
+            # Define a helper function to fetch items
+            async def fetch_items(model_class):
+                result = await db_session.execute(select(model_class.id, model_class.name))
+                return [{"id": row[0], "name": row[1]} for row in result.all()]
+
+            # Execute all queries first, BEFORE trying to close the session
+            result_dict = {
+                "instructions": await fetch_items(ExamInstruction),
+                "modules": await fetch_items(Module),
+                "titles": await fetch_items(ExamTitle),
+                "descriptions": await fetch_items(ExamDescription),
+                "courses": await fetch_items(Course),
+                "institutions": await fetch_items(Institution)
+            }
+
+            # We need to ensure all database operations are complete before returning
+            await db_session.commit()  # If you're doing read-only operations, this is optional
+            # print(result_dict)
+            return result_dict
+
+        finally:
+            # Only try to close if we created the session AND all operations are done
+            if should_close_session and db_session:
+                try:
+                    await db_session.close()
+                except Exception as e:
+                    # Log but don't re-raise to avoid masking the original error
+                    print(f"Error closing session: {e}")
 
     async def get_count_of_exampapers(
         self,
