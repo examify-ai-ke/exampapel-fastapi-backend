@@ -1,3 +1,5 @@
+from app.models.module_model import Module
+from app.models.exam_paper_model import ExamInstruction
 from fastapi import HTTPException
 from typing import Any, Generic, TypeVar
 from uuid import UUID
@@ -11,6 +13,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlmodel.sql.expression import Select
 from sqlalchemy import exc
 from sqlalchemy.orm import lazyload
+from sqlalchemy.exc import SQLAlchemyError
 
 ModelType = TypeVar("ModelType", bound=SQLModel)
 CreateSchemaType = TypeVar("CreateSchemaType", bound=BaseModel)
@@ -99,7 +102,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         skip: int = 0,
         limit: int = 50,
         order_by: str | None = None,
-        order: IOrderEnum | None = IOrderEnum.ascendent,
+        order: IOrderEnum | None = IOrderEnum.descendent,
         query: T | Select[T] | None = None,
         db_session: AsyncSession | None = None,
     ) -> Page[ModelType]:
@@ -115,7 +118,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
                 query = select(self.model).order_by(columns[order_by].asc())
             else:
                 query = select(self.model).order_by(columns[order_by].desc())
-        print("get_multi_paginated_ordered() called......")
+        # print("get_multi_paginated_ordered() called......")
         return await paginate(db_session, query, params)
 
     async def get_multi_ordered(
@@ -148,7 +151,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
                 .limit(limit)
                 .order_by(columns[order_by].desc())
             )
-        print("get_multi_ordered()......called.............")
+        # print("get_multi_ordered()......called.............")
         response = await db_session.execute(query)
         # print(response)
         return response.scalars().unique().all()
@@ -301,17 +304,23 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
 
         if isinstance(obj_new, dict):
             update_data = obj_new
+
         else:
             update_data = obj_new.dict(
                 exclude_unset=True
             )  # This tells Pydantic to not include the values that were not sent
+
         for field in update_data:
+            # print(field)
             setattr(obj_current, field, update_data[field])
 
         db_session.add(obj_current)
         await db_session.commit()
+
         await db_session.refresh(obj_current)
         return obj_current
+
+
 
     async def add_related(
         self,

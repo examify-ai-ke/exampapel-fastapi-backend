@@ -17,6 +17,9 @@ from app.models.exam_paper_model import  ExamTitle
 from app.models.course_model import Course
 from app.models.exam_paper_model import  ExamDescription
 from app.models.institution_model import Institution
+from sqlalchemy.exc import SQLAlchemyError
+from uuid import UUID
+
 class CRUDExamPaper(CRUDBase[ExamPaper, ExamPaperCreate, ExamPaperUpdate]):
 
     async def get_exam_paper_by_slug(
@@ -133,6 +136,76 @@ class CRUDExamPaper(CRUDBase[ExamPaper, ExamPaperCreate, ExamPaperUpdate]):
             return None  # Handle the case where no record is found
         else:
             return existing_association  # Return the existing record
+
+    async def update_examPaper(
+        self,
+        *, 
+        exam_paper_id: UUID,       
+        obj_new: ExamPaperUpdate | dict[str, Any],
+        db_session: AsyncSession | None = None,
+    ) -> ExamPaper:
+        try:          
+            db_session = super().get_db().session
+            # Retrieve the exam paper
+            result = await db_session.execute(
+                select(ExamPaper).where(ExamPaper.id == exam_paper_id)
+            )
+            # Then get the scalar from the Result
+            exam_paper = result.unique().scalar_one_or_none()
+
+            if not exam_paper:
+                raise ValueError(f"No ExamPaper found with ID {exam_paper_id}")
+
+            if isinstance(obj_new, dict):
+                update_dict = obj_new
+            else:
+                update_dict = obj_new.model_dump(exclude_unset=True)
+
+            # Handle instructions separately
+            if "instruction_ids" in update_dict:
+                instruction_ids = update_dict.pop("instruction_ids")
+                module_ids = update_dict.pop("module_ids")
+                # Clear existing instructions
+                exam_paper.instructions.clear()
+                exam_paper.modules.clear()
+
+                # Fetch and add new instructions
+                if instruction_ids:
+                    # First create the select statement
+                    stmt = select(ExamInstruction).filter(ExamInstruction.id.in_(instruction_ids))
+
+                    # Then execute it with the session and call all()
+                    results =await db_session.execute(stmt)
+                    instructions = results.unique().scalars().all()
+                    if len(instructions) != len(instruction_ids):
+                        raise ValueError("Some instruction IDs are invalid")
+
+                    # Add new instructions
+                    exam_paper.instructions.extend(instructions)
+
+                # Fetch and add new Modules
+                if module_ids:
+                    mdl_stmt = select(Module).filter(Module.id.in_(module_ids))
+                    results = await db_session.execute(mdl_stmt)
+                    modules = results.unique().scalars().all()
+                    if len(modules) != len(module_ids):
+                        raise ValueError("Some Exam Module IDs are invalid")
+
+                    # Add new instructions
+                    exam_paper.modules.extend(modules)
+            # Update other attributes
+            for key, value in update_dict.items():
+                setattr(exam_paper, key, value)
+
+            # Commit the changes
+            await db_session.commit()
+            # print("Exam Paper updated successfully......")
+            return exam_paper
+
+        except SQLAlchemyError as e:
+            # Rollback in case of any database errors
+            db_session.rollback()
+            raise e
 
     async def check_existing_association_with_instruction(
         self,

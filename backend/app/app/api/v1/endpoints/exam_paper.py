@@ -60,7 +60,7 @@ async def get_exam_paper_list(
     Gets a paginated list of ExamPapers
     """
     exams = await crud.exam_paper.get_multi_paginated_ordered(
-        db_session=db_session, skip=skip, limit=limit
+        db_session=db_session, skip=skip, limit=limit, order=IOrderEnum.descendent
     )
     return create_response(data=exams)
 
@@ -166,7 +166,7 @@ async def create_exam_paper(
 @router.put("/{exampaper_id}")
 async def update_exam_paper(
     exampaper_id: UUID,
-    exampaper: ExamPaperUpdate,
+    exampaper_new: ExamPaperUpdate,
     current_user: User = Depends(
         deps.get_current_user(required_roles=[IRoleEnum.admin, IRoleEnum.manager])
     ),
@@ -178,18 +178,20 @@ async def update_exam_paper(
     - admin
     - manager
     """
-    current_exam = await crud.exam_paper.get(id=exampaper_id)
-    if not current_exam:
-        raise IdNotFoundException(ExamPaper, exampaper_id)
-    # if not is_authorized(current_user, "read", current_inst):
+    # current_exam = await crud.exam_paper.get(id=exampaper_id)
+
+    # if not current_exam:
+    #     raise IdNotFoundException(ExamPaper, exampaper_id)
+    # if not is_authorized(current_user, "read", exampaper):
     #     raise HTTPException(
     #         status_code=403,
     #         detail="You are not Authorized to update this institution because you did not created it",
     #     )
 
-    exam_updated = await crud.exam_paper.update(
-        obj_new=exampaper, obj_current=current_exam
+    exam_updated = await crud.exam_paper.update_examPaper(
+        exam_paper_id=exampaper_id, obj_new=exampaper_new
     )
+
     return create_response(data=exam_updated)
 
 

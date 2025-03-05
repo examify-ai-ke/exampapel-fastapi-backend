@@ -1,5 +1,5 @@
 import hashlib
-from sqlalchemy import String, UniqueConstraint
+from sqlalchemy import String, UniqueConstraint, ARRAY
 from sqlmodel import Field, Relationship, SQLModel, Column, JSON
 from app.models.base_uuid_model import BaseUUIDModel
 from uuid import UUID
@@ -104,9 +104,9 @@ class ExamPaperBase(SQLModel):
     #     default=academic_years[-1], nullable=True  # Default to the latest academic year
     # )
     exam_duration: int = Field(
-        default=2,
+        default=120,
         nullable=True,
-    )  # Time taken to sit the examination, in Hours
+    )  # Time taken to sit the examination, in minutes
     exam_date: Optional[date] = Field(nullable=True, unique=False)
 
 
@@ -178,15 +178,24 @@ class ExamPaper(BaseUUIDModel,ExamPaperBase, table=True):
     question_sets: List["QuestionSet"] = Relationship(
         back_populates="exam_papers",
         link_model=ExamPaperQuestionLink,
-        sa_relationship_kwargs={"lazy": "joined"},
+        sa_relationship_kwargs={
+            "lazy": "joined",
+            "cascade": "all, delete-orphan",
+            "single_parent": True,  # This allows delete-orphan to work
+        },
     )
-    
+
     # Many-to_Many
     modules: List["Module"] = Relationship(
         link_model=ModuleExamsLink,
         back_populates="exam_papers",
         sa_relationship_kwargs={"lazy": "joined"},
     )
+
+    # Define instruction_ids as a SQLModel Field
+    # module_ids: Optional[List[UUID]] = Field(
+    #     sa_column=Column(JSON, nullable=True, default=None)
+    # )
 
     # Hash value field
     hash_code: Optional[str] = Field(nullable=False, unique=True,default=None)
@@ -202,7 +211,6 @@ class ExamPaper(BaseUUIDModel,ExamPaperBase, table=True):
         hash_value = hash_object.hexdigest()
         # print(hash_value)
         return hash_value
-
 
 # -----------------------------------------------------------------------
 # Instruction model

@@ -1,10 +1,12 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import List, Optional, Dict, Any
 
 from app.utils.partial import optional
 from uuid import UUID
-from app.models.exam_paper_model import ExamPaperBase, ExamTitleBase
-from pydantic import field_validator, BaseModel
+from app.models.exam_paper_model import ExamInstruction, ExamPaperBase, ExamTitleBase
+from app.models.module_model import Module
+from pydantic import field_validator, ConfigDict, BaseModel
+
 
 from  app.schemas.question_schema import QuestionSetRead
 
@@ -20,15 +22,38 @@ class ExamPaperCreate(ExamPaperBase):
     pass  # No extra fields required for creating an exampaper
 
 
+# @optional()
+# class ExamPaperUpdate(ExamPaperCreate):
+#     # slug: Optional[str]
+#     # name: Optional[str]
+#     # description: Optional[str]
+#     # slug: Optional[str]
+#     # logo: Optional[str]
+#     # institution_type: Optional[InstitutionTypeEnum]
+#     pass
+
+
+# Potential Update Schema
+
 @optional()
-class ExamPaperUpdate(ExamPaperBase):
-    # slug: Optional[str]
-    # name: Optional[str]
-    # description: Optional[str]
-    # slug: Optional[str]
-    # logo: Optional[str]
-    # institution_type: Optional[InstitutionTypeEnum]
-    pass
+class ExamPaperUpdate(BaseModel):
+    title_id: Optional[UUID] = None
+    description_id: Optional[UUID] = None
+    course_id: Optional[UUID] = None
+    institution_id: Optional[UUID] = None
+    exam_date: Optional[date] = None
+    exam_duration: Optional[int] = None
+    # tags: Optional[str[List]] = None
+    tags: Optional[List[str]] = None
+    # Many-to-many relationships
+    instruction_ids: Optional[List[UUID]] =None
+    module_ids: Optional[List[UUID]] = None
+
+    # Other fields as needed
+
+    # Ensure UUIDs can be validated
+    model_config = ConfigDict(json_encoders={UUID: str})
+
 
 class ModuleReadForExamPaper(BaseModel):
     id: UUID
@@ -55,11 +80,11 @@ class InstructionRead(BaseModel):
         from_attributes = True  # Allows ORM-based data to be converted to Pydantic
 
 class InstitutionReadForExamPaper(BaseModel):
-    # id:UUID
+    id:UUID
     name:str
     # slug: str
 class CourseReadForExamPaper(BaseModel):
-    # id:UUID
+    id:UUID
     name:str
     slug:str
 # Schema for reading a ExamPaper
@@ -103,14 +128,14 @@ class ExamTitleRead(BaseModel):
 class ExamPaperReadForExamTitle(BaseModel):
     id:UUID
     year_of_exam:str
-    exam_date: datetime
+    exam_date: date
 
 class ExamTitleReadForExamPaperRead(BaseModel):
     id: UUID
     name: str
     slug: str
-    
-    
+
+
 # ExamDescription
 # ------------------------------------------------------------------------
 class ExamDescriptionCreate(BaseModel):
