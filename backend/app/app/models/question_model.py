@@ -27,7 +27,7 @@ class QuestionSetTitleEnum(enum.Enum):
 class QuestionSetBase(SQLModel):
     title: QuestionSetTitleEnum | None = Field(
         default=QuestionSetTitleEnum.QUESTION_ONE,
-        sa_column=Column(Enum(QuestionSetTitleEnum, impl=String())),
+        sa_column=Column(Enum(QuestionSetTitleEnum, impl=String()), unique=True)
     )
 
 class QuestionSet(BaseUUIDModel,QuestionSetBase, table=True):

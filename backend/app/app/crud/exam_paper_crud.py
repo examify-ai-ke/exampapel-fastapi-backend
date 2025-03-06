@@ -252,6 +252,21 @@ class CRUDExamPaper(CRUDBase[ExamPaper, ExamPaperCreate, ExamPaperUpdate]):
             return None  # Handle the case where no record is found
         else:
             return existing_association  # Return the existing record
+    async def create_question_set_for_exam_paper(self,
+        *,
+        exam_paper_id: UUID,
+        question_set_id: UUID,
+        db_session: AsyncSession | None = None
+        ):
+        db_session = super().get_db().session
+
+        # Create link
+        link = ExamPaperQuestionLink(
+            exam_paper_id=exam_paper_id, question_set_id=question_set_id
+        )
+        db_session.add(link)
+        await db_session.commit()
+        return {"message": "Successfully linked question set wiht exam: "+{exam_paper_id}}
 
 
 exam_paper = CRUDExamPaper(ExamPaper)

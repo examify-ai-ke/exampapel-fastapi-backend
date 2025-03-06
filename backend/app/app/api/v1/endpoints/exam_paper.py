@@ -22,7 +22,7 @@ from fastapi import (
 )
 from app import crud
 from app.api import deps
-from app.models.exam_paper_model import ExamPaper, ExamInstruction
+from app.models.exam_paper_model import ExamPaper, ExamInstruction, ExamPaperQuestionLink
 from app.models.user_model import User
 from app.schemas.common_schema import IOrderEnum
 from app.schemas.exam_paper_schema import (
@@ -217,7 +217,7 @@ async def remove_exam_paper(
 
 
 # # Associate ExamPaper with A QuestionSet
-@router.post("/{exampaper_id}/questions/{question_set_id}")
+@router.post("/{exampaper_id}/question-sets/{question_set_id}")
 async def add_question_set_to_exam_paper(
     exampaper_id: UUID,
     question_set_id: UUID,
@@ -246,14 +246,15 @@ async def add_question_set_to_exam_paper(
         # If an association already exists, raise an error or return a suitable response
         raise HTTPException(
             status_code=400,
-            detail=f"ExamPaper '{exampaper_id}' is already associated with QuestionSet '{question_set_id}'",
+            detail=f"ExamPaper: '{exam_paper.year_of_exam}-{exam_paper.title.name}-{exam_paper.description.name}' is already associated with QuestionSet:'{question_set.title}'",
         )
     else:
         exam_paper.question_sets.append(question_set)
         exampaper_with_quizset = await crud.exam_paper.add_related(
             appended_parent_object=exam_paper
         )
-        return create_response(data=exampaper_with_quizset)
+
+        return  create_response(data=exampaper_with_quizset)
 
 
 # @router.post("/{institution_id}/logo")

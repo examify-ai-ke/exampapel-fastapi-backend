@@ -51,12 +51,12 @@ async def login(
     access_token = security.create_access_token(
         user.id, expires_delta=access_token_expires
     )
-    print("Access Token:", {access_token})
-    print("Access Token Expires:", {access_token_expires})
+    # print("Access Token:", {access_token})
+    # print("Access Token Expires:", {access_token_expires})
     refresh_token = security.create_refresh_token(
         user.id, expires_delta=refresh_token_expires
     )
-    print("RefreshToken:",{refresh_token})
+    # print("RefreshToken:",{refresh_token})
  
     # valid_access_tokens = await get_valid_tokens(
     #     redis_client, user.id, TokenType.ACCESS
