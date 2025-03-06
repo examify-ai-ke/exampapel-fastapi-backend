@@ -320,8 +320,6 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         await db_session.refresh(obj_current)
         return obj_current
 
-
-
     async def add_related(
         self,
         *,
@@ -345,4 +343,5 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         obj = response.unique().scalar_one()
         await db_session.delete(obj)
         await db_session.commit()
+        await db_session.refresh(obj)
         return obj

@@ -90,7 +90,7 @@ class CourseReadForExamPaper(BaseModel):
 # Schema for reading a ExamPaper
 class ExamPaperRead(ExamPaperBase):
     id: UUID
-    tags: Optional[List] 
+    tags: Optional[List[str]] = []
     instructions: Optional[List[InstructionRead]]   = []  # To represent the relationship
     title: "ExamTitleReadForExamPaperRead"   = []
     description: "ExamDescriptionReadForExamPaper"

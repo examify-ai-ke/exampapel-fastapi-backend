@@ -237,17 +237,14 @@ async def add_question_set_to_exam_paper(
     if not exam_paper or not question_set:
         raise HTTPException(status_code=404, detail="ExamPaper or QuestionSet not found")
 
-    # Check if association already exist
-    _association = await crud.exam_paper.check_existing_association_with_question_set(
-        exampaper=exam_paper, question_set=question_set
-    )
-
-    if _association is not None:
-        # If an association already exists, raise an error or return a suitable response
+    
+    if question_set.id in [q.id for q in exam_paper.question_sets]:
+        print({question_set.id},"is found:...............")
         raise HTTPException(
             status_code=400,
             detail=f"ExamPaper: '{exam_paper.year_of_exam}-{exam_paper.title.name}-{exam_paper.description.name}' is already associated with QuestionSet:'{question_set.title}'",
         )
+     
     else:
         exam_paper.question_sets.append(question_set)
         exampaper_with_quizset = await crud.exam_paper.add_related(
