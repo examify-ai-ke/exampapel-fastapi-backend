@@ -181,72 +181,72 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         await db_session.refresh(db_obj)
         return db_obj
 
-    async def create_with_alpha_numbering(
-        self,
-        *,
-        obj_in: CreateSchemaType | ModelType,
-        created_by_id: UUID | str | None = None,
-        db_session: AsyncSession | None = None,
-    ) -> ModelType:
-        columns = self.model.__table__.columns
-        db_session = db_session or self.db.session
-        db_obj = self.model.model_validate(obj_in)  # type: ignore
-        query = (
-            select(self.model)
-            .filter(
-                self.model.exam_paper_id == obj_in.exam_paper_id,
-                self.model.question_set_id == obj_in.question_set_id,
-                self.model.order_within_question_set != None  # Filter out None values
-            )
-            .order_by(columns["order_within_question_set"].asc())
-            )
-        existing_main_questions = (await db_session.execute(query)).scalars().unique().all()
-        if existing_main_questions:
-            last_order_value = (
-                existing_main_questions[-1].order_within_question_set
-                if existing_main_questions
-                else None
-            )
-            if last_order_value is not None:
-                next_order_char = chr(ord(last_order_value) + 1)
-                db_obj.order_within_question_set= next_order_char
-            else:
-                db_obj.order_within_question_set="a"
-        else:
-            db_obj.order_within_question_set = "a"
-        if created_by_id:
-            db_obj.created_by_id = created_by_id
+    # async def create_with_alpha_numbering(
+    #     self,
+    #     *,
+    #     obj_in: CreateSchemaType | ModelType,
+    #     created_by_id: UUID | str | None = None,
+    #     db_session: AsyncSession | None = None,
+    # ) -> ModelType:
+    #     columns = self.model.__table__.columns
+    #     db_session = db_session or self.db.session
+    #     db_obj = self.model.model_validate(obj_in)  # type: ignore
+    #     query = (
+    #         select(self.model)
+    #         .filter(
+    #             self.model.exam_paper_id == obj_in.exam_paper_id,
+    #             self.model.question_set_id == obj_in.question_set_id,
+    #             self.model.order_within_question_set != None  # Filter out None values
+    #         )
+    #         .order_by(columns["order_within_question_set"].asc())
+    #         )
+    #     existing_main_questions = (await db_session.execute(query)).scalars().unique().all()
+    #     if existing_main_questions:
+    #         last_order_value = (
+    #             existing_main_questions[-1].order_within_question_set
+    #             if existing_main_questions
+    #             else None
+    #         )
+    #         if last_order_value is not None:
+    #             next_order_char = chr(ord(last_order_value) + 1)
+    #             db_obj.order_within_question_set= next_order_char
+    #         else:
+    #             db_obj.order_within_question_set="a"
+    #     else:
+    #         db_obj.order_within_question_set = "a"
+    #     if created_by_id:
+    #         db_obj.created_by_id = created_by_id
 
-        try:
-            # Calculate ordering
+    #     try:
+    #         # Calculate ordering
 
-            # db_obj.order_within_question_set = await self.assign_alphabetical_ordering(
-            #     related_list_object1=related_model1
-            # )
-            db_session.add(db_obj)
-            await db_session.commit()
-        except exc.IntegrityError:
-            db_session.rollback()
-            raise HTTPException(
-                status_code=409,
-                detail="Resource already exists",
-            )
-        await db_session.refresh(db_obj)
-        return db_obj
+    #         # db_obj.order_within_question_set = await self.assign_alphabetical_ordering(
+    #         #     related_list_object1=related_model1
+    #         # )
+    #         db_session.add(db_obj)
+    #         await db_session.commit()
+    #     except exc.IntegrityError:
+    #         db_session.rollback()
+    #         raise HTTPException(
+    #             status_code=409,
+    #             detail="Resource already exists",
+    #         )
+    #     await db_session.refresh(db_obj)
+    #     return db_obj
 
-    async def assign_alphabetical_ordering(self,*,related_list_object1: ModelType = None):
-        if related_list_object1 is not None:
-            existing_main_questions = related_list_object1.main_questions
-            last_order_value = (
-                existing_main_questions[-1].order_within_question_set
-                if existing_main_questions
-                else None
-            )
-            if last_order_value is not None:
-                next_order_char = chr(ord(last_order_value) + 1)
-                return next_order_char
-            else:
-                return "a"
+    # async def assign_alphabetical_ordering(self,*,related_list_object1: ModelType = None):
+    #     if related_list_object1 is not None:
+    #         existing_main_questions = related_list_object1.main_questions
+    #         last_order_value = (
+    #             existing_main_questions[-1].order_within_question_set
+    #             if existing_main_questions
+    #             else None
+    #         )
+    #         if last_order_value is not None:
+    #             next_order_char = chr(ord(last_order_value) + 1)
+    #             return next_order_char
+    #         else:
+    #             return "a"
 
     async def create_with_related_list(
         self,

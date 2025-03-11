@@ -1,8 +1,8 @@
 """empty message
 
-Revision ID: 6f9b3507a919
+Revision ID: 7c20b4fb6dcc
 Revises: 
-Create Date: 2024-12-04 23:00:12.331448
+Create Date: 2025-03-11 18:23:42.857430
 
 """
 from alembic import op
@@ -12,7 +12,7 @@ import sqlmodel # added
 
 
 # revision identifiers, used by Alembic.
-revision = '6f9b3507a919'
+revision = '7c20b4fb6dcc'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -223,7 +223,8 @@ def upgrade():
     sa.Column('created_by_id', sqlmodel.sql.sqltypes.GUID(), nullable=True),
     sa.ForeignKeyConstraint(['created_by_id'], ['User.id'], ),
     sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('slug')
+    sa.UniqueConstraint('slug'),
+    sa.UniqueConstraint('title')
     )
     op.create_index(op.f('ix_QuestionSet_id'), 'QuestionSet', ['id'], unique=False)
     op.create_table('Team',
@@ -262,6 +263,7 @@ def upgrade():
     sa.Column('updated_at', sa.DateTime(), nullable=True),
     sa.Column('created_at', sa.DateTime(), nullable=True),
     sa.Column('slug', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+    sa.Column('course_acronym', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
     sa.Column('programme_id', sqlmodel.sql.sqltypes.GUID(), nullable=False),
     sa.Column('created_by_id', sqlmodel.sql.sqltypes.GUID(), nullable=True),
     sa.Column('image_id', sqlmodel.sql.sqltypes.GUID(), nullable=True),
@@ -269,6 +271,7 @@ def upgrade():
     sa.ForeignKeyConstraint(['image_id'], ['ImageMedia.id'], ),
     sa.ForeignKeyConstraint(['programme_id'], ['Programme.id'], ),
     sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('course_acronym'),
     sa.UniqueConstraint('name'),
     sa.UniqueConstraint('slug')
     )
@@ -400,10 +403,11 @@ def upgrade():
     op.create_table('MainQuestion',
     sa.Column('text', sa.TEXT(), nullable=False),
     sa.Column('marks', sa.Integer(), nullable=True),
+    sa.Column('numbering_style', sa.Enum('ROMAN', 'ALPHA', name='numberingstyleenum', native_enum=False), nullable=False),
+    sa.Column('question_number', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
     sa.Column('id', sqlmodel.sql.sqltypes.GUID(), nullable=False),
     sa.Column('updated_at', sa.DateTime(), nullable=True),
     sa.Column('created_at', sa.DateTime(), nullable=True),
-    sa.Column('order_within_question_set', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
     sa.Column('slug', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
     sa.Column('question_set_id', sqlmodel.sql.sqltypes.GUID(), nullable=True),
     sa.Column('exam_paper_id', sqlmodel.sql.sqltypes.GUID(), nullable=True),
@@ -412,7 +416,7 @@ def upgrade():
     sa.ForeignKeyConstraint(['exam_paper_id'], ['ExamPaper.id'], ),
     sa.ForeignKeyConstraint(['question_set_id'], ['QuestionSet.id'], ),
     sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('exam_paper_id', 'order_within_question_set', 'question_set_id', name='_questions_order_per_question_set_uc')
+    sa.UniqueConstraint('exam_paper_id', 'question_number', 'question_set_id', name='_questions_order_per_question_set_uc')
     )
     op.create_index(op.f('ix_MainQuestion_id'), 'MainQuestion', ['id'], unique=False)
     op.create_table('ModuleExamsLink',

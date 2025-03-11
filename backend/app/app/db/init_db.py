@@ -335,10 +335,11 @@ async def init_db_institution(db: AsyncSession) -> None:
                 MainQuestion(
                     # id=uuid.uuid4(),
                     text="Explain the concept of variables in Python and provide examples of different data types.",
-                    marks=10,
-                    order_within_question_set="1",
+                    marks=5,
+                    numbering_style="ROMAN",
+                    question_number="i",
                     slug="python-variables-and-data-types",
-                    # question_set_id=question_set.id,
+                    question_set_id=question_set.id,
                     # exam_paper_id=exam_paper.id,
                     # created_at=datetime.utcnow(),
                     # updated_at=datetime.utcnow(),
@@ -350,7 +351,9 @@ async def init_db_institution(db: AsyncSession) -> None:
                     marks=15,
                     order_within_question_set="2",
                     slug="python-factorial-function",
-                    # question_set_id=question_set.id,
+                    numbering_style="ROMAN",
+                    question_number="ii",
+                    question_set_id=question_set.id,
                     # exam_paper_id=exam_paper.id,
                     # created_at=datetime.utcnow(),
                     # updated_at=datetime.utcnow(),
@@ -364,7 +367,7 @@ async def init_db_institution(db: AsyncSession) -> None:
                     # id=uuid.uuid4(),
                     text="What is recursion and how can it be used to calculate factorial?",
                     marks=5,
-                    # main_question_id=main_questions[1].id,
+                    main_question_id=main_questions[1].id,
                     # created_at=datetime.utcnow(),
                     # updated_at=datetime.utcnow(),
                     created_by_id=ADMIN_USER_ID,
@@ -373,7 +376,7 @@ async def init_db_institution(db: AsyncSession) -> None:
                     # id=uuid.uuid4(),
                     text="Provide an iterative solution for calculating factorial. Compare it with the recursive approach.",
                     marks=10,
-                    # main_question_id=main_questions[1].id,
+                    main_question_id=main_questions[1].id,
                     # created_at=datetime.utcnow(),
                     # updated_at=datetime.utcnow(),
                     created_by_id=ADMIN_USER_ID,
@@ -431,7 +434,7 @@ async def init_db_institution(db: AsyncSession) -> None:
 
             for main_question in main_questions:
                 question_set.main_questions.append(main_question)
-            
+
             db.add(institution_create)
             # Commit the MainQuestions and SubQuestions
             await db.commit()

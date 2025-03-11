@@ -184,6 +184,17 @@ class ExamPaper(BaseUUIDModel,ExamPaperBase, table=True):
             "single_parent": True,  # This allows delete-orphan to work
         },
     )
+    
+    # # One-to-many relationship
+    # main_questions: List["MainQuestion"] = Relationship(
+    #     back_populates="exam_paper",
+    #     sa_relationship_kwargs={
+    #         "lazy": "joined",
+    #         "cascade": "all, delete-orphan",
+    #         "single_parent": True,  # Ensures orphan removal
+    #     },
+    # )
+
 
     # Many-to_Many
     modules: List["Module"] = Relationship(
@@ -191,11 +202,6 @@ class ExamPaper(BaseUUIDModel,ExamPaperBase, table=True):
         back_populates="exam_papers",
         sa_relationship_kwargs={"lazy": "joined"},
     )
-
-    # Define instruction_ids as a SQLModel Field
-    # module_ids: Optional[List[UUID]] = Field(
-    #     sa_column=Column(JSON, nullable=True, default=None)
-    # )
 
     # Hash value field
     hash_code: Optional[str] = Field(nullable=False, unique=True,default=None)

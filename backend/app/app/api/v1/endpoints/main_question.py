@@ -83,7 +83,7 @@ async def get_main_question_list(
 @router.get("/get_by_id/{main_question_id}")
 async def get_main_question_by_id(
     main_question_id: UUID,
-    current_user: User = Depends(deps.get_current_user()),
+    # current_user: User = Depends(deps.get_current_user()),
 ) -> IGetResponseBase[MainQuestionRead]:
     """
     Gets a MainQuestion by its id
@@ -126,7 +126,7 @@ async def create_main_question(
     - manager
     """
     # related_quiz_set = await crud.question_set.get(id=question.question_set_id)
-    quiz = await crud.main_question.create_with_alpha_numbering(
+    quiz = await crud.main_question.create(
         obj_in=question, created_by_id=current_user.id
     )
     return create_response(data=quiz)

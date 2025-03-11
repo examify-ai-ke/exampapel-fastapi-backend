@@ -18,8 +18,8 @@ engine = create_async_engine(
     poolclass=NullPool
     if settings.MODE == ModeEnum.testing
     else AsyncAdaptedQueuePool,  # Asincio pytest works with NullPool
-    # pool_size=POOL_SIZE,
-    # max_overflow=64,
+    pool_size=POOL_SIZE,
+    max_overflow=64,
 )
 
 SessionLocal = sessionmaker(

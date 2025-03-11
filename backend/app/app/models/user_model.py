@@ -41,7 +41,7 @@ class UserBase(SQLModel):
     phone: str | None = None
     gender: IGenderEnum | None = Field(
         default=IGenderEnum.other,
-        sa_column=Column(Enum(IGenderEnum), nullable=False, default=IGenderEnum.male))
+        sa_column=Column(Enum(IGenderEnum), nullable=False))
     email_verified: bool = Field(default=False)
     
     state: str | None = None

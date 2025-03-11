@@ -11,7 +11,6 @@ class AnswerRead(BaseModel):
     text: Optional[str]
 
 
-
 class SubQuestionBase(BaseModel):
     text: str
     marks: Optional[int] = None
@@ -36,8 +35,8 @@ class SubQuestionRead(SubQuestionBase):
 
 # ------------------------------Main Question-----------
 class MainQuestionBase(BaseModel):
-    text: str
-    marks: int
+    text: Optional[str] = ""
+    marks: Optional[int] =None
 
 
 class MainQuestionCreate(MainQuestionBase):
@@ -60,7 +59,9 @@ class MainQuestionRead(MainQuestionBase):
     question_set: Optional[QuestionSetReadForMain]
     subquestions: Optional[List[SubQuestionBase]] = []
     answers:Optional[list[AnswerRead]]= []
-
+    # order_within_question_set: Optional[str]
+    numbering_style: str
+    question_number: str
     class Config:
         from_attributes = True
 

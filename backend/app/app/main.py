@@ -4,9 +4,9 @@ from contextlib import asynccontextmanager
 from typing import Any
 from uuid import UUID, uuid4
 
-from app.models.institution_model import Institution, InstitutionView
+from app.models.institution_model import Institution
 
-# from app.deps.custom_model_view import CustomModelView
+ 
 from fastapi import (
     FastAPI,
     HTTPException,
@@ -119,10 +119,7 @@ admin = Admin(
     # statics_dir="statics/admin",
     templates_dir="templates",
 )
-
-# Add view
-admin.add_view(InstitutionView(Institution, icon="fas fa-list"))
-
+ 
 
 # Core Application Instance
 app = FastAPI(
@@ -180,7 +177,7 @@ class CustomException(Exception):
 @app.get("/")
 async def root():
     """
-    Helloo, Welcome to ExamPapel.
+    Helloo, Welcome to ExamPapel API.
     """
     # if oso.is_allowed(user, "read", message):
     return {"message": "Hello and Welcome to ExamPapel Backend"}
@@ -260,6 +257,4 @@ async def websocket_endpoint(websocket: WebSocket, user_id: UUID):
 
 # Add Routers
 app.include_router(api_router_v1, prefix=settings.API_V1_STR)
-# Mount admin to your app
-
-admin.mount_to(app)
+ 

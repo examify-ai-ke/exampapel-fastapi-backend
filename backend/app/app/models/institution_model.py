@@ -8,7 +8,7 @@ from pydantic import EmailStr, field_validator, validator
 from app.utils.slugify_string import generate_slug
 
 # from starlette_admin import TagsField
-from starlette_admin.contrib.sqla import  ModelView
+# from starlette_admin.contrib.sqla import  ModelView
 from starlette_admin import fields, TagsField
 
 # Define an enumeration for institution types
@@ -114,52 +114,52 @@ class Institution(BaseUUIDModel, InstitutionBase, table=True):
 #         return response
 
 
-class InstitutionView(ModelView):
-    page_size = 50
-    page_size_options = [-1]
-    name = "Institution"
-    responsive_table = True
-    pk_attr = "id"
+# class InstitutionView(ModelView):
+#     page_size = 50
+#     page_size_options = [-1]
+#     name = "Institution"
+#     responsive_table = True
+#     pk_attr = "id"
 
-    list_fields = ["name", "institution_type", "email"]
-    search_fields = ["name", "email", "description", "slug"]
-    fields = [
-        fields.StringField("id"),
-        fields.StringField("name"),
-        fields.StringField("description"),
-        fields.StringField("institution_type"),
-        fields.StringField("email"),
-        fields.StringField("phone_number"),
-        fields.StringField("slug"),
-        fields.IntegerField("exams_count"),
-        fields.IntegerField("campuses_count", label="Campuses"),
-        fields.IntegerField("faculties_count", label="Faculties"),
-    ]
+#     list_fields = ["name", "institution_type", "email"]
+#     search_fields = ["name", "email", "description", "slug"]
+#     fields = [
+#         fields.StringField("id"),
+#         fields.StringField("name"),
+#         fields.StringField("description"),
+#         fields.StringField("institution_type"),
+#         fields.StringField("email"),
+#         fields.StringField("phone_number"),
+#         fields.StringField("slug"),
+#         fields.IntegerField("exams_count"),
+#         fields.IntegerField("campuses_count", label="Campuses"),
+#         fields.IntegerField("faculties_count", label="Faculties"),
+#     ]
 
-    async def serialize_list(self, objects, request):
-        """
-        Override serialize_list to handle the nested response structure
-        """
-        print("serialize_list called...................")
-        if isinstance(objects, dict):
-            if "data" in objects and "items" in objects["data"]:
-                objects = objects["data"]["items"]
-        return await super().serialize_list(objects, request)
+#     async def serialize_list(self, objects, request):
+#         """
+#         Override serialize_list to handle the nested response structure
+#         """
+#         print("serialize_list called...................")
+#         if isinstance(objects, dict):
+#             if "data" in objects and "items" in objects["data"]:
+#                 objects = objects["data"]["items"]
+#         return await super().serialize_list(objects, request)
 
-    async def serialize_item(self, obj, request):
-        """
-        Override serialize_item to handle the nested response structure
-        """
-        print("serialize_item called...................")
-        if isinstance(obj, dict) and "data" in obj:
-            obj = obj["data"]
-        return await super().serialize_item(obj, request)
+#     async def serialize_item(self, obj, request):
+#         """
+#         Override serialize_item to handle the nested response structure
+#         """
+#         print("serialize_item called...................")
+#         if isinstance(obj, dict) and "data" in obj:
+#             obj = obj["data"]
+#         return await super().serialize_item(obj, request)
 
-    async def serialize_value(self, value, field_name, request):
-        """
-        Override serialize_value to handle specific field transformations if needed
-        """
-        print(f"serialize_value called for {field_name}...................")
-        return await super().serialize_value(value, field_name, request)
+#     async def serialize_value(self, value, field_name, request):
+#         """
+#         Override serialize_value to handle specific field transformations if needed
+#         """
+#         print(f"serialize_value called for {field_name}...................")
+#         return await super().serialize_value(value, field_name, request)
 
      

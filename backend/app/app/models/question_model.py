@@ -70,11 +70,20 @@ class QuestionSet(BaseUUIDModel,QuestionSetBase, table=True):
         text = values.get("title", "")
         return generate_slug(text.value)
 
+
 # Define the Question model
-class QuestionBase(SQLModel):  
-    # Use ENUM for the name field
-    text: str = Field(sa_column=Column(TEXT,nullable=False, unique=False))
-    marks: Optional[int] =None # marks given to a Question
+class NumberingStyleEnum(enum.Enum):
+    ROMAN = "roman"
+    ALPHA = "alpha"
+
+
+class QuestionBase(SQLModel):
+    text: str = Field(sa_column=Column(TEXT, nullable=True, unique=False))
+    marks: Optional[int] = None  # Marks given to a Question
+    numbering_style: NumberingStyleEnum = Field(
+        sa_column=Column(Enum(NumberingStyleEnum, native_enum=False), nullable=False)
+    )
+    question_number: str
 
 
 class MainQuestion(BaseUUIDModel, QuestionBase, table=True): 
@@ -86,7 +95,7 @@ class MainQuestion(BaseUUIDModel, QuestionBase, table=True):
         table (bool, optional): _description_. Defaults to True.
       This is the parent Questions under the "QuestionSet" e.g (1), (I) e.t.c
     """
-    order_within_question_set: Optional[str] = Field(nullable=False, default=None)
+    # order_within_question_set: Optional[str] = Field(nullable=False, default=None)
     # Changed to String for alphabetical ordering
     slug: Optional[str] = Field(default=None, unique=False)
     question_set_id: UUID | None = Field(default=None, foreign_key="QuestionSet.id")    
@@ -110,7 +119,11 @@ class MainQuestion(BaseUUIDModel, QuestionBase, table=True):
 
     subquestions: List["SubQuestion"] = Relationship(
         back_populates="main_question",
-        sa_relationship_kwargs={"lazy": "joined"}
+        sa_relationship_kwargs={
+            "lazy": "joined",
+            "cascade": "all, delete-orphan",
+            "single_parent": True,  # Ensures orphan removal
+        },
     )
 
     @validator("slug", pre=True, always=True)
@@ -133,7 +146,7 @@ class MainQuestion(BaseUUIDModel, QuestionBase, table=True):
     __table_args__ = (
         UniqueConstraint(
             "exam_paper_id",
-            "order_within_question_set",
+            "question_number",
             "question_set_id",
             name="_questions_order_per_question_set_uc",
         ),
@@ -154,7 +167,7 @@ class SubQuestion(BaseUUIDModel,SQLModel, table=True):
     marks: Optional[int] = None
 
     main_question_id: UUID | None = Field(default=None, foreign_key="MainQuestion.id")
-    main_question: MainQuestion = Relationship(
+    main_question: "MainQuestion" = Relationship(
         back_populates="subquestions",
         sa_relationship_kwargs={
             "lazy": "joined",
