@@ -324,17 +324,32 @@ async def init_db_institution(db: AsyncSession) -> None:
             question_set = QuestionSet(
                 # id=uuid.uuid4(),
                 title=QuestionSetTitleEnum.QUESTION_ONE,  # Assuming this is one of the enum values
-                slug="python-basics-main-questions",
+                slug="question-one-question_set",
                 # created_at=datetime.utcnow(),
                 # updated_at=datetime.utcnow(),
                 created_by_id=ADMIN_USER_ID,
             )
+          
 
             # Create MainQuestions
             main_questions = [
                 MainQuestion(
                     # id=uuid.uuid4(),
-                    text="Explain the concept of variables in Python and provide examples of different data types.",
+                    text={
+                        "time": 1742156891249,
+                        "blocks": [
+                            {
+                                "id": "dCcbQeoht6",
+                                "type": "paragraph",
+                                "data": {
+                                    "text":"Explain the concept of variables in Python and provide examples of different data types.",
+                                }
+                            }
+                            
+                        ],
+                    
+                    },
+                    # text="Explain the concept of variables in Python and provide examples of different data types.",
                     marks=5,
                     numbering_style="ROMAN",
                     question_number="i",
@@ -347,7 +362,21 @@ async def init_db_institution(db: AsyncSession) -> None:
                 ),
                 MainQuestion(
                     # id=uuid.uuid4(),
-                    text="Write a Python function that calculates the factorial of a given number. Explain your code.",
+                    text={
+                        "time": 1742156891260,
+                        "blocks": [
+                            {
+                                "id": "dCcbQeoht12",
+                                "type": "paragraph",
+                                "data": {
+                                    "text":"Write a Python function that calculates the factorial of a given number. Explain your code.",
+                                }
+                            }
+                            
+                        ],
+                    
+                    },
+                    # text="Write a Python function that calculates the factorial of a given number. Explain your code.",
                     marks=15,
                     order_within_question_set="2",
                     slug="python-factorial-function",
@@ -365,7 +394,18 @@ async def init_db_institution(db: AsyncSession) -> None:
             sub_questions = [
                 SubQuestion(
                     # id=uuid.uuid4(),
-                    text="What is recursion and how can it be used to calculate factorial?",
+                    text={
+                        "time": 1742156891260,
+                        "blocks": [
+                            {
+                                "id": "dCcbQeoht12",
+                                "type": "paragraph",
+                                "data": {
+                                    "text": "What is recursion and how can it be used to calculate factorial?",
+                                },
+                            }
+                        ],
+                    },
                     marks=5,
                     main_question_id=main_questions[1].id,
                     # created_at=datetime.utcnow(),
@@ -374,7 +414,18 @@ async def init_db_institution(db: AsyncSession) -> None:
                 ),
                 SubQuestion(
                     # id=uuid.uuid4(),
-                    text="Provide an iterative solution for calculating factorial. Compare it with the recursive approach.",
+                    text={
+                        "time": 1742156891260,
+                        "blocks": [
+                            {
+                                "id": "dCcbQeoht12",
+                                "type": "paragraph",
+                                "data": {
+                                    "text": "Provide an iterative solution for calculating factorial. Compare it with the recursive approach.",
+                                },
+                            }
+                        ],
+                    },
                     marks=10,
                     main_question_id=main_questions[1].id,
                     # created_at=datetime.utcnow(),
@@ -434,6 +485,8 @@ async def init_db_institution(db: AsyncSession) -> None:
 
             for main_question in main_questions:
                 question_set.main_questions.append(main_question)
+                # main_question.exam_paper_id=exam_paper.id
+                
 
             db.add(institution_create)
             # Commit the MainQuestions and SubQuestions

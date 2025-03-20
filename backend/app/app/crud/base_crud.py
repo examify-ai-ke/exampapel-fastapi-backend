@@ -111,14 +111,15 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         columns = self.model.__table__.columns
 
         if order_by is None or order_by not in columns:
-            order_by = "id"
+            order_by = "created_at"
 
         if query is None:
             if order == IOrderEnum.ascendent:
                 query = select(self.model).order_by(columns[order_by].asc())
             else:
+                # print("get_multi_paginated_ordered() order_by created_at Desc......")
                 query = select(self.model).order_by(columns[order_by].desc())
-        # print("get_multi_paginated_ordered() called......")
+
         return await paginate(db_session, query, params)
 
     async def get_multi_ordered(

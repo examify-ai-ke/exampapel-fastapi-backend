@@ -1,4 +1,5 @@
-from typing import List, Optional
+from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 from app.utils.partial import optional
 from uuid import UUID
@@ -12,7 +13,7 @@ class AnswerRead(BaseModel):
 
 
 class SubQuestionBase(BaseModel):
-    text: str
+    text: Optional[Dict[str, Any]]
     marks: Optional[int] = None
     answers:Optional[list[AnswerRead]]= []
 
@@ -35,8 +36,11 @@ class SubQuestionRead(SubQuestionBase):
 
 # ------------------------------Main Question-----------
 class MainQuestionBase(BaseModel):
-    text: Optional[str] = ""
+    # text: Optional[str] = ""
+    text: Optional[Dict[str, Any]]
     marks: Optional[int] =None
+    numbering_style: str
+    question_number: str
 
 
 class MainQuestionCreate(MainQuestionBase):
@@ -60,8 +64,8 @@ class MainQuestionRead(MainQuestionBase):
     subquestions: Optional[List[SubQuestionBase]] = []
     answers:Optional[list[AnswerRead]]= []
     # order_within_question_set: Optional[str]
-    numbering_style: str
-    question_number: str
+    # numbering_style: str
+    # question_number: str
     class Config:
         from_attributes = True
 
@@ -83,6 +87,7 @@ class QuestionSetRead(QuestionSetBase):
     slug:str
     main_questions: Optional[list[MainQuestionRead]] = []
     main_questions_count: int | None = 0
+    # created_at: datetime
     class Config:
         from_attributes = True
 

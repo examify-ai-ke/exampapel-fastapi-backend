@@ -57,7 +57,11 @@ async def get_question_set_list(
     Gets a paginated list of question set
     """
     q_sets = await crud.question_set.get_multi_paginated_ordered(
-        db_session=db_session, skip=skip, limit=limit
+        db_session=db_session,
+        skip=skip,
+        limit=limit,
+        order=IOrderEnum.ascendent,
+        order_by="title",
     )
     return create_response(data=q_sets)
 

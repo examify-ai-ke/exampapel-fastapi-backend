@@ -1,16 +1,20 @@
 from app.models.module_model import CourseModuleLink
 from app.models.exam_paper_model import ExamPaperQuestionLink
-from sqlmodel import Field, Relationship, SQLModel, Enum, Column, DateTime, String
+from sqlmodel import Field, Relationship, SQLModel, Enum, Column,  String
 from app.models.base_uuid_model import BaseUUIDModel
 from uuid import UUID
 from sqlalchemy.dialects.postgresql import TEXT
-from typing import ClassVar, List, Optional
+from typing import Any, ClassVar, Dict, List, Optional
 # from app.models.image_media_model import ImageMedia
 from sqlalchemy_utils import ChoiceType
 from pydantic import  field_validator, validator, model_validator
 from app.utils.slugify_string import   generate_slug, generate_slug_for_question_text
 import enum
 from sqlalchemy import UniqueConstraint, event
+# from sqlmodel import Field, SQLModel
+# from sqlalchemy import  JSON
+from sqlalchemy.dialects.postgresql import JSONB
+import sqlalchemy as sqla
 
 class QuestionSetTitleEnum(enum.Enum):
     QUESTION_ONE = "Question One"
@@ -78,7 +82,13 @@ class NumberingStyleEnum(enum.Enum):
 
 
 class QuestionBase(SQLModel):
-    text: str = Field(sa_column=Column(TEXT, nullable=True, unique=False))
+    # text: str = Field(sa_column=Column(TEXT, nullable=True, unique=False))
+    # text: Optional[Dict[str, Any]] = Field(
+    #     default=None, sa_column=Column(JSON, nullable=True)
+    # )
+    text: Optional[Dict[str, Any]] = Field(
+        default_factory={}, sa_column=Column(JSONB, nullable=False)
+    )
     marks: Optional[int] = None  # Marks given to a Question
     numbering_style: NumberingStyleEnum = Field(
         sa_column=Column(Enum(NumberingStyleEnum, native_enum=False), nullable=False)
@@ -163,7 +173,9 @@ class SubQuestion(BaseUUIDModel,SQLModel, table=True):
         
         This is the smallest/child question under the MainQuestion above. e.g (a), (b), (i) e.t.c
     """
-    text: str
+    text: Optional[Dict[str, Any]] = Field(
+        default_factory={}, sa_column=Column(JSONB, nullable=True)
+    )
     marks: Optional[int] = None
 
     main_question_id: UUID | None = Field(default=None, foreign_key="MainQuestion.id")
