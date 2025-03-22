@@ -23,6 +23,25 @@ class CRUDAnswer(CRUDBase[Answer, AnswerCreate, AnswerUpdate]):
             select(Answer).where(col(Answer.slug).ilike(f"%{slug}%"))
         )
         return answer.unique().scalars().all()
+    
+    
+    async def get_answer_by_main_question(self, *, main_question_id: str, db_session: AsyncSession | None = None) -> list[Answer]:
+        db_session = db_session or super().get_db().session
+        answer = await db_session.execute(
+            select(Answer).where(
+                Answer.main_question_id == main_question_id
+            )
+        )
+        return answer.unique().scalars().all()
+    
+    async def get_answer_by_sub_question(self, *, sub_question_id: str, db_session: AsyncSession | None = None) -> list[Answer]:
+        db_session = db_session or super().get_db().session
+        answer = await db_session.execute(
+            select(Answer).where(
+                Answer.sub_question_id == sub_question_id
+            )
+        )
+        return answer.unique().scalars().all()
 
     # async def get_count_of_institutions(
     #     self,

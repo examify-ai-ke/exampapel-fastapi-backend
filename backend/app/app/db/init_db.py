@@ -329,7 +329,6 @@ async def init_db_institution(db: AsyncSession) -> None:
                 # updated_at=datetime.utcnow(),
                 created_by_id=ADMIN_USER_ID,
             )
-          
 
             # Create MainQuestions
             main_questions = [
@@ -408,8 +407,8 @@ async def init_db_institution(db: AsyncSession) -> None:
                     },
                     marks=5,
                     main_question_id=main_questions[1].id,
-                    # created_at=datetime.utcnow(),
-                    # updated_at=datetime.utcnow(),
+                    numbering_style="ROMAN",
+                    question_number="i",
                     created_by_id=ADMIN_USER_ID,
                 ),
                 SubQuestion(
@@ -428,8 +427,8 @@ async def init_db_institution(db: AsyncSession) -> None:
                     },
                     marks=10,
                     main_question_id=main_questions[1].id,
-                    # created_at=datetime.utcnow(),
-                    # updated_at=datetime.utcnow(),
+                    numbering_style="ROMAN",
+                    question_number="ii",
                     created_by_id=ADMIN_USER_ID,
                 ),
             ]
@@ -486,7 +485,6 @@ async def init_db_institution(db: AsyncSession) -> None:
             for main_question in main_questions:
                 question_set.main_questions.append(main_question)
                 # main_question.exam_paper_id=exam_paper.id
-                
 
             db.add(institution_create)
             # Commit the MainQuestions and SubQuestions

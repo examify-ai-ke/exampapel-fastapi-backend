@@ -4,13 +4,13 @@ from typing import Any, Dict, List, Optional
 from app.utils.partial import optional
 from uuid import UUID
 from app.models.question_model import QuestionSetBase
+from app.schemas.answer_schema import AnswerRead
 from pydantic import field_validator, BaseModel
 
 
-class AnswerRead(BaseModel):
-    id: UUID
-    # text: Optional[str]
-    text: Optional[Dict[str, Any]]
+# class AnswerRead(BaseModel):
+#     id: UUID
+#     text: Optional[Dict[str, Any]]
 
 
 class SubQuestionBase(BaseModel):
@@ -71,8 +71,7 @@ class MainQuestionRead(MainQuestionBase):
     subquestions: Optional[List[SubQuestionRead]] = []
     answers:Optional[list[AnswerRead]]= []
     # order_within_question_set: Optional[str]
-    # numbering_style: str
-    # question_number: str
+   
     class Config:
         from_attributes = True
 

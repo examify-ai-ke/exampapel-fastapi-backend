@@ -1,11 +1,12 @@
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from app.utils.partial import optional
 from uuid import UUID
 from pydantic import   BaseModel
 
 
 class AnswerBase(BaseModel):
-    text: str
+    # text: str
+    text: Optional[Dict[str, Any]]
     parent_id: Optional[UUID] = None
     main_question_id: Optional[UUID] = None
     sub_question_id: Optional[UUID] = None
@@ -13,6 +14,7 @@ class AnswerBase(BaseModel):
 
 @optional()
 class AnswerUpdate(AnswerBase):
+    id: UUID
     pass
 
 
@@ -21,9 +23,9 @@ class AnswerCreate(AnswerBase):
 
 class ChildrenReadForAnswerRead(BaseModel):
     id: Optional[UUID]
-    text: Optional[str]
-    likes: int | None = 0
-    dislikes: int | None = 0
+    text: Optional[Dict[str, Any]]
+    likes: Optional[int] = 0
+    dislikes: Optional[int] = 0
     reviewed: bool = False
     
     class Config:
@@ -32,13 +34,13 @@ class ChildrenReadForAnswerRead(BaseModel):
 
 class ParentReadForAnswerRead(BaseModel):
     id: UUID
-    text: Optional[str]
+    text: Optional[Dict[str, Any]]
 
 
 class AnswerRead(AnswerBase):
     id: UUID
-    likes: int | None = 0
-    dislikes: int | None = 0
+    likes: Optional[int] = 0
+    dislikes: Optional[int] = 0
     reviewed: bool = False
     auto_answer: bool = False
     parent: Optional[ParentReadForAnswerRead] = None

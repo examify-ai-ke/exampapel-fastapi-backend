@@ -45,7 +45,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 router = APIRouter()
 
 
-@router.get("")
+@router.get("", response_model=IGetResponsePaginated[AnswerRead])
 async def get_answer_list(
     # params: Params = Depends(),
     # current_user: User = Depends(deps.get_current_user()),
@@ -62,7 +62,7 @@ async def get_answer_list(
     return create_response(data=answers)
 
 
-@router.get("/get_by_created_at")
+@router.get("/get_by_created_at", response_model=IGetResponsePaginated[AnswerRead])
 async def get_answers_list_order_by_created_at(
     order: IOrderEnum | None = Query(
         default=IOrderEnum.ascendent, description="It is optional. Default is ascendent"
@@ -79,7 +79,7 @@ async def get_answers_list_order_by_created_at(
     return create_response(data=answers)
 
 
-@router.get("/get_by_id/{answer_id}")
+@router.get("/get_by_id/{answer_id}", response_model=IGetResponseBase[AnswerRead])
 async def get_answer_by_id(
     answer_id: UUID,
     # current_user: User = Depends(deps.get_current_user()),
@@ -92,7 +92,44 @@ async def get_answer_by_id(
         raise IdNotFoundException(Answer, answer_id)
     return create_response(data=answer)
 
-@router.post("")
+
+@router.get(
+    "/by_main_question/{main_question_id}", response_model=IGetResponseBase[AnswerRead]
+)
+async def get_answer_by_main_question(
+    main_question_id: UUID,
+    # current_user: User = Depends(deps.get_current_user()),
+) -> IGetResponseBase[AnswerRead]:
+    """
+    Gets a answer by main question id
+    """
+    answer = await crud.answer.get_answer_by_main_question(
+        main_question_id=main_question_id
+    )
+    if not answer:
+        raise IdNotFoundException(Answer, main_question_id)
+    return create_response(data=answer)
+
+
+@router.get(
+    "/by_sub_question/{sub_question_id}", response_model=IGetResponseBase[AnswerRead]
+)
+async def get_answer_by_sub_question(
+    sub_question_id: UUID,
+    # current_user: User = Depends(deps.get_current_user()),
+) -> IGetResponseBase[AnswerRead]:
+    """
+    Gets a answer by main question id
+    """
+    answer = await crud.answer.get_answer_by_sub_question(
+        sub_question_id=sub_question_id
+    )
+    if not answer:
+        raise IdNotFoundException(Answer, sub_question_id)
+    return create_response(data=answer)
+
+
+@router.post("", response_model=IPostResponseBase[AnswerRead])
 async def create_answer(
     answer: AnswerCreate,
     current_user: User = Depends(
@@ -111,7 +148,7 @@ async def create_answer(
     return create_response(data=_answer)
 
 
-@router.put("/{answer_id}")
+@router.put("/{answer_id}", response_model=IPutResponseBase[AnswerRead])
 async def update_answer(
     answer_id: UUID,
     answer: AnswerUpdate,
@@ -141,7 +178,7 @@ async def update_answer(
     return create_response(data=answer_updated)
 
 
-@router.delete("/{answer_id}")
+@router.delete("/{answer_id}", response_model=IPutResponseBase[AnswerRead])
 async def remove_answer(
     answer_id: UUID,
     current_user: User = Depends(
