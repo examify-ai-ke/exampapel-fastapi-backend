@@ -334,6 +334,19 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         await db_session.refresh(appended_parent_object)
         return appended_parent_object
 
+    # async def remove(
+    #     self, *, id: UUID | str, db_session: AsyncSession | None = None
+    # ) -> ModelType:
+    #     db_session = db_session or self.db.session
+    #     response = await db_session.execute(
+    #         select(self.model).where(self.model.id == id)
+    #     )
+    #     obj = response.unique().scalar_one()
+    #     await db_session.delete(obj)
+    #     await db_session.commit()
+    #     await db_session.refresh(obj)
+    #     return obj
+    
     async def remove(
         self, *, id: UUID | str, db_session: AsyncSession | None = None
     ) -> ModelType:
@@ -341,8 +354,12 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         response = await db_session.execute(
             select(self.model).where(self.model.id == id)
         )
-        obj = response.unique().scalar_one()
+        obj = response.scalars().first()
+
+        if not obj:
+            raise ValueError(f"Object with id {id} not found")
+
         await db_session.delete(obj)
         await db_session.commit()
-        await db_session.refresh(obj)
+
         return obj

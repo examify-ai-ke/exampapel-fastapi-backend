@@ -9,13 +9,15 @@ from pydantic import field_validator, BaseModel
 
 class AnswerRead(BaseModel):
     id: UUID
-    text: Optional[str]
+    # text: Optional[str]
+    text: Optional[Dict[str, Any]]
 
 
 class SubQuestionBase(BaseModel):
     text: Optional[Dict[str, Any]]
     marks: Optional[int] = None
-    answers:Optional[list[AnswerRead]]= []
+    numbering_style: str
+    question_number: str
 
 
 class SubQuestionCreate(SubQuestionBase):
@@ -24,12 +26,14 @@ class SubQuestionCreate(SubQuestionBase):
 
 @optional()
 class SubQuestionUpdate(SubQuestionBase):
+    main_question_id: UUID
     pass
 
 
 class SubQuestionRead(SubQuestionBase):
     id: UUID
     main_question_id: UUID
+    answers: Optional[list[AnswerRead]] = []
 
     class Config:
         from_attributes = True
@@ -50,10 +54,13 @@ class MainQuestionCreate(MainQuestionBase):
 
 @optional()
 class MainQuestionUpdate(MainQuestionBase):
+    question_set_id: UUID
+    exam_paper_id: UUID
     pass
 
 class QuestionSetReadForMain(BaseModel):
     title:str
+    id:UUID
 
 
 class MainQuestionRead(MainQuestionBase):
@@ -61,7 +68,7 @@ class MainQuestionRead(MainQuestionBase):
     slug:str
     marks:int | None
     question_set: Optional[QuestionSetReadForMain]
-    subquestions: Optional[List[SubQuestionBase]] = []
+    subquestions: Optional[List[SubQuestionRead]] = []
     answers:Optional[list[AnswerRead]]= []
     # order_within_question_set: Optional[str]
     # numbering_style: str
@@ -71,7 +78,6 @@ class MainQuestionRead(MainQuestionBase):
 
 
 # ---------------------------QuestionSet ------------------------
-
 
 class QuestionSetCreate(QuestionSetBase):
     pass

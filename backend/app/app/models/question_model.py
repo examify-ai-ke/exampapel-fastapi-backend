@@ -138,8 +138,13 @@ class MainQuestion(BaseUUIDModel, QuestionBase, table=True):
 
     @validator("slug", pre=True, always=True)
     def set_slug(cls, value, values):
-        text = values.get("text", "")
-        return generate_slug_for_question_text(text)
+        # text = values.get("text", "").get("blocks", [])[0].get("data",{}).get("text")
+        string_to_slugify = ""        
+        # Slugify the text in each block
+        for block in values.get("text", "").get("blocks", []):
+            if "text" in block["data"]:
+                string_to_slugify = block["data"]["text"]
+        return generate_slug_for_question_text(string_to_slugify)
 
     created_by_id: UUID | None = Field(default=None, foreign_key="User.id")
     created_by: "User" = Relationship(  # noqa: F821
@@ -177,7 +182,10 @@ class SubQuestion(BaseUUIDModel,SQLModel, table=True):
         default_factory={}, sa_column=Column(JSONB, nullable=True)
     )
     marks: Optional[int] = None
-
+    numbering_style: NumberingStyleEnum = Field(
+        sa_column=Column(Enum(NumberingStyleEnum, native_enum=False), nullable=True)
+    )
+    question_number: str =  Field(nullable=True, unique=False)
     main_question_id: UUID | None = Field(default=None, foreign_key="MainQuestion.id")
     main_question: "MainQuestion" = Relationship(
         back_populates="subquestions",
@@ -186,7 +194,6 @@ class SubQuestion(BaseUUIDModel,SQLModel, table=True):
             "primaryjoin": "SubQuestion.main_question_id==MainQuestion.id",
         },
     )
-
     created_by_id: UUID | None = Field(default=None, foreign_key="User.id")
     created_by: "User" = Relationship(  # noqa: F821
         sa_relationship_kwargs={

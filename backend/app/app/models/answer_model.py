@@ -1,8 +1,8 @@
 from sqlmodel import Field, Relationship, SQLModel, Enum, Column, DateTime, String,Table
 from app.models.base_uuid_model import BaseUUIDModel
 from uuid import UUID
-
-from typing import List, Optional
+from sqlalchemy.dialects.postgresql import JSONB
+from typing import Any, Dict, List, Optional
 from app.models.image_media_model import ImageMedia
 from sqlalchemy.dialects.postgresql import TEXT
 from pydantic import EmailStr, field_validator, validator
@@ -18,7 +18,10 @@ from app.utils.slugify_string import generate_slug
 
 # Define the Course model
 class AnswerBase(SQLModel):  
-    text: str = Field(sa_column=Column(TEXT, nullable=False, unique=False))
+    # text: str = Field(sa_column=Column(TEXT, nullable=False, unique=False))
+    text: Optional[Dict[str, Any]] = Field(
+        default_factory={}, sa_column=Column(JSONB, nullable=True)
+    )
 
 
 class Answer(BaseUUIDModel,AnswerBase, table=True):
@@ -73,6 +76,3 @@ class Answer(BaseUUIDModel,AnswerBase, table=True):
     sub_question: Optional["SubQuestion"] = Relationship(
         back_populates="answers"
     )
-
-
-
