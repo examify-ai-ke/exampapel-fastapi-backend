@@ -38,7 +38,7 @@ async def get_comments_list(
     """
     Gets a paginated list of Comments
     """
-    comments = await crud.comment.get_multi(
+    comments = await crud.comment.get_multi_paginated_ordered(
         skip=skip, limit=limit, db_session=db_session
     )
     return create_response(data=comments)
@@ -49,14 +49,27 @@ async def get_comments_by_answer(
     answer_id: UUID,
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1),
+    order_by: str = Query(default="created_at", description="Field to order by"),
+    order: IOrderEnum = Query(default=IOrderEnum.descendent, description="Ascending or descending order"),
     db_session: AsyncSession = Depends(deps.get_db),
 ) -> IGetResponsePaginated[CommentRead]:
     """
     Gets a paginated list of Comments for a specific answer
+    
+    Parameters:
+    - answer_id: UUID of the answer to get comments for
+    - skip: Number of records to skip (pagination)
+    - limit: Maximum number of records to return
+    - order_by: Field to order by, defaults to created_at
+    - order: Order direction (ascendent or descendent)
     """
-    # This would need to be implemented in the CRUD
     comments = await crud.comment.get_comments_by_answer(
-        answer_id=answer_id, skip=skip, limit=limit, db_session=db_session
+        answer_id=answer_id, 
+        skip=skip, 
+        limit=limit,
+        order_by=order_by,
+        order=order,
+        db_session=db_session
     )
     return create_response(data=comments)
 
@@ -215,7 +228,7 @@ async def dislike_comment(
 
 @router.get("/count", response_model=IGetResponseBase[CommentCountSchema])
 async def get_comment_count(
-    answer_id: UUID | None = None,
+    answer_id: UUID,
     db_session: AsyncSession = Depends(deps.get_db),
 ) -> IGetResponseBase[CommentCountSchema]:
     """
@@ -224,5 +237,15 @@ async def get_comment_count(
     Parameters:
     - answer_id: Optional UUID of an answer. If provided, returns count of comments for that answer.
     """
+    print(f"Getting comment count for answer_id: {answer_id}")
+    
+    # Check if the answer exists (if answer_id is provided)
+    if answer_id:
+        answer = await crud.answer.get(id=answer_id, db_session=db_session)
+        if not answer:
+            print(f"Answer with id {answer_id} not found")
+            return create_response(data=CommentCountSchema(count=0))
+        print(f"Answer found: {answer.id}")
+    
     count = await crud.comment.get_count_of_comments(answer_id=answer_id, db_session=db_session)
     return create_response(data=CommentCountSchema(count=count))

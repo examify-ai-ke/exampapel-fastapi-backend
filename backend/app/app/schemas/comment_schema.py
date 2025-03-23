@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 from pydantic import BaseModel
@@ -29,7 +30,7 @@ class CommentReplyRead(BaseModel):
     likes: int = 0
     dislikes: int = 0
     created_by_id: Optional[UUID] = None
-
+    created_at: datetime
     class Config:
         from_attributes = True
         arbitrary_types_allowed = True
@@ -40,8 +41,11 @@ class CommentRead(CommentBase):
     likes: int = 0
     dislikes: int = 0
     created_by_id: Optional[UUID] = None
-    replies: Optional[List[CommentReplyRead]] = None
-
+    created_at: datetime
+    
+    # Make replies Optional[List] with default=None instead of relying on the relationship
+    # replies: Optional[List[CommentReplyRead]] = []
+    
     class Config:
         from_attributes = True
         arbitrary_types_allowed = True
