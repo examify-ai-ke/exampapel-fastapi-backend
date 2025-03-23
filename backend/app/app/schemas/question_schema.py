@@ -67,11 +67,22 @@ class MainQuestionRead(MainQuestionBase):
     id: UUID
     slug:str
     marks:int | None
-    question_set: Optional[QuestionSetReadForMain]
     subquestions: Optional[List[SubQuestionRead]] = []
     answers:Optional[list[AnswerRead]]= []
+    question_set_id: UUID
     # order_within_question_set: Optional[str]
-   
+
+    class Config:
+        from_attributes = True
+
+
+class MainQuestionReadForQuestionSet(MainQuestionBase):
+    id: UUID
+    slug: str
+    marks: int | None
+    answers: Optional[List[AnswerRead]] = []
+    subquestions: Optional[List[SubQuestionRead]] = []
+
     class Config:
         from_attributes = True
 

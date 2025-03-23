@@ -98,7 +98,6 @@ class QuestionBase(SQLModel):
 
 class MainQuestion(BaseUUIDModel, QuestionBase, table=True): 
     """
-    
     Args:
         BaseUUIDModel (_type_): _description_
         QuestionBase (_type_): _description_

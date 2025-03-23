@@ -14,7 +14,6 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 
 class CRUDAnswer(CRUDBase[Answer, AnswerCreate, AnswerUpdate]):
-
     async def get_answer_by_slug(
         self, *, slug: str, db_session: AsyncSession | None = None
     ) -> Answer:

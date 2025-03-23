@@ -22,3 +22,4 @@ from .question_set_crud import question_set
 from .main_question_crud import main_question
 from .sub_question_crud import sub_question
 from .answer_crud import answer
+from .comment_crud import comment

@@ -26,8 +26,8 @@ from app.api.v1.endpoints import (
     question_set,
     main_question,
     sub_question,
-    answer
-    
+    answer,
+    comment,
 )
 
 api_router = APIRouter()
@@ -78,4 +78,7 @@ api_router.include_router(
 
 api_router.include_router(
     answer.router, prefix="/answer", tags=["answer"]
+)
+api_router.include_router(
+    comment.router, prefix="/comment", tags=["comment"]
 )

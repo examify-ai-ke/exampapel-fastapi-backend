@@ -56,7 +56,7 @@ async def get_answer_list(
     """
     Gets a paginated list of Answers
     """
-    answers = await crud.answer.get_multi_paginated_ordered(
+    answers = await crud.answer.get_multi_paginated_ordered_answers_with_children(
         db_session=db_session, skip=skip, limit=limit
     )
     return create_response(data=answers)

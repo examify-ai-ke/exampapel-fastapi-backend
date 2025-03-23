@@ -14,6 +14,8 @@ from sqlmodel.sql.expression import Select
 from sqlalchemy import exc
 from sqlalchemy.orm import lazyload
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import selectinload
+
 
 ModelType = TypeVar("ModelType", bound=SQLModel)
 CreateSchemaType = TypeVar("CreateSchemaType", bound=BaseModel)
@@ -119,6 +121,54 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             else:
                 # print("get_multi_paginated_ordered() order_by created_at Desc......")
                 query = select(self.model).order_by(columns[order_by].desc())
+
+        return await paginate(db_session, query, params)
+
+    async def get_multi_paginated_ordered_answers_with_children(
+        self,
+        *,
+        skip: int = 0,
+        limit: int = 50,
+        order_by: str | None = None,
+        order: IOrderEnum | None = IOrderEnum.descendent,
+        query: T | Select[T] | None = None,
+        db_session: AsyncSession | None = None,
+    ) -> Page[ModelType]:
+        db_session = db_session or self.db.session
+        params = Params(page=skip // limit + 1, size=limit)  # Convert skip/limit to page/size
+        columns = self.model.__table__.columns
+
+        if order_by is None or order_by not in columns:
+            order_by = "created_at"
+
+        if query is None:
+            if order == IOrderEnum.ascendent:
+                # query = select(self.model).options(
+                #     selectinload(self.model.children)
+                # ).order_by(columns[order_by].asc())
+                query = (
+                    select(self.model)
+                    .options(
+                        selectinload(self.model.children),
+                        selectinload(self.model.parent),
+                    )
+                    .order_by(columns[order_by].asc())
+                )
+            else:
+                # query = select(self.model).options(
+                #     selectinload(self.model.children)
+                # ).order_by(columns[order_by].desc())
+                query = (
+                    select(self.model)
+                    .options(
+                        selectinload(self.model.children),
+                        selectinload(self.model.parent),
+                    )
+                    .order_by(columns[order_by].desc())
+                )
+        else:
+            # If a custom query is provided, add the eager loading option
+            query = query.options(selectinload(self.model.children))
 
         return await paginate(db_session, query, params)
 
@@ -346,7 +396,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     #     await db_session.commit()
     #     await db_session.refresh(obj)
     #     return obj
-    
+
     async def remove(
         self, *, id: UUID | str, db_session: AsyncSession | None = None
     ) -> ModelType:

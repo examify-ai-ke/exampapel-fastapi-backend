@@ -35,3 +35,4 @@ from .question_model import (
     QuestionBase
 )
 from .answer_model import AnswerBase, Answer
+from .comment_model import *

@@ -7,18 +7,10 @@ from app.models.image_media_model import ImageMedia
 from sqlalchemy.dialects.postgresql import TEXT
 from pydantic import EmailStr, field_validator, validator
 from app.utils.slugify_string import generate_slug
+ 
+from app.models.comment_model import Comment  # Add this import
 
-# class AnswerAssociationLink(BaseUUIDModel, SQLModel, table=True):
-#     parent_id:UUID | None = Field(foreign_key="Answer.id",primary_key=True,
-#         default=None)
-#     child_id: UUID | None = Field(
-#         foreign_key="Answer.id", primary_key=True, default=None
-#     )
-
-
-# Define the Course model
 class AnswerBase(SQLModel):  
-    # text: str = Field(sa_column=Column(TEXT, nullable=False, unique=False))
     text: Optional[Dict[str, Any]] = Field(
         default_factory={}, sa_column=Column(JSONB, nullable=True)
     )
@@ -42,30 +34,21 @@ class Answer(BaseUUIDModel,AnswerBase, table=True):
         back_populates="children",
         sa_relationship_kwargs={"remote_side": "Answer.id", "lazy": "joined"},
     )
+    # child_id: UUID | None = Field(default=None, foreign_key="Answer.id", nullable=True)
+    # children: List["Answer"] = Relationship(
+    #     back_populates="parent",
+    #     sa_relationship_kwargs={
+    #         "lazy": "joined",
+    #         "remote_side": "Answer.parent_id","join_depth":2
+    #     },
+    # )
     children: List["Answer"] = Relationship(
         back_populates="parent",
         sa_relationship_kwargs={
-            "lazy": "joined",
-            "remote_side": "Answer.parent_id","join_depth":2
+            "lazy": "selectin",  # More efficient for collections than "joined"
+            "remote_side": "Answer.parent_id",
         },
     )
-
-    # parents: List["Answer"] = Relationship(
-    #     link_model=AnswerAssociationLink,
-    #     sa_relationship_kwargs={
-    #         "primaryjoin": "Answer.id == AnswerAssociationLink.child_id",
-    #         "secondaryjoin": "Answer.id == AnswerAssociationLink.parent_id",
-    #         "lazy": "joined",
-    #     },
-    # )
-    # children: List["Answer"] = Relationship(
-    #     link_model=AnswerAssociationLink,
-    #     sa_relationship_kwargs={
-    #         "primaryjoin": "Answer.id == AnswerAssociationLink.parent_id",
-    #         "secondaryjoin": "Answer.id == AnswerAssociationLink.child_id",
-    #         "lazy": "joined",
-    #     },
-    # )
 
     main_question_id: UUID | None = Field(default=None, foreign_key="MainQuestion.id")
     main_question: Optional["MainQuestion"] = Relationship(
@@ -75,4 +58,9 @@ class Answer(BaseUUIDModel,AnswerBase, table=True):
     sub_question_id: UUID | None = Field(default=None, foreign_key="SubQuestion.id")
     sub_question: Optional["SubQuestion"] = Relationship(
         back_populates="answers"
+    )
+
+    comments: List["Comment"] = Relationship(
+        back_populates="answer",
+        sa_relationship_kwargs={"lazy": "selectin"},
     )
