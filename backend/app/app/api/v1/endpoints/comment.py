@@ -226,13 +226,13 @@ async def dislike_comment(
     return create_response(data=updated_comment)
 
 
-@router.get("/count", response_model=IGetResponseBase[CommentCountSchema])
-async def get_comment_count(
+@router.get("/count/{answer_id}", response_model=IGetResponseBase[CommentCountSchema])
+async def get_comment_count_by_answer(
     answer_id: UUID,
     db_session: AsyncSession = Depends(deps.get_db),
 ) -> IGetResponseBase[CommentCountSchema]:
     """
-    Gets the total count of comments
+    Gets the total count of comments by answer
     
     Parameters:
     - answer_id: Optional UUID of an answer. If provided, returns count of comments for that answer.
