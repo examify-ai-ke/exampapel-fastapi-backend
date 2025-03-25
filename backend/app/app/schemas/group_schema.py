@@ -21,3 +21,4 @@ class IGroupReadWithUsers(GroupBase):
 @optional()
 class IGroupUpdate(GroupBase):
     pass
+

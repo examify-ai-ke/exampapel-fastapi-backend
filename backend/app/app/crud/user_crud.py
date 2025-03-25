@@ -12,7 +12,7 @@ from app.crud.user_follow_crud import user_follow as UserFollowCRUD
 from sqlmodel import select
 from uuid import UUID
 from sqlmodel.ext.asyncio.session import AsyncSession
-from sqlalchemy import and_
+from sqlalchemy import and_, func
  
 
 
@@ -134,6 +134,21 @@ class CRUDUser(CRUDBase[User, IUserCreate, IUserUpdate]):
             )
         )
         return users.scalar_one_or_none()
+
+    async def count_by_role(
+        self, 
+        *, 
+        role_id: UUID, 
+        db_session: AsyncSession | None = None
+    ) -> int:
+        """
+        Count the number of users with a specific role
+        """
+        db_session = db_session or self.db.session
+        
+        query = select(func.count(User.id)).where(User.role_id == role_id)
+        result = await db_session.execute(query)
+        return result.scalar_one() or 0
 
 
 user = CRUDUser(User)

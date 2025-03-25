@@ -31,10 +31,9 @@ class Settings(BaseSettings):
     DATABASE_CELERY_NAME: str = "celery_schedule_jobs"
     REDIS_HOST: str
     REDIS_PORT: int
-    REDIS_PASSWORD: str
+    REDIS_PASSWORD: str = ""
+    REDIS_USE_PASSWORD: bool = False
     REDIS_DB: int = 0
-    # REDIS_SSL: bool = False
-    # REDIS_SSL_CERT_REQS: str | None = None
     REDIS_POOL_SIZE: int = 10
     REDIS_POOL_TIMEOUT: int = 20
     DB_POOL_SIZE: int = 100

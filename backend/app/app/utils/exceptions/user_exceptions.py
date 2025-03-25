@@ -13,3 +13,10 @@ class UserSelfDeleteException(HTTPException):
             detail="Users can not delete theirselfs.",
             headers=headers,
         )
+
+
+class RoleInUseException(HTTPException):
+    def __init__(
+        self, detail: str = "Role is still in use by users and cannot be deleted"
+    ):
+        super().__init__(status_code=400, detail=detail)

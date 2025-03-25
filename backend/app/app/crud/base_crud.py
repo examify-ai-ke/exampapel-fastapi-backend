@@ -39,10 +39,27 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         return self.db
 
     async def get(
-        self, *, id: UUID | str, db_session: AsyncSession | None = None
+        self, *, id: UUID | str, db_session: AsyncSession | None = None, options: list = None
     ) -> ModelType | None:
+        """
+        Get a model instance by ID with optional relationship loading.
+        
+        Args:
+            id: The ID of the object to get
+            db_session: Optional database session
+            options: Optional list of relationship loading options (e.g., selectinload, joinedload)
+        
+        Returns:
+            The model instance or None if not found
+        """
         db_session = db_session or self.db.session
         query = select(self.model).where(self.model.id == id)
+        
+        # Add relationship loading options if provided
+        if options:
+            for option in options:
+                query = query.options(option)
+                
         response = await db_session.execute(query)
         return response.unique().scalar_one_or_none()
 

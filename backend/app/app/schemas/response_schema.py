@@ -71,6 +71,9 @@ class IPutResponseBase(IResponseBase[DataType], Generic[DataType]):
 
 class IDeleteResponseBase(IResponseBase[DataType], Generic[DataType]):
     message: str | None = "Data deleted correctly"
+    data: T | None = Field(
+        default=None, description="Delete response"
+    )
 
 
 def create_response(

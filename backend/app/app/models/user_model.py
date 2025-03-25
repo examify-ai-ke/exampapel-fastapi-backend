@@ -16,18 +16,6 @@ from uuid import UUID
 
 
 class UserBase(SQLModel):
-    # Add model config for arbitrary types
-    # model_config = {
-    #     "arbitrary_types_allowed": True,
-    #     "json_schema_extra": {
-    #         "example": {
-    #             "first_name": "John",
-    #             "last_name": "Doe",
-    #             "email": "johndoe@example.com",
-    #             "provider": AuthProvider.EMAIL,
-    #         }
-    #     }
-    # }
 
     first_name: str
     last_name: str

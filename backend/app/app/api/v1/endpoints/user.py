@@ -60,6 +60,16 @@ from app.core.config import settings
 import logging
 router = APIRouter()
 
+# Define the /me endpoint BEFORE any endpoints with UUID parameters
+@router.get("/me", response_model=IGetResponseBase[IUserRead])
+async def read_user_me(
+    current_user: User = Depends(deps.get_current_user()),
+) -> IGetResponseBase[IUserRead]:
+    """
+    Get current user.
+    """
+    return create_response(data=current_user)
+
 
 @router.get("/list",response_model=IGetResponsePaginated[IUserReadWithoutGroups])
 async def read_users_list(
@@ -381,18 +391,8 @@ async def get_user_by_id(
     - admin
     - manager
     """
+    # print(current_user)
     return create_response(data=user)
-
-
-@router.get("/me",response_model=IGetResponseBase[IUserRead])
-async def get_my_data(
-    current_user: User = Depends(deps.get_current_user()),
-) -> IGetResponseBase[IUserRead]:
-    """
-    Gets my user profile information
-    """
-    print("current_user:",current_user)
-    return create_response(data=current_user)
 
 
 @router.post("", status_code=status.HTTP_201_CREATED, response_model=IPostResponseBase[IUserRead])

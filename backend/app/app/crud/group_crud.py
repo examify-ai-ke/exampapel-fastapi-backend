@@ -2,7 +2,8 @@ from app.models.group_model import Group
 from app.models.user_model import User
 from app.schemas.group_schema import IGroupCreate, IGroupUpdate
 from app.crud.base_crud import CRUDBase
-from sqlmodel import select
+from app.utils.exceptions.common_exception import IdNotFoundException
+from sqlmodel import select, func
 from uuid import UUID
 from sqlmodel.ext.asyncio.session import AsyncSession
 from fastapi import HTTPException
@@ -62,6 +63,23 @@ class CRUDGroup(CRUDBase[Group, IGroupCreate, IGroupUpdate]):
         await self.db_session.commit()
         await self.db_session.refresh(group)
         return group
+
+    async def count_users_in_group(
+        self, 
+        *, 
+        group_id: UUID, 
+        db_session: AsyncSession | None = None
+    ) -> int:
+        """
+        Count the number of users in a specific group
+        """
+        db_session = db_session or self.db.session
+        
+        # Query the UserGroup link table directly for better performance
+        from app.models.user_model import UserGroup
+        query = select(func.count(UserGroup.user_id)).where(UserGroup.group_id == group_id)
+        result = await db_session.execute(query)
+        return result.scalar_one() or 0
 
 
 group = CRUDGroup(Group)

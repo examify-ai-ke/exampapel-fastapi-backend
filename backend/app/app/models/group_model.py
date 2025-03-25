@@ -23,3 +23,12 @@ class Group(BaseUUIDModel, GroupBase, table=True):
         link_model=LinkGroupUser,
         sa_relationship_kwargs={"lazy": "selectin"},
     )
+    
+    # Add a method to convert to dictionary
+    def dict(self):
+        """Convert Group model to dictionary"""
+        return {
+            "id": self.id,
+            "name": self.name,
+            "description": self.description,
+        }

@@ -1,4 +1,5 @@
 from datetime import timedelta
+from uuid import UUID
 
 from fastapi import APIRouter, Body, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
@@ -45,66 +46,48 @@ async def login(
         raise HTTPException(status_code=400, detail="Email or Password incorrect")
     elif not user.is_active:
         raise HTTPException(status_code=400, detail="User is inactive")
+
+    if hasattr(settings, "USE_REDIS_TOKEN_BLACKLIST") and settings.USE_REDIS_TOKEN_BLACKLIST:
+        await delete_tokens(redis_client, user, TokenType.ACCESS)
+        await delete_tokens(redis_client, user, TokenType.REFRESH)
+
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = security.create_access_token(user.id, expires_delta=access_token_expires)
+    
     refresh_token_expires = timedelta(minutes=settings.REFRESH_TOKEN_EXPIRE_MINUTES)
-    access_token = security.create_access_token(
-        user.id, expires_delta=access_token_expires
-    )
-    # print("Access Token:", {access_token})
-    # print("Access Token Expires:", {access_token_expires})
-    refresh_token = security.create_refresh_token(
-        user.id, expires_delta=refresh_token_expires
-    )
-    # print("RefreshToken:",{refresh_token})
- 
-    # valid_access_tokens = await get_valid_tokens(
-    #     redis_client, user.id, TokenType.ACCESS
-    # )
-    # print("valid_access_tokens:", {valid_access_tokens})
-    # if valid_access_tokens:
-    #     await add_token_to_redis(
-    #         redis_client,
-    #         user,
-    #         access_token,
-    #         TokenType.ACCESS,
-    #         settings.ACCESS_TOKEN_EXPIRE_MINUTES,
-    #     )
+    refresh_token = security.create_refresh_token(user.id, expires_delta=refresh_token_expires)
+    
+    if hasattr(settings, "USE_REDIS_TOKEN_BLACKLIST") and settings.USE_REDIS_TOKEN_BLACKLIST:
+        try:
+            access_token_added = await add_token_to_redis(
+                redis_client,
+                user,
+                access_token,
+                TokenType.ACCESS,
+                int(access_token_expires.total_seconds()),
+            )
+            print(f"Access token added to Redis: {access_token_added}")
+            
+            refresh_token_added = await add_token_to_redis(
+                redis_client,
+                user,
+                refresh_token,
+                TokenType.REFRESH,
+                int(refresh_token_expires.total_seconds()),
+            )
+            print(f"Refresh token added to Redis: {refresh_token_added}")
+            
+            access_tokens = await get_valid_tokens(redis_client, user.id, TokenType.ACCESS)
+            print(f"Access tokens in Redis after login: {access_tokens}")
+        except Exception as e:
+            print(f"Error storing tokens in Redis: {str(e)}")
 
-        # valid_refresh_tokens = await get_valid_tokens(
-        #     redis_client, user.id, TokenType.REFRESH
-        # )
-        # print("valid_refresh_tokens:", {valid_refresh_tokens})
-        # if valid_refresh_tokens:
-        # await add_token_to_redis(
-        #     redis_client,
-        #     user,
-        #     refresh_token,
-        #     TokenType.REFRESH,
-        #     settings.REFRESH_TOKEN_EXPIRE_MINUTES,
-        # )
-
-    await add_token_to_redis(
-        redis_client,
-        user,
-        access_token,
-        TokenType.ACCESS,
-        settings.ACCESS_TOKEN_EXPIRE_MINUTES,
-    )
-    await add_token_to_redis(
-        redis_client,
-        user,
-        refresh_token,
-        TokenType.REFRESH,
-        settings.REFRESH_TOKEN_EXPIRE_MINUTES,
-    )
     data = Token(
         access_token=access_token,
         token_type="bearer",
         refresh_token=refresh_token,
         user=user,
     )
-    # print("data", data)
-    # print("meta_data", meta_data)
     return create_response(meta=meta_data, data=data, message="Login correctly")
 
 
@@ -175,97 +158,112 @@ async def get_new_access_token(
     """
     Gets a new access token using the refresh token for future requests
     """
-    print("Body.....................")
-    # print(redis_client)
-    # First check if the refresh token exists in Redis
     try:
-        print("body.refresh_token")
-        print(body.refresh_token)
+        print("Refresh token received:", body.refresh_token[:20] + "..." if body.refresh_token else "None")
+        
         # Decode without verification to get the user_id
         unverified_payload = decode_token(body.refresh_token)
         user_id = unverified_payload["sub"]
-        # print(user_id)
-        # print(unverified_payload)
+        # print(f"Token payload: {unverified_payload}")
+        
+        # Check if token exists in Redis
         valid_refresh_tokens = await get_valid_tokens(
             redis_client, user_id, TokenType.REFRESH
         )
-        # print("valid_refresh_tokens")
-        # print(valid_refresh_tokens)
+        
         if not valid_refresh_tokens or body.refresh_token not in valid_refresh_tokens:
-            raise HTTPException(status_code=403, detail="Refresh token invalid")
+            raise HTTPException(status_code=403, detail="Refresh token invalid or expired")
 
         # Now fully verify the token
         payload = decode_token(body.refresh_token)
-    except ExpiredSignatureError:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Your token has expired. Please log in again.",
-        )
-    except (DecodeError, MissingRequiredClaimError):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Invalid token format. Please log in again.",
-        )
+        
+        # Check token type - use get() to avoid KeyError
+        token_type = payload.get("type")
+        if token_type != "refresh" and "refresh" not in str(body.refresh_token).lower():
+            print(f"Expected refresh token, got token type: {token_type}")
+            raise HTTPException(status_code=403, detail="Invalid token type - not a refresh token")
 
-    if payload["type"] != "refresh":
-        raise HTTPException(status_code=404, detail="Incorrect token type")
+        # Convert user_id string to UUID
+        try:
+            user_id_uuid = UUID(user_id)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid user ID format")
 
-    user = await crud.user.get(id=user_id)
-    if not user or not user.is_active:
-        raise HTTPException(status_code=404, detail="User inactive or not found")
+        user = await crud.user.get(id=user_id_uuid)
+        if not user or not user.is_active:
+            raise HTTPException(status_code=404, detail="User inactive or not found")
 
-    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = security.create_access_token(
-        user_id, expires_delta=access_token_expires
-    )
-
-    valid_access_tokens = await get_valid_tokens(
-        redis_client, user.id, TokenType.ACCESS
-    )
-    if valid_access_tokens:
-        await add_token_to_redis(
-            redis_client,
-            user,
-            access_token,
-            TokenType.ACCESS,
-            settings.ACCESS_TOKEN_EXPIRE_MINUTES,
+        access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        access_token = security.create_access_token(
+            user_id, expires_delta=access_token_expires
         )
 
-    return create_response(
-        data=TokenRead(access_token=access_token, token_type="bearer"),
-        message="Access token generated correctly",
-    )
+        # Add new access token to Redis if enabled
+        if hasattr(settings, "USE_REDIS_TOKEN_BLACKLIST") and settings.USE_REDIS_TOKEN_BLACKLIST:
+            await add_token_to_redis(
+                redis_client,
+                user,
+                access_token,
+                TokenType.ACCESS,
+                settings.ACCESS_TOKEN_EXPIRE_MINUTES,
+            )
+
+        return create_response(
+            data=TokenRead(access_token=access_token, token_type="bearer"),
+            message="Access token generated correctly",
+        )
+    except Exception as e:
+        print(f"Error in refresh token: {str(e)}")
+        raise
 
 
-@router.post("/access-token",response_model=IPostResponseBase[TokenRead])
+@router.post("/access-token")
 async def login_access_token(
     form_data: OAuth2PasswordRequestForm = Depends(),
     redis_client: Redis = Depends(get_redis_client),
-) -> TokenRead:
+) -> dict:
     """
-    OAuth2 compatible token login, get an access token for future requests
+    OAuth2 compatible token login, get an access token for future requests.
+    This endpoint is used by Swagger UI for authorization.
     """
+    # Authenticate the user
     user = await crud.user.authenticate(
         email=form_data.username, password=form_data.password
     )
     if not user:
         raise HTTPException(status_code=400, detail="Incorrect email or password")
     elif not user.is_active:
-        raise HTTPException(status_code=400, detail="Inactive user. Contact your Admin")
+        raise HTTPException(status_code=400, detail="Inactive user")
+
+    # Delete existing tokens if Redis token blacklist is enabled
+    if hasattr(settings, "USE_REDIS_TOKEN_BLACKLIST") and settings.USE_REDIS_TOKEN_BLACKLIST:
+        await delete_tokens(redis_client, user, TokenType.ACCESS)
+    
+    # Create access token
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = security.create_access_token(
         user.id, expires_delta=access_token_expires
     )
-    # print("Access Token Expires:", {access_token_expires})
-    valid_access_tokens = await get_valid_tokens(
-        redis_client, user.id, TokenType.ACCESS
-    )
-    if valid_access_tokens:
-        await add_token_to_redis(
-            redis_client,
-            user,
-            access_token,
-            TokenType.ACCESS,
-            settings.ACCESS_TOKEN_EXPIRE_MINUTES,
-        )
-    return TokenRead(access_token=access_token, token_type="bearer")
+    
+    # Store the token in Redis if token blacklist is enabled
+    if hasattr(settings, "USE_REDIS_TOKEN_BLACKLIST") and settings.USE_REDIS_TOKEN_BLACKLIST:
+        try:
+            token_added = await add_token_to_redis(
+                redis_client,
+                user,
+                access_token,
+                TokenType.ACCESS,
+                int(access_token_expires.total_seconds()),
+            )
+            print(f"Access token added to Redis: {token_added}")
+        except Exception as e:
+            print(f"Error storing token in Redis: {str(e)}")
+    
+    # Return OAuth2 compatible response format for Swagger UI
+    # Important: Do NOT use create_response() here as Swagger UI expects a specific format
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user_id": str(user.id),  # Optional, can be helpful
+        "expires_in": settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60  # seconds
+    }

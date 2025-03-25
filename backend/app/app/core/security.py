@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 from typing import Any
+from uuid import UUID
 
 import jwt
 import bcrypt
@@ -10,26 +11,38 @@ fernet = Fernet(str.encode(settings.ENCRYPT_KEY))
 ALGORITHM = "HS256"
 
 
-def create_access_token(subject: str | Any, expires_delta: timedelta = None) -> str:
+def create_access_token(subject: UUID | str | Any, expires_delta: timedelta = None) -> str:
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
         expire = datetime.utcnow() + timedelta(
             minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
         )
-    to_encode = {"exp": expire, "sub": str(subject)}
+    # Ensure subject is a string (convert UUID if needed)
+    subject_str = str(subject)
+    to_encode = {
+        "exp": expire,
+        "sub": subject_str,
+        "type": "access"  # Add type field to distinguish token types
+    }
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
 
-def create_refresh_token(subject: str | Any, expires_delta: timedelta = None) -> str:
+def create_refresh_token(subject: UUID | str | Any, expires_delta: timedelta = None) -> str:
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
         expire = datetime.utcnow() + timedelta(
             minutes=settings.REFRESH_TOKEN_EXPIRE_MINUTES
         )
-    to_encode = {"exp": expire, "sub": str(subject)}
+    # Ensure subject is a string (convert UUID if needed)
+    subject_str = str(subject)
+    to_encode = {
+        "exp": expire,
+        "sub": subject_str,
+        "type": "refresh"  # Add type field to distinguish token types
+    }
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
