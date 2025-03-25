@@ -1,4 +1,4 @@
-from http.client import HTTPException
+from fastapi import HTTPException
 from io import BytesIO
 
 from typing import Annotated
@@ -45,6 +45,7 @@ from app.schemas.user_schema import (
     IUserRead,
     IUserReadWithoutGroups,
     IUserStatus,
+    IUserUpdate,
 )
 from app.schemas.token_schema import Token
 from app.schemas.user_follow_schema import (
@@ -60,9 +61,11 @@ import logging
 router = APIRouter()
 
 
-@router.get("/list")
+@router.get("/list",response_model=IGetResponsePaginated[IUserReadWithoutGroups])
 async def read_users_list(
-    params: Params = Depends(),
+    # params: Params = Depends(),
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=50, ge=1),
     current_user: User = Depends(
         deps.get_current_user(required_roles=[IRoleEnum.admin, IRoleEnum.manager])
     ),
@@ -74,11 +77,11 @@ async def read_users_list(
     - admin
     - manager
     """
-    users = await crud.user.get_multi_paginated(params=params)
+    users = await crud.user.get_multi_paginated_ordered(skip=skip, limit=limit, order_by="created_at")
     return create_response(data=users)
 
 
-@router.get("/list/by_role_name")
+@router.get("/list/by_role_name",response_model=IGetResponsePaginated[IUserReadWithoutGroups])
 async def read_users_list_by_role_name(
     name: str = "",
     user_status: Annotated[
@@ -126,9 +129,11 @@ async def read_users_list_by_role_name(
     return create_response(data=users)
 
 
-@router.get("/order_by_created_at")
+@router.get("/order_by_created_at",response_model=IGetResponsePaginated[IUserReadWithoutGroups])
 async def get_user_list_order_by_created_at(
-    params: Params = Depends(),
+    # params: Params = Depends(),
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=50, ge=1),
     current_user: User = Depends(
         deps.get_current_user(required_roles=[IRoleEnum.admin, IRoleEnum.manager])
     ),
@@ -141,14 +146,16 @@ async def get_user_list_order_by_created_at(
     - manager
     """
     users = await crud.user.get_multi_paginated_ordered(
-        params=params, order_by="created_at"
+        skip=skip, limit=limit, order_by="created_at"
     )
     return create_response(data=users)
 
 
-@router.get("/following")
+@router.get("/following",response_model=IGetResponsePaginated[IUserFollowReadCommon])
 async def get_following(
-    params: Params = Depends(),
+    # params: Params = Depends(),
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=50, ge=1),
     current_user: User = Depends(deps.get_current_user()),
 ) -> IGetResponsePaginated[IUserFollowReadCommon]:
     """
@@ -166,14 +173,13 @@ async def get_following(
         .join(UserFollow, User.id == UserFollow.target_user_id)
         .where(UserFollow.user_id == current_user.id)
     )
-    users = await crud.user.get_multi_paginated(query=query, params=params)
+    users = await crud.user.get_multi_paginated_ordered(query=query, skip=skip, limit=limit)
     return create_response(data=users)
 
 
 @router.get(
     "/following/{user_id}",
     status_code=status.HTTP_204_NO_CONTENT,
-    response_class=Response,
 )
 async def check_is_followed_by_user_id(
     user: User = Depends(user_deps.is_valid_user),
@@ -191,9 +197,11 @@ async def check_is_followed_by_user_id(
     raise UserFollowedException(target_user_name=user.last_name)
 
 
-@router.get("/followers")
+@router.get("/followers",response_model=IGetResponsePaginated[IUserFollowReadCommon])
 async def get_followers(
-    params: Params = Depends(),
+    # params: Params = Depends(),
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=50, ge=1),
     current_user: User = Depends(deps.get_current_user()),
 ) -> IGetResponsePaginated[IUserFollowReadCommon]:
     """
@@ -211,14 +219,16 @@ async def get_followers(
         .join(UserFollow, User.id == UserFollow.user_id)
         .where(UserFollow.target_user_id == current_user.id)
     )
-    users = await crud.user.get_multi_paginated(params=params, query=query)
+    users = await crud.user.get_multi_paginated_ordered(query=query, skip=skip, limit=limit)
     return create_response(data=users)
 
 
-@router.get("/{user_id}/followers")
+@router.get("/{user_id}/followers",response_model=IGetResponsePaginated[IUserFollowReadCommon])
 async def get_user_followed_by_user_id(
     user_id: UUID = Depends(user_deps.is_valid_user_id),
-    params: Params = Depends(),
+    # params: Params = Depends(),
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=50, ge=1),
     current_user: User = Depends(deps.get_current_user()),
 ) -> IGetResponsePaginated[IUserFollowReadCommon]:
     """
@@ -236,14 +246,16 @@ async def get_user_followed_by_user_id(
         .join(UserFollow, User.id == UserFollow.user_id)
         .where(UserFollow.target_user_id == user_id)
     )
-    users = await crud.user.get_multi_paginated(params=params, query=query)
+    users = await crud.user.get_multi_paginated_ordered(query=query, skip=skip, limit=limit)
     return create_response(data=users)
 
 
-@router.get("/{user_id}/following")
+@router.get("/{user_id}/following",response_model=IGetResponsePaginated[IUserFollowReadCommon])
 async def get_user_following_by_user_id(
     user_id: UUID = Depends(user_deps.is_valid_user_id),
-    params: Params = Depends(),
+    # params: Params = Depends(),
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=50, ge=1),
     current_user: User = Depends(deps.get_current_user()),
 ) -> IGetResponsePaginated[IUserFollowReadCommon]:
     """
@@ -261,14 +273,14 @@ async def get_user_following_by_user_id(
         .join(UserFollow, User.id == UserFollow.target_user_id)
         .where(UserFollow.user_id == user_id)
     )
-    users = await crud.user.get_multi_paginated(query=query, params=params)
+    users = await crud.user.get_multi_paginated_ordered(query=query, skip=skip, limit=limit)
     return create_response(data=users)
 
 
 @router.get(
     "/{user_id}/following/{target_user_id}",
-    status_code=status.HTTP_204_NO_CONTENT,
-    response_class=Response,
+    status_code=status.HTTP_204_NO_CONTENT
+    
 )
 async def check_a_user_is_followed_another_user_by_id(
     user_id: UUID,
@@ -298,7 +310,7 @@ async def check_a_user_is_followed_another_user_by_id(
         )
 
 
-@router.put("/following/{target_user_id}")
+@router.put("/following/{target_user_id}",response_model=IPutResponseBase[IUserFollowRead])
 async def follow_a_user_by_id(
     target_user_id: UUID,
     current_user: User = Depends(deps.get_current_user()),
@@ -326,7 +338,7 @@ async def follow_a_user_by_id(
     return create_response(data=new_user_follow)
 
 
-@router.delete("/following/{target_user_id}")
+@router.delete("/following/{target_user_id}",response_model=IDeleteResponseBase[IUserFollowRead])
 async def unfollowing_a_user_by_id(
     target_user_id: UUID,
     current_user: User = Depends(deps.get_current_user()),
@@ -355,7 +367,7 @@ async def unfollowing_a_user_by_id(
     return create_response(data=user_follow)
 
 
-@router.get("/{user_id}")
+@router.get("/{user_id}",response_model=IGetResponseBase[IUserRead])
 async def get_user_by_id(
     user: User = Depends(user_deps.is_valid_user),
     current_user: User = Depends(
@@ -372,17 +384,18 @@ async def get_user_by_id(
     return create_response(data=user)
 
 
-@router.get("")
+@router.get("/me",response_model=IGetResponseBase[IUserRead])
 async def get_my_data(
     current_user: User = Depends(deps.get_current_user()),
 ) -> IGetResponseBase[IUserRead]:
     """
     Gets my user profile information
     """
+    print("current_user:",current_user)
     return create_response(data=current_user)
 
 
-@router.post("", status_code=status.HTTP_201_CREATED)
+@router.post("", status_code=status.HTTP_201_CREATED, response_model=IPostResponseBase[IUserRead])
 async def create_user(
     new_user: IUserCreate = Depends(user_deps.user_exists),
     provider: AuthProvider = Body(default=AuthProvider.email),
@@ -406,10 +419,11 @@ async def create_user(
     return create_response(data=user)
 
 
-@router.post("/verify-email/{token}")
+@router.post("/verify-email/{token}",response_model=IPostResponseBase[IUserRead])
 async def verify_email(
     token: str,
-) -> IPostResponseBase:
+    current_user: User = Depends(deps.get_current_user()),
+) -> IPostResponseBase[IUserRead]:
     """
     Verify user email with verification token
     """
@@ -421,24 +435,24 @@ async def verify_email(
                 status_code=400,
                 detail="Invalid verification token"
             )
-        
+
         user = await crud.user.get(id=user_id)
         if not user:
             raise HTTPException(
                 status_code=404,
                 detail="User not found"
             )
-        
+
         if user.email_verified:
             return create_response(message="Email already verified")
-        
+
         # Update user's email verification status
         await crud.user.update(
             obj_current=user,
             obj_new={"email_verified": True}
         )
-        
-        return create_response(message="Email verified successfully")
+
+        return create_response(message="Email verified successfully", data=user)
     except Exception as e:
         raise HTTPException(
             status_code=400,
@@ -446,7 +460,7 @@ async def verify_email(
         )
 
 
-@router.post("/social-auth/{provider}")
+@router.post("/social-auth/{provider}",response_model=IPostResponseBase[Token])
 async def social_auth(
     provider: AuthProvider,
     access_token: str = Body(...),
@@ -536,7 +550,7 @@ async def social_auth(
         )
 
 
-@router.delete("/{user_id}")
+@router.delete("/{user_id}",response_model=IDeleteResponseBase[IUserRead])
 async def remove_user(
     user_id: UUID = Depends(user_deps.is_valid_user_id),
     current_user: User = Depends(
@@ -556,7 +570,7 @@ async def remove_user(
     return create_response(data=user, message="User removed")
 
 
-@router.post("/image")
+@router.post("/image",response_model=IPostResponseBase[IUserRead])
 async def upload_my_image(
     title: str | None = Body(None),
     description: str | None = Body(None),
@@ -591,7 +605,7 @@ async def upload_my_image(
         return Response("Internal server error", status_code=500)
 
 
-@router.post("/{user_id}/image")
+@router.post("/{user_id}/image",response_model=IPostResponseBase[IUserRead])
 async def upload_user_image(
     user: User = Depends(user_deps.is_valid_user),
     title: str | None = Body(None),
@@ -629,3 +643,128 @@ async def upload_user_image(
     except Exception as e:
         print(e)
         return Response("Internal server error", status_code=500)
+
+
+@router.put("/{user_id}", response_model=IPutResponseBase[IUserRead])
+async def update_user(
+    user_update: IUserUpdate,
+    user: User = Depends(user_deps.is_valid_user),
+    current_user: User = Depends(
+        deps.get_current_user(required_roles=[IRoleEnum.admin, IRoleEnum.manager])
+    ),
+) -> IPutResponseBase[IUserRead]:
+    """
+    Updates a user by id
+    
+    Required roles:
+    - admin
+    - manager
+    """
+    updated_user = await crud.user.update(obj_current=user, obj_new=user_update)
+    return create_response(data=updated_user)
+
+
+@router.put("", response_model=IPutResponseBase[IUserRead])
+async def update_my_user(
+    user_update: IUserUpdate,
+    current_user: User = Depends(deps.get_current_user()),
+) -> IPutResponseBase[IUserRead]:
+    """
+    Updates the current user's profile
+    
+    This endpoint only allows users to update their own profile data.
+    The user is identified by their authentication token, ensuring
+    they can only modify their own information.
+    """
+    # Create a copy of the update data to modify safely
+    update_data = user_update.dict(exclude_unset=True)
+    
+    # Security check: prevent users from updating restricted fields
+    restricted_fields = ["is_superuser", "is_active", "role_id", "provider", "provider_user_id"]
+    for field in restricted_fields:
+        if field in update_data:
+            update_data.pop(field)
+    
+    # Handle password update specially if included
+    if "password" in update_data and update_data["password"]:
+        # Hash the new password
+        update_data["hashed_password"] = security.get_password_hash(update_data.pop("password"))
+    
+    # Check email uniqueness if changing email
+    if "email" in update_data and update_data["email"] != current_user.email:
+        existing_user = await crud.user.get_by_email(email=update_data["email"])
+        if existing_user:
+            raise HTTPException(
+                status_code=400,
+                detail="Email already registered"
+            )
+    
+    # Update the user with the validated data
+    updated_user = await crud.user.update(obj_current=current_user, obj_new=update_data)
+    return create_response(data=updated_user)
+
+
+@router.put("/{user_id}/activate", response_model=IPutResponseBase[IUserRead])
+async def activate_user(
+    user: User = Depends(user_deps.is_valid_user),
+    current_user: User = Depends(
+        deps.get_current_user(required_roles=[IRoleEnum.admin])
+    ),
+) -> IPutResponseBase[IUserRead]:
+    """
+    Activates a user account
+    
+    Required roles:
+    - admin
+    """
+    if user.is_active:
+        return create_response(message="User is already active", data=user)
+        
+    updated_user = await crud.user.update(
+        obj_current=user, 
+        obj_new={"is_active": True}
+    )
+    return create_response(
+        message=f"User {updated_user.email} has been activated",
+        data=updated_user
+    )
+
+
+@router.put("/{user_id}/deactivate", response_model=IPutResponseBase[IUserRead])
+async def deactivate_user(
+    user: User = Depends(user_deps.is_valid_user),
+    current_user: User = Depends(
+        deps.get_current_user(required_roles=[IRoleEnum.admin])
+    ),
+) -> IPutResponseBase[IUserRead]:
+    """
+    Deactivates a user account
+    
+    Required roles:
+    - admin
+    """
+    # Prevent self-deactivation
+    if user.id == current_user.id:
+        raise HTTPException(
+            status_code=400,
+            detail="You cannot deactivate your own account"
+        )
+        
+    # Prevent deactivating another admin
+    if user.role and user.role.name == IRoleEnum.admin:
+        raise HTTPException(
+            status_code=403,
+            detail="You cannot deactivate another admin's account"
+        )
+    
+    if not user.is_active:
+        return create_response(message="User is already inactive", data=user)
+        
+    updated_user = await crud.user.update(
+        obj_current=user, 
+        obj_new={"is_active": False}
+    )
+    return create_response(
+        message=f"User {updated_user.email} has been deactivated",
+        data=updated_user
+    )

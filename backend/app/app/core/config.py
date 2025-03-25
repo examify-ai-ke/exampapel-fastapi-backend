@@ -46,6 +46,7 @@ class Settings(BaseSettings):
     JWT_ISSUER: str = "your-application-name"
     JWT_AUDIENCE: str = "your-frontend-url"
     DEFAULT_ROLE_NAME:  str ="user"
+    USE_REDIS_TOKEN_BLACKLIST: bool = True
 
     @field_validator("ASYNC_DATABASE_URI", mode="after")
     def assemble_db_connection(cls, v: str | None, info: FieldValidationInfo) -> Any:

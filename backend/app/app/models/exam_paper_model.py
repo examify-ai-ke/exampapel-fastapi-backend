@@ -185,16 +185,15 @@ class ExamPaper(BaseUUIDModel,ExamPaperBase, table=True):
         },
     )
     
-    # # One-to-many relationship
-    # main_questions: List["MainQuestion"] = Relationship(
-    #     back_populates="exam_paper",
-    #     sa_relationship_kwargs={
-    #         "lazy": "joined",
-    #         "cascade": "all, delete-orphan",
-    #         "single_parent": True,  # Ensures orphan removal
-    #     },
-    # )
-
+    # One-to-many relationship with MainQuestion
+    main_questions: List["MainQuestion"] = Relationship(
+        back_populates="exam_paper",
+        sa_relationship_kwargs={
+            "lazy": "selectin",
+            "cascade": "all, delete-orphan",
+            "single_parent": True,  # Ensures orphan removal
+        },
+    )
 
     # Many-to_Many
     modules: List["Module"] = Relationship(

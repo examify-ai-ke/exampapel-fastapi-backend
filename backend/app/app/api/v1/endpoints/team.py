@@ -28,7 +28,7 @@ from app.schemas.team_schema import (
 router = APIRouter()
 
 
-@router.get("")
+@router.get("",response_model=IGetResponsePaginated[ITeamRead])
 async def get_teams_list(
     params: Params = Depends(),
     current_user: User = Depends(deps.get_current_user()),
@@ -41,7 +41,7 @@ async def get_teams_list(
     return create_response(data=teams)
 
 
-@router.get("/{team_id}")
+@router.get("/{team_id}",response_model=IGetResponseBase[ITeamRead])
 async def get_team_by_id(
     team_id: UUID,
     current_user: User = Depends(deps.get_current_user()),
@@ -55,7 +55,7 @@ async def get_team_by_id(
     return create_response(data=team)
 
 
-@router.post("", status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=IPostResponseBase[ITeamRead])
 async def create_team(
     team: ITeamCreate,
     current_user: User = Depends(
@@ -76,7 +76,7 @@ async def create_team(
     return create_response(data=team)
 
 
-@router.put("/{team_id}")
+@router.put("/{team_id}", response_model=IPostResponseBase[ITeamRead])
 async def update_team(
     team_id: UUID,
     new_team: ITeamUpdate,
@@ -109,7 +109,7 @@ async def update_team(
     return create_response(data=heroe_updated)
 
 
-@router.delete("/{team_id}")
+@router.delete("/{team_id}",response_model=IDeleteResponseBase[ITeamRead])
 async def remove_team(
     team_id: UUID,
     current_user: User = Depends(

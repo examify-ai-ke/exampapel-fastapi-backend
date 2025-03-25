@@ -1,13 +1,11 @@
 import asyncio
-from app.db.init_db import init_db, init_db_institution
+from app.db.init_db import init_db
 from app.db.session import SessionLocal
 
 
 async def create_init_data() -> None:
     async with SessionLocal() as session:
-        await init_db(session)
-        # async with SessionLocal() as db_session:
-        await init_db_institution(session)
+        await init_db(session, skip_institutions=False)
 
 
 async def main() -> None:

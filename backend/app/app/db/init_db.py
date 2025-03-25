@@ -9,9 +9,16 @@ from app.models.institution_model import (
     InstitutionFacultyLink,
     InstitutionTypes,
 )
-from app.models.module_model import CourseModuleLink, Module
+from app.models.module_model import CourseModuleLink, Module, ModuleExamsLink
 from app.models.programme_model import Programme, ProgrammeDepartmentLink, ProgrammeTypes
-from app.models.exam_paper_model import ExamDescription, ExamInstruction, ExamPaper, ExamTitle
+from app.models.exam_paper_model import (
+    ExamDescription,
+    ExamInstruction,
+    ExamPaper,
+    ExamTitle,
+    ExamPaperQuestionLink,
+    InstructionExamsLink,
+)
 from app.models.question_model import MainQuestion, QuestionSet, QuestionSetTitleEnum, SubQuestion
 from sqlmodel.ext.asyncio.session import AsyncSession
 from app import crud
@@ -22,6 +29,8 @@ from app.schemas.team_schema import ITeamCreate
 from app.schemas.hero_schema import IHeroCreate
 from app.schemas.group_schema import IGroupCreate
 import uuid
+import asyncio
+from sqlalchemy import select
 
 
 roles: list[IRoleCreate] = [
@@ -84,256 +93,202 @@ heroes: list[dict[str, str | IHeroCreate]] = [
 ]
 
 
-async def init_db(db_session: AsyncSession) -> None:
-    for role in roles:
-        role_current = await crud.role.get_role_by_name(
-            name=role.name, db_session=db_session
-        )
-        if not role_current:
-            await crud.role.create(obj_in=role, db_session=db_session)
-
-    for user in users:
-        current_user = await crud.user.get_by_email(
-            email=user["data"].email, db_session=db_session
-        )
-        role = await crud.role.get_role_by_name(
-            name=user["role"], db_session=db_session
-        )
-        if not current_user:
-            user["data"].role_id = role.id
-            await crud.user.create_with_role(obj_in=user["data"], db_session=db_session)
-
-    for group in groups:
-        current_group = await crud.group.get_group_by_name(
-            name=group.name, db_session=db_session
-        )
-        if not current_group:
-            current_user = await crud.user.get_by_email(
-                email=users[0]["data"].email, db_session=db_session
-            )
-            new_group = await crud.group.create(
-                obj_in=group, created_by_id=current_user.id, db_session=db_session
-            )
-            current_users = []
-            for user in users:
-                current_users.append(
-                    await crud.user.get_by_email(
-                        email=user["data"].email, db_session=db_session
-                    )
-                )
-            await crud.group.add_users_to_group(
-                users=current_users, group_id=new_group.id, db_session=db_session
-            )
-
-    for team in teams:
-        current_team = await crud.team.get_team_by_name(
-            name=team.name, db_session=db_session
-        )
-        if not current_team:
-            current_user = await crud.user.get_by_email(
-                email=users[0]["data"].email, db_session=db_session
-            )
-            await crud.team.create(
-                obj_in=team, created_by_id=current_user.id, db_session=db_session
-            )
-
-    for heroe in heroes:
-        current_heroe = await crud.hero.get_heroe_by_name(
-            name=heroe["data"].name, db_session=db_session
-        )
-        team = await crud.team.get_team_by_name(
-            name=heroe["team"], db_session=db_session
-        )
-        if not current_heroe:
-            current_user = await crud.user.get_by_email(
-                email=users[0]["data"].email, db_session=db_session
-            )
-            new_heroe = heroe["data"]
-            new_heroe.team_id = team.id
-            await crud.hero.create(
-                obj_in=new_heroe, created_by_id=current_user.id, db_session=db_session
-            )
-
-
-async def init_db_institution(db: AsyncSession) -> None:
-    # ADMIN_USER_ID = uuid.UUID("019074fa-2036-79f1-bf01-d7d7a2b07a3b")
-    current_admin = await crud.user.get_by_email(
-        email=settings.FIRST_SUPERUSER_EMAIL, db_session=db
-    )
-
-    ADMIN_USER_ID=current_admin.id
-
+async def init_db(db_session: AsyncSession, skip_institutions=False) -> None:
+    """
+    Initialize database with core data and optionally institutions.
+    
+    Args:
+        db_session: The database session
+        skip_institutions: If True, skip institution initialization
+    """
     try:
-        # Check if there are any records in the Institution table
-        institution_count = await crud.institution.get_count_of_institutions(
-            db_session=db
-        )
-
-        print("Institution Count:", institution_count)
-        if not institution_count:
-            print("No institutions found. Initializing database with dummy data...")
-
-            # Create ImageMedia
-            # image = ImageMedia(
-            #     id=uuid.uuid4(),
-            #     file_format="jpg",
-            #     width=800,
-            #     height=600,
-            #     created_at=datetime.utcnow(),
-            #     updated_at=datetime.utcnow(),
-            #     created_by_id=ADMIN_USER_ID,
-            # )
-
-            # await db.add(image)
-            # await db.flush()
-
-            # Create Institution
-            institution_create = Institution(
-                # id=uuid.uuid4(),
-                name="Sample University",
-                description="A leading institution of higher education",
-                institution_type=InstitutionTypes.UNIVERSITY,
-                email="info@sampleuniversity.edu",
-                phone_number="+1234567890",
-                slug="sample-university",
-                image_id=None,
-                # created_at=datetime.utcnow(),
-                # updated_at=datetime.utcnow(),
-                created_by_id=ADMIN_USER_ID,
+        # Create roles first
+        for role in roles:
+            role_current = await crud.role.get_role_by_name(
+                name=role.name, db_session=db_session
             )
+            if not role_current:
+                await crud.role.create(obj_in=role, db_session=db_session)
 
-            # Create Faculty
-            faculty_create = Faculty(
-                # id=uuid.uuid4(),
-                name="Faculty of Science",
-                description="Exploring the wonders of science",
-                slug="faculty-of-science",
-                # image_id=image.id,
-                # created_at=datetime.utcnow(),
-                # updated_at=datetime.utcnow(),
-                created_by_id=ADMIN_USER_ID,
+        # Then create users (including admin)
+        for user in users:
+            current_user = await crud.user.get_by_email(
+                email=user["data"].email, db_session=db_session
             )
-
-            # Create Department
-            department = Department(
-                # id=uuid.uuid4(),
-                name="Department of Computer Science",
-                description="Advancing computer science education and research",
-                slug="computer-science",
-                # image_id=image.id,
-                # faculty_id=faculty_create.id,
-                # created_at=datetime.utcnow(),
-                # updated_at=datetime.utcnow(),
-                created_by_id=ADMIN_USER_ID,
-            )
-            # Create Programme
-            programme = Programme(
-                # id=uuid.uuid4(),
-                name=ProgrammeTypes.UNDERGRADUATE,
-                description="A comprehensive program in computer science",
-                slug="bsc-computer-science",
-                # image_id=image.id,
-                # created_at=datetime.utcnow(),
-                # updated_at=datetime.utcnow(),
-                created_by_id=ADMIN_USER_ID,
-            )
-
-            # Create Course
-            course = Course(
-                # id=uuid.uuid4(),
-                name="Introduction to Programming",
-                description="Fundamentals of programming and problem-solving",
-                slug="intro-to-programming",
-                # programme_id=programme.id,
-                # image_id=image.id,
-                # created_at=datetime.utcnow(),
-                # updated_at=datetime.utcnow(),
-                created_by_id=ADMIN_USER_ID,
-            )
-
-            # Create Module
-            module = Module(
-                id=uuid.uuid4(),
-                name="Python Basics",
-                slug="python-basics",
-                unit_code="PY101",
-                description="Introduction to Python programming language",
-                # image_id=image.id,
-                # created_at=datetime.utcnow(),
-                # updated_at=datetime.utcnow(),
-                created_by_id=ADMIN_USER_ID,
-            )
-
-            # Create ExamTitle
-            exam_title = ExamTitle(
-                # id=uuid.uuid4(),
-                name="Python Basics Final Exam",
-                description="Final examination for the Python Basics module",
-                slug="python-basics-final-exam",
-                # created_at=datetime.utcnow(),
-                # updated_at=datetime.utcnow(),
-                created_by_id=ADMIN_USER_ID,
-            )
-
-            # Create ExamDescription
-            exam_description = ExamDescription(
-                # id=uuid.uuid4(),
-                name="Python Basics Final Exam Description",
-                slug="python-basics-final-exam-description",
-                description="This exam covers all topics taught in the Python Basics module, including variables, data types, control structures, functions, and basic object-oriented programming concepts.",
-                # created_at=datetime.utcnow(),
-                # updated_at=datetime.utcnow(),
-                created_by_id=ADMIN_USER_ID
-            )
-
-            # Create ExamInstruction
-            exam_instruction = ExamInstruction(
-                id=uuid.uuid4(),
-                name="Python Basics Exam Instructions",
-                slug="python-basics-exam-instructions",
-                # created_at=datetime.utcnow(),
-                # updated_at=datetime.utcnow(),
-                created_by_id=ADMIN_USER_ID,
-            )
-
-            hash_object = (
-                hashlib.sha256(
-                    "python-basics-exam-instructions+Python Basics Final Exam Description".encode()
+            if not current_user:
+                role = await crud.role.get_role_by_name(
+                    name=user["role"], db_session=db_session
                 )
+                user["data"].role_id = role.id
+                await crud.user.create_with_role(obj_in=user["data"], db_session=db_session)
+
+        # Get admin user ID for creating other entities
+        current_admin = await crud.user.get_by_email(
+            email=settings.FIRST_SUPERUSER_EMAIL, db_session=db_session
+        )
+        ADMIN_USER_ID = current_admin.id
+
+        # Create groups, teams, heroes
+        for group in groups:
+            current_group = await crud.group.get_group_by_name(
+                name=group.name, db_session=db_session
+            )
+            if not current_group:
+                current_user = await crud.user.get_by_email(
+                    email=users[0]["data"].email, db_session=db_session
+                )
+                new_group = await crud.group.create(
+                    obj_in=group, created_by_id=current_user.id, db_session=db_session
+                )
+                current_users = []
+                for user in users:
+                    current_users.append(
+                        await crud.user.get_by_email(
+                            email=user["data"].email, db_session=db_session
+                        )
+                    )
+                await crud.group.add_users_to_group(
+                    users=current_users, group_id=new_group.id, db_session=db_session
+                )
+
+        for team in teams:
+            current_team = await crud.team.get_team_by_name(
+                name=team.name, db_session=db_session
+            )
+            if not current_team:
+                current_user = await crud.user.get_by_email(
+                    email=users[0]["data"].email, db_session=db_session
+                )
+                await crud.team.create(
+                    obj_in=team, created_by_id=current_user.id, db_session=db_session
+                )
+
+        for heroe in heroes:
+            current_heroe = await crud.hero.get_heroe_by_name(
+                name=heroe["data"].name, db_session=db_session
+            )
+            team = await crud.team.get_team_by_name(
+                name=heroe["team"], db_session=db_session
+            )
+            if not current_heroe:
+                current_user = await crud.user.get_by_email(
+                    email=users[0]["data"].email, db_session=db_session
+                )
+                new_heroe = heroe["data"]
+                new_heroe.team_id = team.id
+                await crud.hero.create(
+                    obj_in=new_heroe, created_by_id=current_user.id, db_session=db_session
+                )
+
+        # Check if we should skip institution initialization
+        if skip_institutions:
+            return
+
+        # Check if institutions already exist
+        existing_institutions = await db_session.execute(select(Institution))
+        if existing_institutions.scalars().first():
+            print("Institutions already exist. Skipping institution initialization.")
+            return
+
+        # Initialize institutions and related entities
+        try:
+            # Create exam title
+            exam_title = ExamTitle(
+                name="Introduction to Programming",
+                slug="introduction-to-programming",
+                created_by_id=ADMIN_USER_ID,
+            )
+            db_session.add(exam_title)
+            await db_session.flush()
+
+            # Create an exam description
+            exam_description = ExamDescription(
+                name="Final Examination",
+                slug="final-examination",
+                created_by_id=ADMIN_USER_ID,
+            )
+            db_session.add(exam_description)
+            await db_session.flush()
+
+            # Create institution
+            institution = Institution(
+                name="University of Technology",
+                description="A leading institution in technology education",
+                institution_type=InstitutionTypes.UNIVERSITY,
+                email="info@utech.edu",
+                phone_number="+1234567890",
+                created_by_id=ADMIN_USER_ID,
+                slug="university-of-technology",
+            )
+            db_session.add(institution)
+            await db_session.flush()
+
+            # Create a module
+            module = Module(
+                name="Python Programming",
+                unit_code="CS101",
+                description="Introduction to programming with Python",
+                slug="python-programming",
+                created_by_id=ADMIN_USER_ID,
+            )
+            db_session.add(module)
+            await db_session.flush()
+
+            # Create an exam paper (this must exist before creating MainQuestions)
+            hash_object = hashlib.sha256(
+                f"{exam_title.name}+{exam_description.name}".encode()
             ).hexdigest()
 
-            # Create ExamPaper
             exam_paper = ExamPaper(
-                # id=uuid.uuid4(),
-                year_of_exam="2024",
-                exam_duration=120,  # 2 hours
-                exam_date=date(2024, 6, 15),  # Example date
-                tags=["python", "programming", "basics"],
-                # created_at=datetime.utcnow(),
-                # updated_at=datetime.utcnow(),
+                title_id=exam_title.id,
+                description_id=exam_description.id,
+                institution_id=institution.id,
+                year_of_exam="2023",
+                exam_date=datetime.utcnow(),
+                exam_duration=180,  # 3 hours in minutes
                 created_by_id=ADMIN_USER_ID,
-                # description_id=exam_description.id,
-                # title_id=exam_title.id,
-                # course_id=course.id,
-                # institution_id=institution.id,
-                hash_code=str(hash_object),  # Generate a unique hash code
+                hash_code=hash_object,  # Ensure hash_code is set
             )
+            db_session.add(exam_paper)
+            await db_session.flush()
 
-            # Exams Questions now....................................
-            # Create QuestionSet
+            # Create exam instruction
+            exam_instruction = ExamInstruction(
+                name="Python Basics Exam Instructions",
+                slug="python-basics-exam-instructions",
+                created_by_id=ADMIN_USER_ID,
+            )
+            db_session.add(exam_instruction)
+            await db_session.flush()
+
+            # Link module to exam paper
+            module_exam_link = ModuleExamsLink(
+                module_id=module.id,
+                exam_id=exam_paper.id
+            )
+            db_session.add(module_exam_link)
+            await db_session.flush()
+
+            # Create a question set
             question_set = QuestionSet(
-                # id=uuid.uuid4(),
-                title=QuestionSetTitleEnum.QUESTION_ONE,  # Assuming this is one of the enum values
-                slug="question-one-question_set",
-                # created_at=datetime.utcnow(),
-                # updated_at=datetime.utcnow(),
+                title=QuestionSetTitleEnum.QUESTION_ONE,
+                slug="question-one-set",
                 created_by_id=ADMIN_USER_ID,
             )
+            db_session.add(question_set)
+            await db_session.flush()
 
-            # Create MainQuestions
+            # Link question set to exam paper
+            exam_paper_question_link = ExamPaperQuestionLink(
+                exam_id=exam_paper.id,
+                question_set_id=question_set.id
+            )
+            db_session.add(exam_paper_question_link)
+            await db_session.flush()
+
+            # Create main questions - now with the required exam_paper_id
             main_questions = [
                 MainQuestion(
-                    # id=uuid.uuid4(),
                     text={
                         "time": 1742156891249,
                         "blocks": [
@@ -344,23 +299,17 @@ async def init_db_institution(db: AsyncSession) -> None:
                                     "text":"Explain the concept of variables in Python and provide examples of different data types.",
                                 }
                             }
-                            
                         ],
-                    
                     },
-                    # text="Explain the concept of variables in Python and provide examples of different data types.",
                     marks=5,
                     numbering_style="ROMAN",
                     question_number="i",
                     slug="python-variables-and-data-types",
                     question_set_id=question_set.id,
-                    # exam_paper_id=exam_paper.id,
-                    # created_at=datetime.utcnow(),
-                    # updated_at=datetime.utcnow(),
+                    exam_paper_id=exam_paper.id,
                     created_by_id=ADMIN_USER_ID,
                 ),
                 MainQuestion(
-                    # id=uuid.uuid4(),
                     text={
                         "time": 1742156891260,
                         "blocks": [
@@ -371,136 +320,425 @@ async def init_db_institution(db: AsyncSession) -> None:
                                     "text":"Write a Python function that calculates the factorial of a given number. Explain your code.",
                                 }
                             }
-                            
                         ],
-                    
                     },
-                    # text="Write a Python function that calculates the factorial of a given number. Explain your code.",
                     marks=15,
-                    order_within_question_set="2",
+                    numbering_style="ROMAN",
+                    question_number="ii",
                     slug="python-factorial-function",
-                    numbering_style="ROMAN",
-                    question_number="ii",
                     question_set_id=question_set.id,
-                    # exam_paper_id=exam_paper.id,
-                    # created_at=datetime.utcnow(),
-                    # updated_at=datetime.utcnow(),
+                    exam_paper_id=exam_paper.id,
                     created_by_id=ADMIN_USER_ID,
                 ),
             ]
 
-            # Create SubQuestions for the second MainQuestion
-            sub_questions = [
+            # Add the main questions to the session
+            for question in main_questions:
+                db_session.add(question)
+            await db_session.flush()
+
+            # Create subquestions for the first main question
+            subquestions = [
                 SubQuestion(
-                    # id=uuid.uuid4(),
                     text={
-                        "time": 1742156891260,
+                        "time": 1742156891270,
                         "blocks": [
                             {
-                                "id": "dCcbQeoht12",
+                                "id": "subq1",
                                 "type": "paragraph",
                                 "data": {
-                                    "text": "What is recursion and how can it be used to calculate factorial?",
+                                    "text": "Define what a variable is in Python.",
                                 },
                             }
                         ],
                     },
-                    marks=5,
-                    main_question_id=main_questions[1].id,
-                    numbering_style="ROMAN",
-                    question_number="i",
+                    marks=2,
+                    question_number="a",
+                    numbering_style="ALPHA",
+                    main_question_id=main_questions[0].id,
                     created_by_id=ADMIN_USER_ID,
                 ),
                 SubQuestion(
-                    # id=uuid.uuid4(),
                     text={
-                        "time": 1742156891260,
+                        "time": 1742156891280,
                         "blocks": [
                             {
-                                "id": "dCcbQeoht12",
+                                "id": "subq2",
                                 "type": "paragraph",
                                 "data": {
-                                    "text": "Provide an iterative solution for calculating factorial. Compare it with the recursive approach.",
+                                    "text": "List and explain 3 different data types in Python with examples.",
                                 },
                             }
                         ],
                     },
-                    marks=10,
-                    main_question_id=main_questions[1].id,
-                    numbering_style="ROMAN",
-                    question_number="ii",
+                    marks=3,
+                    question_number="b",
+                    numbering_style="ALPHA",
+                    main_question_id=main_questions[0].id,
                     created_by_id=ADMIN_USER_ID,
                 ),
             ]
 
-            # --------------------------------------------------------
-            # exam_paper.modules.append(module)
-            exam_title.exam_papers.append(exam_paper)
-            exam_description.exam_papers.append(exam_paper)
-            exam_paper.instructions.append(exam_instruction)
-            exam_paper.question_sets.append(question_set)
-            exam_paper.modules.append(module)
+            # Add the subquestions to the session
+            for subquestion in subquestions:
+                db_session.add(subquestion)
 
-            # Append examPaper to the Course
-            course.exam_papers.append(exam_paper)
+            # Link exam instruction to exam paper
+            instruction_link = InstructionExamsLink(
+                exam_id=exam_paper.id, instruction_id=exam_instruction.id
+            )
+            db_session.add(instruction_link)
 
-            # ---------------------------------------------------------
-            # Institutions
-            institution_create.exam_papers.append(exam_paper)
+            # Create faculty first
+            faculty = await crud.faculty.get_faculty_by_slug(
+                slug="faculty-of-computer-science", db_session=db_session
+            )
+            if not faculty:
+                faculty = Faculty(
+                    name="Faculty of Computer Science",
+                    slug="faculty-of-computer-science",
+                    description="Computer Science and Technology Faculty",
+                    created_by_id=ADMIN_USER_ID,
+                )
+                db_session.add(faculty)
+                await db_session.flush()
 
-            department.faculty_id=faculty_create.id
-            faculty_create.departments.append(department)
+            # Create faculty-institution link
+            institution_faculty_link = InstitutionFacultyLink(
+                institution_id=institution.id,
+                faculty_id=faculty.id
+            )
+            db_session.add(institution_faculty_link)
+            await db_session.flush()
 
-            course.programme_id = programme.id
-            programme.courses.append(course)
-            department.programmes.append(programme)
-            course.modules.append(module)
-            institution_create.faculties.append(faculty_create)
+            # Now create department WITH faculty_id
+            department = await crud.department.get_department_by_slug(
+                slug="software-engineering-department", db_session=db_session
+            )
+            if not department:
+                department = Department(
+                    name="Software Engineering Department",
+                    slug="software-engineering-department",
+                    description="Department offering software engineering courses",
+                    faculty_id=faculty.id,  # Set faculty_id at creation time
+                    created_by_id=ADMIN_USER_ID,
+                )
+                db_session.add(department)
+                await db_session.flush()
 
-            # # Add ExamPaper Id in each MainQuestion---Its required
-            # for main_question in main_questions:
-            #     main_question.exam_paper_id = exam_paper.id
+            # Create programme first
+            programme = await crud.programme.get_programme_by_slug(
+                slug="undergraduate", db_session=db_session
+            )
+            if not programme:
+                programme = Programme(
+                    name=ProgrammeTypes.UNDERGRADUATE,
+                    slug="undergraduate",
+                    description="Undergraduate programmes",
+                    created_by_id=ADMIN_USER_ID,
+                )
+                db_session.add(programme)
+                await db_session.flush()
 
-            # # Add the All Sub Questions to MainQuestion 1.
-            # for sub_question in sub_questions:
-            #     main_questions[0].subquestions.append(sub_question)
+            # Create course with programme_id set
+            course = await crud.course.get_course_by_slug(
+                slug="computer-science", db_session=db_session
+            )
+            if not course:
+                course = Course(
+                    name="Computer Science",
+                    slug="computer-science",
+                    course_acronym="CS", 
+                    description="Degree in Computer Science",
+                    programme_id=programme.id,  # Set programme_id at creation time
+                    created_by_id=ADMIN_USER_ID,
+                )
+                db_session.add(course)
+                await db_session.flush()
 
-            # # Append the MainQuestions to the QuestionSet
-            # for main_question in main_questions:
-            #     question_set.main_questions.append(main_question)
-            # # TODO
-            # # ExamPaper should have a list of all MainQuestions that belong to it
+            # Set the exam paper's course ID
+            exam_paper.course_id = course.id
+            await db_session.flush()
 
-            # ---------------------------------------------------------
-            # Questions now
+            # Create programme-department link
+            programme_department_link = ProgrammeDepartmentLink(
+                programme_id=programme.id,
+                department_id=department.id
+            )
+            db_session.add(programme_department_link)
 
-            # ----------------------------------------------------------
+            # Create course-module link
+            course_module_link = CourseModuleLink(
+                course_id=course.id,
+                module_id=module.id
+            )
+            db_session.add(course_module_link)
 
-            # for main_question in main_questions:
-            #     main_question.exam_paper_id = exam_paper.id
-
-            for sub_question in sub_questions:
-                main_questions[0].subquestions.append(sub_question)
-
-            for main_question in main_questions:
-                question_set.main_questions.append(main_question)
-                # main_question.exam_paper_id=exam_paper.id
-
-            db.add(institution_create)
-            # Commit the MainQuestions and SubQuestions
-            await db.commit()
-            await db.flush()
-
-            print("Institution & Faculty created.")
-            print("Instritution ID:", institution_create.id)
-            print("Faculty ID: ", faculty_create.id)
-            print("Department ID:", department.id)
-
+            await db_session.commit()
             print("Database initialized with dummy data and relationships.")
-        else:
-            print("Institutions already exist. Skipping database initialization.")
+        except Exception as e:
+            print(f"An error occurred during institution initialization: {e}")
+            await db_session.rollback()
+            raise
+
     except Exception as e:
-        print(f"An error occurred: {e}")
-        await db.rollback()
-    finally:
-        await db.close()
+        print(f"Error during database initialization: {e}")
+        await db_session.rollback()
+        raise
+
+# async def init_db_institution(db_session: AsyncSession, admin_user_id) -> None:
+#     """Initialize DB with institutions and related data"""
+#     try:
+#         # Create an Institution
+#         institution = Institution(
+#             name="Example University",
+#             description="A prestigious university",
+#             institution_type=InstitutionTypes.UNIVERSITY,
+#             email="info@example.edu",
+#             phone_number="+254712345678",
+#             created_by_id=admin_user_id,
+#             slug="example-university",
+#         )
+#         db_session.add(institution)
+#         await db_session.flush()  # Ensure the institution has an ID
+
+#         # Create a Faculty
+#         faculty = Faculty(
+#             name="Faculty of Computing and Information Technology",
+#             description="Computer Science and IT Faculty",
+#             created_by_id=admin_user_id,
+#             slug="faculty-of-computing-and-information-technology",
+#         )
+#         db_session.add(faculty)
+#         await db_session.flush()  # Ensure the faculty has an ID
+
+#         # Create InstitutionFacultyLink
+#         institution_faculty_link = InstitutionFacultyLink(
+#             institution_id=institution.id,
+#             faculty_id=faculty.id,
+#         )
+#         db_session.add(institution_faculty_link)
+#         await db_session.flush()
+
+#         # Create a Department
+#         department = Department(
+#             name="Computer Science Department",
+#             slug="computer-science-department",
+#             description="Department of Computer Science",
+#             faculty_id=faculty.id,
+#             created_by_id=admin_user_id,
+#         )
+#         db_session.add(department)
+#         await db_session.flush()
+
+#         # Create a Programme
+#         programme = Programme(
+#             name=ProgrammeTypes.UNDERGRADUATE,
+#             slug="undergraduate-programme",
+#             description="Undergraduate Programme",
+#             created_by_id=admin_user_id,
+#         )
+#         db_session.add(programme)
+#         await db_session.flush()
+
+#         # IMPORTANT: Use link model instead of append
+#         # DO NOT use: department.programmes.append(programme)
+#         # Instead, create the link explicitly:
+#         programme_department_link = ProgrammeDepartmentLink(
+#             programme_id=programme.id,
+#             department_id=department.id
+#         )
+#         db_session.add(programme_department_link)
+#         await db_session.flush()
+
+#         # Create a Course
+#         course = Course(
+#             name="Bachelor of Science in Information Technology",
+#             description="BSc in IT Programme",
+#             programme_id=programme.id,
+#             course_acronym="BSc IT",
+#             slug="bachelor-of-science-in-information-technology",
+#             created_by_id=admin_user_id,
+#         )
+#         db_session.add(course)
+#         await db_session.flush()
+
+#         # Create a Module
+#         module = Module(
+#             name="Introduction to Python Programming",
+#             description="Basic concepts of Python programming",
+#             unit_code="CS101",
+#             slug="introduction-to-python-programming",
+#             created_by_id=admin_user_id,
+#         )
+#         db_session.add(module)
+#         await db_session.flush()
+
+#         # Link Course and Module using the link model directly
+#         course_module_link = CourseModuleLink(
+#             course_id=course.id,
+#             module_id=module.id,
+#         )
+#         db_session.add(course_module_link)
+#         await db_session.flush()
+
+#         # Create ExamTitle
+#         exam_title = ExamTitle(
+#             name="UNIVERSITY EXAMINATIONS",
+#             description="End of Semester Examinations",
+#             slug="university-examinations",
+#             created_by_id=admin_user_id,
+#         )
+#         db_session.add(exam_title)
+#         await db_session.flush()
+
+#         # Create ExamDescription
+#         exam_description = ExamDescription(
+#             name="FIRST YEAR SECOND SEMESTER EXAMINATION",
+#             description="End of Second Semester Examination for First Year Students",
+#             slug="first-year-second-semester-examination",
+#             created_by_id=admin_user_id,
+#         )
+#         db_session.add(exam_description)
+#         await db_session.flush()
+
+#         # Create ExamInstruction
+#         exam_instruction = ExamInstruction(
+#             name="Answer ALL Questions",
+#             slug="answer-all-questions",
+#             created_by_id=admin_user_id,
+#         )
+#         db_session.add(exam_instruction)
+#         await db_session.flush()
+
+#         # Create an ExamPaper
+#         exam_paper = ExamPaper(
+#             year_of_exam="2023/2024",
+#             exam_duration=120,
+#             exam_date=date(2024, 4, 15),
+#             course_id=course.id,
+#             institution_id=institution.id,
+#             title_id=exam_title.id,
+#             description_id=exam_description.id,
+#             created_by_id=admin_user_id,
+#             hash_code="123456789abcdef",
+#         )
+#         db_session.add(exam_paper)
+#         await db_session.flush()
+
+#         # Link the Instruction to the ExamPaper
+#         instruction_exam_link = InstructionExamsLink(
+#             instruction_id=exam_instruction.id,
+#             exam_id=exam_paper.id,
+#         )
+#         db_session.add(instruction_exam_link)
+#         await db_session.flush()
+
+#         # Link the Module to the ExamPaper
+#         module_exam_link = ModuleExamsLink(
+#             module_id=module.id,
+#             exam_id=exam_paper.id,
+#         )
+#         db_session.add(module_exam_link)
+#         await db_session.flush()
+
+#         # Create a QuestionSet
+#         question_set = QuestionSet(
+#             title=QuestionSetTitleEnum.QUESTION_ONE,
+#             slug="question-one",
+#             created_by_id=admin_user_id,
+#         )
+#         db_session.add(question_set)
+#         await db_session.flush()
+
+#         # Link the QuestionSet to the ExamPaper
+#         exam_paper_question_link = ExamPaperQuestionLink(
+#             question_set_id=question_set.id,
+#             exam_id=exam_paper.id,
+#         )
+#         db_session.add(exam_paper_question_link)
+#         await db_session.flush()
+
+#         # Create main questions with the required exam_paper_id
+#         main_questions = [
+#             MainQuestion(
+#                 text={
+#                     "time": 1742156891249,
+#                     "blocks": [
+#                         {
+#                             "id": "dCcbQeoht6",
+#                             "type": "paragraph",
+#                             "data": {
+#                                 "text":"Explain the concept of variables in Python and provide examples of different data types.",
+#                             }
+#                         }
+#                     ],
+#                 },
+#                 marks=5,
+#                 numbering_style="ROMAN",
+#                 question_number="i",
+#                 slug="python-variables-and-data-types",
+#                 question_set_id=question_set.id,
+#                 exam_paper_id=exam_paper.id,
+#                 created_by_id=admin_user_id,
+#             ),
+#             MainQuestion(
+#                 text={
+#                     "time": 1742156891260,
+#                     "blocks": [
+#                         {
+#                             "id": "dCcbQeoht12",
+#                             "type": "paragraph",
+#                             "data": {
+#                                 "text":"Write a Python function that calculates the factorial of a given number. Explain your code.",
+#                             }
+#                         }
+#                     ],
+#                 },
+#                 marks=15,
+#                 numbering_style="ROMAN",
+#                 question_number="ii",
+#                 slug="python-factorial-function",
+#                 question_set_id=question_set.id,
+#                 exam_paper_id=exam_paper.id,
+#                 created_by_id=admin_user_id,
+#             ),
+#         ]
+
+#         # Add the main questions to the session
+#         for question in main_questions:
+#             db_session.add(question)
+#         await db_session.flush()
+
+#         await db_session.commit()
+#         print("Database initialized with institution data and relationships.")
+#     except Exception as e:
+#         print(f"Error initializing institution data: {e}")
+#         await db_session.rollback()
+#         raise
+
+# This function helps run the init_db function in an async context
+def run_init_db():
+    """Run the init_db function in a proper async context."""
+    from app.db.session import async_engine, get_async_session
+    import contextlib
+    
+    async def init_db_wrapper():
+        # Create a new session
+        async with async_engine.begin() as conn:
+            # Drop and create tables
+            # await conn.run_sync(SQLModel.metadata.drop_all)
+            # await conn.run_sync(SQLModel.metadata.create_all)
+            pass
+        
+        # Create a session context manager
+        async_session_maker = get_async_session()
+        async with async_session_maker() as session:
+            await init_db(session)
+    
+    # Run the async function in the event loop
+    asyncio.run(init_db_wrapper())
+
+# If this script is run directly, initialize the database
+if __name__ == "__main__":
+    run_init_db()

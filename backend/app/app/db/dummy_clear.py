@@ -59,36 +59,34 @@ async def clear_all_tables(session: AsyncSession):
         print("This function is only available in the development environment.")
         return
 
-    # async with SessionLocal() as session:
-    async with session.begin():
-        try:
-            # Disable foreign key checks (for PostgreSQL)
-            await session.execute(text("SET session_replication_role = 'replica';"))
-
-            # Get all table names
-            result = await session.execute(
-                text("SELECT tablename FROM pg_tables WHERE schemaname='public';")
-            )
-            table_names = [row[0] for row in result]
-
-            # Delete all records from each table, excluding 'alembic_version'
-            for table_name in table_names:
-                if table_name.lower() != "alembic_version":
-                    await session.execute(
-                        text(f'TRUNCATE TABLE "{table_name}" CASCADE;')
-                    )
-                    print(f"Cleared all records from {table_name}")
-                else:
-                    print(f"Skipped clearing {table_name}")
-
-            # Re-enable foreign key checks (for PostgreSQL)
-            await session.execute(text("SET session_replication_role = 'origin';"))
-
-            # Commit the changes
-            await session.commit()
-            print(
-                "All tables (except alembic_version) have been cleared successfully."
-            )
-        except Exception as e:
-            await session.rollback()
-            print(f"An error occurred: {e}")
+    try:
+        # Disable foreign key checks (for PostgreSQL)
+        await session.execute(text("SET session_replication_role = 'replica';"))
+        
+        # Get all table names
+        result = await session.execute(
+            text("SELECT tablename FROM pg_tables WHERE schemaname='public';")
+        )
+        table_names = [row[0] for row in result]
+        
+        # Delete all records from each table, excluding 'alembic_version'
+        for table_name in table_names:
+            if table_name.lower() != "alembic_version":
+                await session.execute(
+                    text(f'TRUNCATE TABLE "{table_name}" CASCADE;')
+                )
+                print(f"Cleared all records from {table_name}")
+            else:
+                print(f"Skipped clearing {table_name}")
+        
+        # Re-enable foreign key checks (for PostgreSQL)
+        await session.execute(text("SET session_replication_role = 'origin';"))
+        
+        # Commit the changes
+        await session.commit()
+        print("All tables (except alembic_version) have been cleared successfully.")
+    
+    except Exception as e:
+        await session.rollback()
+        print(f"An error occurred: {e}")
+        raise  # Re-raise the exception for proper error handling

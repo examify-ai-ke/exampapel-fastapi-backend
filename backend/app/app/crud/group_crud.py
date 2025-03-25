@@ -5,6 +5,7 @@ from app.crud.base_crud import CRUDBase
 from sqlmodel import select
 from uuid import UUID
 from sqlmodel.ext.asyncio.session import AsyncSession
+from fastapi import HTTPException
 
 
 class CRUDGroup(CRUDBase[Group, IGroupCreate, IGroupUpdate]):
@@ -37,6 +38,29 @@ class CRUDGroup(CRUDBase[Group, IGroupCreate, IGroupUpdate]):
         db_session.add(group)
         await db_session.commit()
         await db_session.refresh(group)
+        return group
+
+    async def remove_user_from_group(self, user: User, group_id: UUID) -> Group:
+        """
+        Remove a user from a group
+        """
+        group = await self.get(id=group_id)
+        if not group:
+            raise IdNotFoundException(Group, id=group_id)
+        
+        # Check if user is in the group
+        if user not in group.users:
+            raise HTTPException(
+                status_code=400,
+                detail=f"User {user.email} is not in group {group.name}"
+            )
+        
+        # Remove user from group
+        group.users.remove(user)
+        
+        # Save changes
+        await self.db_session.commit()
+        await self.db_session.refresh(group)
         return group
 
 

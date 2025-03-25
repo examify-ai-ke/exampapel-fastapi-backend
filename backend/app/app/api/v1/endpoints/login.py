@@ -17,29 +17,28 @@ from app.schemas.common_schema import AuthProvider, IMetaGeneral, TokenType
 from app.schemas.response_schema import IPostResponseBase, create_response
 from app.schemas.token_schema import RefreshToken, Token, TokenRead
 from app.utils.token import add_token_to_redis, delete_tokens, get_valid_tokens
+from app.schemas.auth_schema import LoginRequest, PasswordChange
 
 router = APIRouter()
 
 
-@router.post("")
+@router.post("",response_model=IPostResponseBase[Token])
 async def login(
-    email: EmailStr = Body(...),
-    password: str = Body(...),
-    provider: AuthProvider = Body(default=AuthProvider.email),
+    login_data: LoginRequest,
     meta_data: IMetaGeneral = Depends(deps.get_general_meta),
     redis_client: Redis = Depends(get_redis_client),
 ) -> IPostResponseBase[Token]:
     """
     Login for all users with provider support
     """
-    if provider == AuthProvider.email:
-        user = await crud.user.authenticate(email=email, password=password)
+    if login_data.provider == AuthProvider.email:
+        user = await crud.user.authenticate(email=login_data.email, password=login_data.password)
     else:
-        user = await crud.user.get_by_email(email=email)
-        if not user or user.provider != provider:
+        user = await crud.user.get_by_email(email=login_data.email)
+        if not user or user.provider != login_data.provider:
             raise HTTPException(
                 status_code=400, 
-                detail=f"No user found with this email for provider {provider}"
+                detail=f"No user found with this email for provider {login_data.provider}"
             )
 
     if not user:
@@ -109,10 +108,9 @@ async def login(
     return create_response(meta=meta_data, data=data, message="Login correctly")
 
 
-@router.post("/change_password")
+@router.post("/change_password",response_model=IPostResponseBase[Token])
 async def change_password(
-    current_password: str = Body(...),
-    new_password: str = Body(...),
+    password_data: PasswordChange,
     current_user: User = Depends(deps.get_current_user()),
     redis_client: Redis = Depends(get_redis_client),
 ) -> IPostResponseBase[Token]:
@@ -120,16 +118,16 @@ async def change_password(
     Change password
     """
 
-    if not verify_password(current_password, current_user.hashed_password):
+    if not verify_password(password_data.current_password, current_user.hashed_password):
         raise HTTPException(status_code=400, detail="Invalid Current Password")
 
-    if verify_password(new_password, current_user.hashed_password):
+    if verify_password(password_data.new_password, current_user.hashed_password):
         raise HTTPException(
             status_code=400,
             detail="New Password should be different that the current one",
         )
 
-    new_hashed_password = get_password_hash(new_password)
+    new_hashed_password = get_password_hash(password_data.new_password)
     await crud.user.update(
         obj_current=current_user, obj_new={"hashed_password": new_hashed_password}
     )
@@ -169,7 +167,7 @@ async def change_password(
     return create_response(data=data, message="New password generated")
 
 
-@router.post("/new_access_token", status_code=201)
+@router.post("/new_access_token", response_model=IPostResponseBase[TokenRead])
 async def get_new_access_token(
     body: RefreshToken = Body(...),
     redis_client: Redis = Depends(get_redis_client),
@@ -239,7 +237,7 @@ async def get_new_access_token(
     )
 
 
-@router.post("/access-token")
+@router.post("/access-token",response_model=IPostResponseBase[TokenRead])
 async def login_access_token(
     form_data: OAuth2PasswordRequestForm = Depends(),
     redis_client: Redis = Depends(get_redis_client),

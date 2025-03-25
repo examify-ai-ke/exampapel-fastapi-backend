@@ -1,16 +1,13 @@
 from datetime import datetime, timedelta
 from typing import Any
-import uuid
 
-import bcrypt
 import jwt
-from cryptography.fernet import Fernet
-
+import bcrypt
 from app.core.config import settings
-
+from cryptography.fernet import Fernet
 fernet = Fernet(str.encode(settings.ENCRYPT_KEY))
 
-JWT_ALGORITHM = "HS256"
+ALGORITHM = "HS256"
 
 
 def create_access_token(subject: str | Any, expires_delta: timedelta = None) -> str:
@@ -20,21 +17,9 @@ def create_access_token(subject: str | Any, expires_delta: timedelta = None) -> 
         expire = datetime.utcnow() + timedelta(
             minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
         )
-    to_encode = {
-        "exp": expire,
-        "sub": str(subject),
-        "type": "access",
-        "iat": datetime.utcnow(),
-        "jti": str(uuid.uuid4()),
-        "iss": "your-application-name",
-        "aud": "your-frontend-url"
-    }
-
-    return jwt.encode(
-        payload=to_encode,
-        key=settings.ENCRYPT_KEY,
-        algorithm=JWT_ALGORITHM,
-    )
+    to_encode = {"exp": expire, "sub": str(subject)}
+    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
 
 
 def create_refresh_token(subject: str | Any, expires_delta: timedelta = None) -> str:
@@ -44,68 +29,72 @@ def create_refresh_token(subject: str | Any, expires_delta: timedelta = None) ->
         expire = datetime.utcnow() + timedelta(
             minutes=settings.REFRESH_TOKEN_EXPIRE_MINUTES
         )
-    to_encode = {
-        "exp": expire,
-        "sub": str(subject),
-        "type": "refresh",
-        "iat": datetime.utcnow(),
-        "jti": str(uuid.uuid4()),
-    }
-
-    return jwt.encode(
-        payload=to_encode,
-        key=settings.ENCRYPT_KEY,
-        algorithm=JWT_ALGORITHM,
-    )
+    to_encode = {"exp": expire, "sub": str(subject)}
+    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
 
 
-def decode_token(token: str) -> dict[str, Any]:
-    # First decode without verification to check token type
-    unverified_payload = jwt.decode(token, options={"verify_signature": False})
-    token_type = unverified_payload.get("type")
+def decode_token(token: str) -> dict:
+    """
+    Decode and validate a JWT token
+    """
+    # print(f"Decoding token: {token}")
+    try:
+        # First, check if the token is properly formatted
+        if not token or "." not in token:
+            raise jwt.DecodeError("Invalid token format")
 
-    # Set options based on token type
-    options = {
-        'verify_signature': True,
-        'verify_exp': True,
-        'verify_iat': True,
-        'require': ['exp', 'iat', 'sub']
-    }
-    
-    # Only verify audience for access tokens
-    if token_type == "access":
-        options['verify_aud'] = True
-        return jwt.decode(
-            jwt=token,
-            key=settings.ENCRYPT_KEY,
-            algorithms=[JWT_ALGORITHM],
-            options=options,
-            audience="your-frontend-url"
+        # Make sure token has 3 segments
+        segments = token.split('.')
+        if len(segments) != 3:
+            raise jwt.DecodeError("Not enough segments in token")
+
+        # Decode the token
+        decoded_token = jwt.decode(
+            token, settings.SECRET_KEY, algorithms=[ALGORITHM]
         )
-    else:
-        # For refresh tokens, don't verify audience
-        return jwt.decode(
-            jwt=token,
-            key=settings.ENCRYPT_KEY,
-            algorithms=[JWT_ALGORITHM],
-            options=options
-        )
+        # print("Decoded_token:", decoded_token)
+        return decoded_token
+    except jwt.ExpiredSignatureError:
+        # Explicitly re-raise this so it can be caught appropriately
+        raise
+    except jwt.DecodeError as e:
+        # Log details before re-raising
+        print(f"Token decode error: {str(e)}, Token: {token[:10]}...")
+        raise
+    except Exception as e:
+        # Catch any other exceptions and re-raise as DecodeError
+        print(f"Unexpected decode error: {str(e)}")
+        raise jwt.DecodeError(f"Token validation failed: {str(e)}")
 
 
-def verify_password(plain_password: str | bytes, hashed_password: str | bytes) -> bool:
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verify a password against a hash using bcrypt"""
+    # Convert strings to bytes if needed
     if isinstance(plain_password, str):
-        plain_password = plain_password.encode()
+        plain_password = plain_password.encode('utf-8')
     if isinstance(hashed_password, str):
-        hashed_password = hashed_password.encode()
+        hashed_password = hashed_password.encode('utf-8')
+        
+    try:
+        return bcrypt.checkpw(plain_password, hashed_password)
+    except Exception as e:
+        print(f"Password verification error: {str(e)}")
+        return False
 
-    return bcrypt.checkpw(plain_password, hashed_password)
 
-
-def get_password_hash(plain_password: str | bytes) -> str:
-    if isinstance(plain_password, str):
-        plain_password = plain_password.encode()
-
-    return bcrypt.hashpw(plain_password, bcrypt.gensalt()).decode()
+def get_password_hash(password: str) -> str:
+    """Hash a password using bcrypt"""
+    # Convert to bytes if it's a string
+    if isinstance(password, str):
+        password = password.encode('utf-8')
+        
+    # Generate a salt and hash the password
+    salt = bcrypt.gensalt(rounds=12)  # 12 is a good default for security/performance
+    hashed = bcrypt.hashpw(password, salt)
+    
+    # Return the hash as a string
+    return hashed.decode('utf-8')
 
 
 def get_data_encrypt(data) -> str:

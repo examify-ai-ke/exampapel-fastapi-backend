@@ -116,15 +116,15 @@ class MainQuestion(BaseUUIDModel, QuestionBase, table=True):
         },
     )
 
-    # This is added for integrigy checks and Constraints for Numbering purposes
-    exam_paper_id: UUID | None = Field(default=None, foreign_key="ExamPaper.id")
-    # exam_paper: "ExamPaper" = Relationship(
-    #     back_populates="main_questions",
-    #     sa_relationship_kwargs={
-    #         "lazy": "joined",
-    #         "primaryjoin": "MainQuestion.exam_paper_id==ExamPaper.id",
-    #     },
-    # )
+    # This is added for integrity checks and Constraints for Numbering purposes
+    exam_paper_id: UUID = Field(foreign_key="ExamPaper.id", nullable=False)
+    exam_paper: "ExamPaper" = Relationship(
+        back_populates="main_questions",
+        sa_relationship_kwargs={
+            "lazy": "selectin",
+            "primaryjoin": "MainQuestion.exam_paper_id==ExamPaper.id",
+        },
+    )
 
     subquestions: List["SubQuestion"] = Relationship(
         back_populates="main_question",

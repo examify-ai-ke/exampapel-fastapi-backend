@@ -1,5 +1,5 @@
 from uuid import UUID
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi_pagination import Params
 from app import crud
 from app.api import deps
@@ -112,3 +112,25 @@ async def add_user_into_a_group(
     """
     group = await crud.group.add_user_to_group(user=user, group_id=group.id)
     return create_response(message="User added to group", data=group)
+
+
+@router.delete("/remove_user/{user_id}/{group_id}")
+async def remove_user_from_group(
+    user: User = Depends(user_deps.is_valid_user),
+    group: Group = Depends(group_deps.get_group_by_id),
+    current_user: User = Depends(
+        deps.get_current_user(required_roles=[IRoleEnum.admin, IRoleEnum.manager])
+    ),
+) -> IPostResponseBase[IGroupRead]:
+    """
+    Removes a user from a group
+
+    Required roles:
+    - admin
+    - manager
+    """
+    try:
+        group = await crud.group.remove_user_from_group(user=user, group_id=group.id)
+        return create_response(message="User removed from group", data=group)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to remove user from group: {str(e)}")

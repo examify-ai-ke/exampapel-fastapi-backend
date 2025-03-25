@@ -1,8 +1,9 @@
 from collections.abc import AsyncGenerator
-from typing import Callable
+from typing import Callable, Optional
+import logging
 
 import redis.asyncio as aioredis
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer
 from jwt import DecodeError, ExpiredSignatureError, MissingRequiredClaimError
 from redis.asyncio import Redis
@@ -17,7 +18,24 @@ from app.schemas.common_schema import IMetaGeneral, TokenType
 from app.utils.minio_client import MinioClient
 from app.utils.token import get_valid_tokens
 
-reusable_oauth2 = OAuth2PasswordBearer(
+class DebugOAuth2PasswordBearer(OAuth2PasswordBearer):
+    """OAuth2 password flow with more detailed error logging"""
+    async def __call__(self, request: Request) -> Optional[str]:
+        try:
+            # Log auth header for debugging
+            auth_header = request.headers.get("Authorization")
+            logging.debug(f"Auth header: {auth_header[:15]}..." if auth_header else "No auth header")
+            
+            # Get the token using the parent class
+            token = await super().__call__(request)
+            return token
+        except HTTPException as e:
+            # Log the authentication error
+            logging.error(f"OAuth2 authentication failed: {str(e.detail)}")
+            raise
+
+# Use the debug version instead
+oauth2_scheme = DebugOAuth2PasswordBearer(
     tokenUrl=f"{settings.API_V1_STR}/login/access-token"
 )
 
@@ -60,56 +78,90 @@ async def get_general_meta() -> IMetaGeneral:
 
 def get_current_user(required_roles: list[str] = None) -> Callable[[], User]:
     async def current_user(
-        access_token: str = Depends(reusable_oauth2),
+        access_token: str = Depends(oauth2_scheme),
         redis_client: Redis = Depends(get_redis_client),
     ) -> User:
         try:
             payload = decode_token(access_token)
+
+            # Log the token payload for debugging
+            # logging.debug(f"Token payload: {payload}")
+            # print("current user payload:",payload)
+            user_id = payload.get("sub")
+            if not user_id:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Could not validate credentials - missing user ID",
+                )
+
+            # Validate against Redis tokens if enabled
+            try:
+                if getattr(settings, "USE_REDIS_TOKEN_BLACKLIST", False):
+                    valid_access_tokens = await get_valid_tokens(
+                        redis_client, user_id, TokenType.ACCESS
+                    )
+                    print("valid_access_tokens:", valid_access_tokens)
+                    if valid_access_tokens and access_token not in valid_access_tokens:
+                        raise HTTPException(
+                            status_code=status.HTTP_403_FORBIDDEN,
+                            detail="Token has been invalidated or logged out",
+                        )
+            except Exception as redis_error:
+                # Log Redis errors but don't fail authentication if Redis check fails
+                logging.error(f"Redis token validation error: {str(redis_error)}")
+
+            # Get the user from database
+            user: User = await crud.user.get(id=user_id)
+            if not user:
+                raise HTTPException(status_code=404, detail="User not found")
+
+            if not user.is_active:
+                raise HTTPException(status_code=400, detail="Inactive user")
+
+            # Check roles if required
+            if required_roles:
+                if not user.role:
+                    raise HTTPException(
+                        status_code=403, 
+                        detail="User has no role assigned"
+                    )
+
+                is_valid_role = False
+                for role in required_roles:
+                    if role == user.role.name:
+                        is_valid_role = True
+                        break
+
+                if not is_valid_role:
+                    raise HTTPException(
+                        status_code=403,
+                        detail=f"""Role "{required_roles}" is required for this action""",
+                    )
+
+            return user
+
         except ExpiredSignatureError:
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
+                status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Your token has expired. Please log in again.",
             )
-        except DecodeError:
+        except DecodeError as e:
+            logging.error(f"Token decode error: {str(e)}")
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Error when decoding the token. Please check your request.",
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token format. Please log in again.",
             )
         except MissingRequiredClaimError:
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="There is no required field in your token. Please contact the administrator.",
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="There is no required field in your token.",
             )
-
-        user_id = payload["sub"]
-        valid_access_tokens = await get_valid_tokens(
-            redis_client, user_id, TokenType.ACCESS
-        )
-        if valid_access_tokens and access_token not in valid_access_tokens:
+        except Exception as e:
+            logging.error(f"Authentication error: {str(e)}")
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Could not validate credentials",
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Authentication error: {str(e)}",
             )
-        user: User = await crud.user.get(id=user_id)
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-
-        if not user.is_active:
-            raise HTTPException(status_code=400, detail="Inactive user")
-
-        if required_roles:
-            is_valid_role = False
-            for role in required_roles:
-                if role == user.role.name:
-                    is_valid_role = True
-
-            if not is_valid_role:
-                raise HTTPException(
-                    status_code=403,
-                    detail=f"""Role "{required_roles}" is required for this action""",
-                )
-
-        return user
 
     return current_user
 

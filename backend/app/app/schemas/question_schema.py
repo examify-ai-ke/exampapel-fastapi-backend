@@ -45,6 +45,7 @@ class MainQuestionBase(BaseModel):
     marks: Optional[int] =None
     numbering_style: str
     question_number: str
+    created_at: datetime
 
 
 class MainQuestionCreate(MainQuestionBase):
@@ -70,6 +71,7 @@ class MainQuestionRead(MainQuestionBase):
     subquestions: Optional[List[SubQuestionRead]] = []
     answers:Optional[list[AnswerRead]]= []
     question_set_id: UUID
+    exam_paper_id: UUID
     # order_within_question_set: Optional[str]
 
     class Config:
