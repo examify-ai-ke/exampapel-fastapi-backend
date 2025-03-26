@@ -8,7 +8,7 @@ services:
     command: >
       sh -c "
       echo 'Waiting for database...' &&
-      sleep 10 &&
+      sleep 5 &&
       alembic upgrade head &&
       echo 'Starting FastAPI server...' &&
       uvicorn app.main:app --host 0.0.0.0 --port 8000
@@ -16,6 +16,7 @@ services:
     volumes:
       - ./backend/app:/code
       - ./static:/code/static
+      - ml_models:/code/models
     ports:
       - "8000:8000"  # Expose port directly
     expose:
@@ -186,3 +187,4 @@ volumes:
   caddy_data:
   caddy_config:
   redis_data:
+  ml_models:

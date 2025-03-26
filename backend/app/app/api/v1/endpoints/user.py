@@ -65,6 +65,7 @@ from app.utils.email import send_verification_email
 from jwt.exceptions import ExpiredSignatureError, DecodeError, InvalidTokenError
 import logging
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.utils.token import add_email_verification_token, verify_email_token, invalidate_email_verification_tokens
 
 router = APIRouter()
 
@@ -451,6 +452,7 @@ async def create_user(
 async def request_email_verification(
     background_tasks: BackgroundTasks,
     current_user: IUserRead = Depends(deps.get_current_user()),
+    redis_client: Redis = Depends(deps.get_redis_client),
 ) -> IPostResponseBase[bool]:
     """
     Sends a verification email to the current user's email address
@@ -474,14 +476,21 @@ async def request_email_verification(
         expires_delta=token_expires
     )
     
+    # Store token in Redis
+    await add_email_verification_token(
+        redis_client,
+        user.id,
+        verification_token,
+        expiration_seconds=int(token_expires.total_seconds())
+    )
+    
     # Generate verification URL
-    verification_url = f"{settings.FRONTEND_URL}/verify-email?token={verification_token}"
+    verification_url = f"{settings.FRONTEND_URL}auth/verify-email?token={verification_token}"
     
     # Send verification email as a background task
     background_tasks.add_task(
         send_verification_email,
-        # email_to=user.email,
-        email_to="david@techgrids.com",
+        email_to=user.email,
         name=f"{user.first_name} {user.last_name}",
         verification_url=verification_url
     )
@@ -495,6 +504,7 @@ async def request_email_verification(
 @router.post("/verify-email/{token}", response_model=IPostResponseBase[IUserRead])
 async def verify_email(
     token: str,
+    redis_client: Redis = Depends(deps.get_redis_client),
 ) -> IPostResponseBase[IUserRead]:
     """
     Verify user email with verification token
@@ -504,33 +514,38 @@ async def verify_email(
     to prevent tampering.
     """
     try:
-        # Decode and verify the token
-        payload = decode_token(token)
+        # First check Redis for token validity
+        user_id = await verify_email_token(redis_client, token)
         
-        # Check token type
-        if payload.get("type") != "email_verification":
-            raise HTTPException(
-                status_code=400,
-                detail="Invalid verification token type"
-            )
+        if not user_id:
+            # Redis verification failed, fall back to JWT verification
+            # This provides backwards compatibility and handles transition
+            payload = decode_token(token)
+            
+            # Check token type
+            if payload.get("type") != "email_verification":
+                raise HTTPException(
+                    status_code=400,
+                    detail="Invalid verification token type"
+                )
+            
+            # Extract user ID
+            user_id_str = payload.get("sub")
+            if not user_id_str:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Invalid verification token"
+                )
+            
+            # Convert to UUID
+            try:
+                user_id = UUID(user_id_str)
+            except ValueError:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Invalid user ID in token"
+                )
         
-        # Extract user ID
-        user_id_str = payload.get("sub")
-        if not user_id_str:
-            raise HTTPException(
-                status_code=400,
-                detail="Invalid verification token"
-            )
-        
-        # Convert to UUID
-        try:
-            user_id = UUID(user_id_str)
-        except ValueError:
-            raise HTTPException(
-                status_code=400,
-                detail="Invalid user ID in token"
-            )
-
         # Get the user
         user = await crud.user.get(id=user_id)
         if not user:
@@ -871,6 +886,7 @@ async def admin_send_verification_email(
     current_user: User = Depends(
         deps.get_current_user(required_roles=[IRoleEnum.admin])
     ),
+    redis_client: Redis = Depends(deps.get_redis_client),
 ) -> IPostResponseBase[EmailVerificationResult]:
     """
     Admin endpoint to send verification email to a specific user.
@@ -896,6 +912,9 @@ async def admin_send_verification_email(
             message=f"Email for user {user.email} is already verified"
         )
     
+    # Invalidate existing tokens for this user
+    await invalidate_email_verification_tokens(redis_client, user.id)
+    
     # Create verification token (valid for 24 hours)
     token_expires = timedelta(hours=24)
     verification_token = create_email_verification_token(
@@ -903,8 +922,16 @@ async def admin_send_verification_email(
         expires_delta=token_expires
     )
     
+    # Store token in Redis
+    await add_email_verification_token(
+        redis_client,
+        user.id,
+        verification_token,
+        expiration_seconds=int(token_expires.total_seconds())
+    )
+    
     # Generate verification URL
-    verification_url = f"{settings.FRONTEND_URL}/verify-email?token={verification_token}"
+    verification_url = f"{settings.FRONTEND_URL}auth/verify-email?token={verification_token}"
     
     # Send verification email as a background task
     background_tasks.add_task(

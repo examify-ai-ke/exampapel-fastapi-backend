@@ -7,19 +7,20 @@
   local_certs
   
   # Change log level from DEBUG to ERROR to reduce log output
-  log {
-    level ERROR
+   log {
     format console
+    level ERROR
   }
 }
 
 # Primary domain configurations
 fastapi.localhost, localhost {
   # Reduce logging for this section too
-  log {
+  # Enhanced logging configuration with all levels
+   log {
     output stdout
     format console
-    level ERROR
+    level DEBUG
   }
   
   # Basic reverse proxy configuration
