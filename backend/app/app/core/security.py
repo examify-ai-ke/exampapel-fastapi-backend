@@ -117,3 +117,23 @@ def get_data_encrypt(data) -> str:
 
 def get_content(variable: str) -> str:
     return fernet.decrypt(variable.encode()).decode()
+
+
+def create_email_verification_token(subject: UUID | str, expires_delta: timedelta = None) -> str:
+    """
+    Create a JWT token specifically for email verification
+    """
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(hours=24)  # Default 24 hours
+    
+    # Ensure subject is a string (convert UUID if needed)
+    subject_str = str(subject)
+    to_encode = {
+        "exp": expire,
+        "sub": subject_str,
+        "type": "email_verification"  # Add type field to distinguish token types
+    }
+    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt

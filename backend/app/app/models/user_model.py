@@ -23,7 +23,7 @@ class UserBase(SQLModel):
     is_active: bool = Field(default=True)
     is_superuser: bool = Field(default=False)
     birthdate: datetime | None = Field(
-        default=None, sa_column=Column(DateTime(timezone=True), nullable=True)
+        default=None, sa_column=Column(DateTime(), nullable=True)
     )  # birthday with timezone
     role_id: UUID | None = Field(default=None, foreign_key="Role.id")
     phone: str | None = None

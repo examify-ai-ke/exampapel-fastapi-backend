@@ -47,6 +47,31 @@ class Settings(BaseSettings):
     DEFAULT_ROLE_NAME:  str ="user"
     USE_REDIS_TOKEN_BLACKLIST: bool = True
 
+    # Email settings
+    MAIL_SMTP_SERVER: str
+    MAIL_SMTP_PORT: int
+    MAIL_SMTP_TLS: bool
+    MAIL_SMTP_SSL: bool
+    MAIL_SMTP_USE_CREDENTIALS: bool
+    MAIL_SMTP_USERNAME: str
+    MAIL_SMTP_PASSWORD: str
+    MAIL_FROM: str
+    MAIL_FROM_NAME: str
+    SUPPORT_EMAIL: str
+    FRONTEND_URL: str
+    MAIL_VALIDATE_CERTS: bool = True
+    MAIL_SMTP_USE_CREDENTIALS: bool = True
+    # Define a default value for TEMPLATE_FOLDER
+    TEMPLATE_FOLDER: str = str(os.path.join(os.path.dirname(os.path.dirname(__file__)), "templates"))
+
+    # Database - Use a method that gets evaluated after class creation
+    @property
+    def DATABASE_URL(self) -> str:
+        return os.getenv(
+            "DATABASE_URL", 
+            f"postgresql+asyncpg://{self.DATABASE_USER}:{self.DATABASE_PASSWORD}@{self.DATABASE_HOST}:{self.DATABASE_PORT}/{self.DATABASE_NAME}"
+        )
+
     @field_validator("ASYNC_DATABASE_URI", mode="after")
     def assemble_db_connection(cls, v: str | None, info: FieldValidationInfo) -> Any:
         if isinstance(v, str):
@@ -70,7 +95,7 @@ class Settings(BaseSettings):
         if isinstance(v, str):
             if v == "":
                 return PostgresDsn.build(
-                    scheme="db+postgresql",
+                    scheme="postgresql+psycopg2",
                     username=info.data["DATABASE_USER"],
                     password=info.data["DATABASE_PASSWORD"],
                     host=info.data["DATABASE_HOST"],

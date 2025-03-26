@@ -1,26 +1,69 @@
 {
-  email custom@domain.com
+  # Global options for development
+  http_port 80
+  https_port 443
+  
+  # Enable automatic HTTPS with self-signed certs for local development
+  local_certs
+  
+  # Change log level from DEBUG to ERROR to reduce log output
+  log {
+    level ERROR
+    format console
+  }
 }
 
-fastapi.{$EXT_ENDPOINT1}:80, fastapi.{$LOCAL_1}:80, fastapi.{$LOCAL_2}:80, :80 {
+# Primary domain configurations
+fastapi.localhost, localhost {
+  # Reduce logging for this section too
+  log {
+    output stdout
+    format console
+    level ERROR
+  }
+  
+  # Basic reverse proxy configuration
+  reverse_proxy fastapi_server:8000 {
+    # Disable health checks during development
+    health_status 0
+  }
+  
+  # Handle errors gracefully
+  handle_errors {
+    respond "Error {http.error.status_code}: {http.error.message}"
+  }
+  
+  # Explicitly enable HTTPS - this will use self-signed certs for .localhost domains
+  tls internal
+}
+
+# Explicit HTTP configuration to avoid redirects
+http://fastapi.localhost, http://localhost {
   reverse_proxy fastapi_server:8000
 }
 
-storage.{$EXT_ENDPOINT1}:80, storage.{$LOCAL_1}:80, storage.{$LOCAL_2}:80 {
+# Other services remain the same
+storage.{$LOCAL_1}, storage.{$LOCAL_2}, storage.{$EXT_ENDPOINT1} {
   reverse_proxy minio_server:9000 
 }
 
-stash.{$EXT_ENDPOINT1}:80, stash.{$LOCAL_1}:80, stash.{$LOCAL_2}:80 {
+stash.{$LOCAL_1}, stash.{$LOCAL_2}, stash.{$EXT_ENDPOINT1} {
   reverse_proxy minio_server:9090 
 }
 
 examdatabse.{$LOCAL_1} {
-    reverse_proxy database:5432
+  reverse_proxy database:5432
 }
 
-static.{$EXT_ENDPOINT1}:80, static.{$LOCAL_1}:80, static.{$LOCAL_2}:80 {
+static.{$LOCAL_1}, static.{$LOCAL_2}, static.{$EXT_ENDPOINT1} {
   root * /code/static
   file_server browse
+}
+
+# Add a catch-all for other domains
+:80 {
+  # Simple redirect
+  redir https://fastapi.localhost{uri} permanent
 }
 
 ## Uncomment this to automatic ssl

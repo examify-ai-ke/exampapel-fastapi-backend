@@ -9,6 +9,7 @@ from .role_schema import IRoleRead
 from pydantic import EmailStr
 from datetime import datetime
 from app.schemas.common_schema import AuthProvider, IGenderEnum
+from typing import List, Optional
 
 
 class IUserCreate(UserBase):
@@ -83,3 +84,41 @@ class ISocialAuthResponse(BaseModel):
 
 class IEmailVerification(BaseModel):
     email: EmailStr
+
+
+class BulkVerificationUserInfo(BaseModel):
+    """Basic user information returned in bulk verification response"""
+    id: str
+    email: EmailStr
+    name: str
+
+class BulkVerificationResponse(BaseModel):
+    """Response data for bulk verification email sending"""
+    sent_count: int
+    users: List[BulkVerificationUserInfo]
+
+class UserVerificationStatus(BaseModel):
+    """User verification status information"""
+    email: EmailStr
+    email_verified: bool
+    user_id: str
+    created_at: datetime
+
+class EmailVerificationResult(BaseModel):
+    """Result of a verification email sending operation"""
+    success: bool
+    email: EmailStr
+    user_id: str
+    already_verified: bool = False
+    message: str
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "success": True,
+                "email": "user@example.com",
+                "user_id": "123e4567-e89b-12d3-a456-426614174000",
+                "already_verified": False,
+                "message": "Verification email has been sent to user@example.com"
+            }
+        }

@@ -34,11 +34,25 @@ class CRUDUser(CRUDBase[User, IUserCreate, IUserUpdate]):
         return user
 
     async def create_with_role(
-        self, *, obj_in: IUserCreate, db_session: AsyncSession | None = None
+        self, *, obj_in: IUserCreate | dict, db_session: AsyncSession | None = None
     ) -> User:
         db_session = db_session or super().get_db().session
-        db_obj = User.model_validate(obj_in)
-        db_obj.hashed_password = get_password_hash(obj_in.password)
+        
+        # Handle case where obj_in is a dict
+        if isinstance(obj_in, dict):
+            # Convert dict to IUserCreate object
+            user_data = IUserCreate(**obj_in)
+        else:
+            user_data = obj_in
+        
+        # Create User model from validated data
+        db_obj = User.model_validate(user_data)
+        
+        # Handle password hashing safely
+        password = user_data.password if hasattr(user_data, 'password') else obj_in.get('password')
+        if password:
+            db_obj.hashed_password = get_password_hash(password)
+        
         db_session.add(db_obj)
         await db_session.commit()
         await db_session.refresh(db_obj)

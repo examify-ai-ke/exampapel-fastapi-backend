@@ -39,6 +39,7 @@ from app.utils.uuid6 import uuid7
 from starlette_admin.contrib.sqlmodel import Admin 
 
 from app.db.session import engine
+from app.health import router as health_router
 
 
 async def user_id_identifier(request: Request):
@@ -110,22 +111,23 @@ async def lifespan(app: FastAPI):
     gc.collect()
 
 
-# Create an empty admin interface
-admin = Admin(
-    engine,
-    title="ExamPapel Admin Panel",
-    base_url="/admin",
-    route_name="admin",
-    # statics_dir="statics/admin",
-    templates_dir="templates",
-)
+# # Create an empty admin interface
+# admin = Admin(
+#     engine,
+#     title="ExamPapel Admin Panel",
+#     base_url="/admin",
+#     route_name="admin",
+#     # statics_dir="statics/admin",
+#     templates_dir="templates",
+# )
  
 
 # Core Application Instance
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.API_VERSION,
-    # openapi_url=f"{settings.API_V1_STR}/openapi.json",
+    openapi_url=f"{settings.API_V1_STR}/openapi.json",
+    docs_url=f"{settings.API_V1_STR}/docs",
     lifespan=lifespan,
     # root_path="",
 )
@@ -255,6 +257,14 @@ async def websocket_endpoint(websocket: WebSocket, user_id: UUID):
         await redis_client.delete(key)
 
 
-# Add Routers
+# Add health check router
+app.include_router(health_router)
+
+# Add API router
 app.include_router(api_router_v1, prefix=settings.API_V1_STR)
+
+# Add a simple health check at the root path for maximum compatibility
+@app.get("/health", status_code=status.HTTP_200_OK)
+async def health_check():
+    return {"status": "healthy"}
  

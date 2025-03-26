@@ -1,5 +1,6 @@
-from fastapi import HTTPException
+from fastapi import HTTPException, BackgroundTasks, Depends, Query, Path
 from io import BytesIO
+from fastapi.responses import JSONResponse
 
 from typing import Annotated
 from uuid import UUID
@@ -22,9 +23,7 @@ from app.schemas.common_schema import AuthProvider
 from fastapi import (
     APIRouter,
     Body,
-    Depends,
     File,
-    Query,
     Response,
     UploadFile,
     status,
@@ -46,6 +45,10 @@ from app.schemas.user_schema import (
     IUserReadWithoutGroups,
     IUserStatus,
     IUserUpdate,
+    BulkVerificationResponse,
+    BulkVerificationUserInfo,
+    UserVerificationStatus,
+    EmailVerificationResult,
 )
 from app.schemas.token_schema import Token
 from app.schemas.user_follow_schema import (
@@ -57,7 +60,12 @@ from app.utils.social_auth import verify_social_token
 from redis.asyncio import Redis
 from datetime import timedelta
 from app.core.config import settings
+from app.core.security import create_email_verification_token, decode_token
+from app.utils.email import send_verification_email
+from jwt.exceptions import ExpiredSignatureError, DecodeError, InvalidTokenError
 import logging
+from sqlalchemy.ext.asyncio import AsyncSession
+
 router = APIRouter()
 
 # Define the /me endpoint BEFORE any endpoints with UUID parameters
@@ -395,6 +403,26 @@ async def get_user_by_id(
     return create_response(data=user)
 
 
+@router.delete("/{user_id}", response_model=IDeleteResponseBase[IUserRead])
+async def remove_user(
+    user_id: UUID = Depends(user_deps.is_valid_user_id),
+    current_user: User = Depends(
+        deps.get_current_user(required_roles=[IRoleEnum.admin])
+    ),
+) -> IDeleteResponseBase[IUserRead]:
+    """
+    Deletes a user by his/her id
+
+    Required roles:
+    - admin
+    """
+    if current_user.id == user_id:
+        raise UserSelfDeleteException()
+
+    user = await crud.user.remove(id=user_id)
+    return create_response(data=user, message="User removed")
+
+
 @router.post("", status_code=status.HTTP_201_CREATED, response_model=IPostResponseBase[IUserRead])
 async def create_user(
     new_user: IUserCreate = Depends(user_deps.user_exists),
@@ -419,23 +447,91 @@ async def create_user(
     return create_response(data=user)
 
 
-@router.post("/verify-email/{token}",response_model=IPostResponseBase[IUserRead])
+@router.post("/request-verification", response_model=IPostResponseBase[bool])
+async def request_email_verification(
+    background_tasks: BackgroundTasks,
+    current_user: IUserRead = Depends(deps.get_current_user()),
+) -> IPostResponseBase[bool]:
+    """
+    Sends a verification email to the current user's email address
+    """
+    # Check if email is already verified
+    if current_user.email_verified:
+        return create_response(
+            data=True,
+            message="Email already verified"
+        )
+    
+    # Get full user object to ensure we have the latest data
+    user = await crud.user.get(id=current_user.id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Create verification token (valid for 24 hours)
+    token_expires = timedelta(hours=24)
+    verification_token = create_email_verification_token(
+        user.id, 
+        expires_delta=token_expires
+    )
+    
+    # Generate verification URL
+    verification_url = f"{settings.FRONTEND_URL}/verify-email?token={verification_token}"
+    
+    # Send verification email as a background task
+    background_tasks.add_task(
+        send_verification_email,
+        # email_to=user.email,
+        email_to="david@techgrids.com",
+        name=f"{user.first_name} {user.last_name}",
+        verification_url=verification_url
+    )
+    
+    return create_response(
+        data=True,
+        message="Verification email sent successfully"
+    )
+
+
+@router.post("/verify-email/{token}", response_model=IPostResponseBase[IUserRead])
 async def verify_email(
     token: str,
-    current_user: User = Depends(deps.get_current_user()),
 ) -> IPostResponseBase[IUserRead]:
     """
     Verify user email with verification token
+    
+    This endpoint should be called when a user clicks the verification
+    link in their email. The token contains the user ID and is signed
+    to prevent tampering.
     """
     try:
-        payload = security.decode_token(token)
-        user_id = payload.get("sub")
-        if not user_id:
+        # Decode and verify the token
+        payload = decode_token(token)
+        
+        # Check token type
+        if payload.get("type") != "email_verification":
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid verification token type"
+            )
+        
+        # Extract user ID
+        user_id_str = payload.get("sub")
+        if not user_id_str:
             raise HTTPException(
                 status_code=400,
                 detail="Invalid verification token"
             )
+        
+        # Convert to UUID
+        try:
+            user_id = UUID(user_id_str)
+        except ValueError:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid user ID in token"
+            )
 
+        # Get the user
         user = await crud.user.get(id=user_id)
         if not user:
             raise HTTPException(
@@ -443,20 +539,38 @@ async def verify_email(
                 detail="User not found"
             )
 
+        # Check if already verified
         if user.email_verified:
-            return create_response(message="Email already verified")
+            return create_response(
+                data=user,
+                message="Email already verified"
+            )
 
         # Update user's email verification status
-        await crud.user.update(
+        updated_user = await crud.user.update(
             obj_current=user,
             obj_new={"email_verified": True}
         )
 
-        return create_response(message="Email verified successfully", data=user)
-    except Exception as e:
+        return create_response(
+            data=updated_user,
+            message="Email verified successfully"
+        )
+    except ExpiredSignatureError:
+        raise HTTPException(
+            status_code=400,
+            detail="Verification token has expired. Please request a new verification email."
+        )
+    except (DecodeError, InvalidTokenError):
         raise HTTPException(
             status_code=400,
             detail="Invalid verification token"
+        )
+    except Exception as e:
+        logging.error(f"Email verification error: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail="An error occurred during email verification"
         )
 
 
@@ -472,10 +586,10 @@ async def social_auth(
     try:
         # Verify token with provider and get user info
         user_info = await verify_social_token(provider, access_token)
-        
+
         # Check if user exists
         user = await crud.user.get_by_email(email=user_info["email"])
-        
+
         if not user:
             # Get the default role
             default_role = await crud.role.get_role_by_name(name=settings.DEFAULT_ROLE_NAME)
@@ -485,7 +599,7 @@ async def social_auth(
                     status_code=500,
                     detail="Error setting up user role"
                 )
-            
+
             # Create new user if doesn't exist
             new_user = {
                 "email": user_info["email"],
@@ -498,32 +612,32 @@ async def social_auth(
                 "role_id": default_role.id  # Use the fetched role ID
             }
             user = await crud.user.create_with_role(obj_in=new_user)
-        
+
         # Check if user is active
         if not user.is_active:
             raise HTTPException(
                 status_code=400,
                 detail="Inactive user"
             )
-            
+
         # Generate tokens
         access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
         refresh_token_expires = timedelta(minutes=settings.REFRESH_TOKEN_EXPIRE_MINUTES)
-        
+
         access_token = security.create_access_token(
             user.id, expires_delta=access_token_expires
         )
         refresh_token = security.create_refresh_token(
             user.id, expires_delta=refresh_token_expires
         )
-        
+
         # Store refresh token in Redis
         await redis_client.set(
             f"refresh_token:{user.id}",
             refresh_token,
             ex=settings.REFRESH_TOKEN_EXPIRE_MINUTES * 60
         )
-        
+
         # Create token response
         token_data = Token(
             access_token=access_token,
@@ -531,12 +645,12 @@ async def social_auth(
             refresh_token=refresh_token,
             user=user
         )
-        
+
         return create_response(
             data=token_data,
             message=f"Successfully authenticated with {provider}"
         )
-        
+
     except ValueError as e:
         raise HTTPException(
             status_code=400,
@@ -548,26 +662,6 @@ async def social_auth(
             status_code=500,
             detail="Internal server error during authentication"
         )
-
-
-@router.delete("/{user_id}",response_model=IDeleteResponseBase[IUserRead])
-async def remove_user(
-    user_id: UUID = Depends(user_deps.is_valid_user_id),
-    current_user: User = Depends(
-        deps.get_current_user(required_roles=[IRoleEnum.admin])
-    ),
-) -> IDeleteResponseBase[IUserRead]:
-    """
-    Deletes a user by his/her id
-
-    Required roles:
-    - admin
-    """
-    if current_user.id == user_id:
-        raise UserSelfDeleteException()
-
-    user = await crud.user.remove(id=user_id)
-    return create_response(data=user, message="User removed")
 
 
 @router.post("/image",response_model=IPostResponseBase[IUserRead])
@@ -767,4 +861,172 @@ async def deactivate_user(
     return create_response(
         message=f"User {updated_user.email} has been deactivated",
         data=updated_user
+    )
+
+
+@router.post("/{user_id}/send-verification", response_model=IPostResponseBase[EmailVerificationResult])
+async def admin_send_verification_email(
+    background_tasks: BackgroundTasks,
+    user: User = Depends(user_deps.is_valid_user),
+    current_user: User = Depends(
+        deps.get_current_user(required_roles=[IRoleEnum.admin])
+    ),
+) -> IPostResponseBase[EmailVerificationResult]:
+    """
+    Admin endpoint to send verification email to a specific user.
+    
+    This endpoint allows administrators to trigger a verification email
+    for any user in the system. Useful for helping users who didn't
+    receive their initial verification email or need a new one.
+    
+    Required roles:
+    - admin
+    """
+    # Check if email is already verified
+    if user.email_verified:
+        result = EmailVerificationResult(
+            success=True,
+            email=user.email,
+            user_id=str(user.id),
+            already_verified=True,
+            message=f"Email for user {user.email} is already verified"
+        )
+        return create_response(
+            data=result,
+            message=f"Email for user {user.email} is already verified"
+        )
+    
+    # Create verification token (valid for 24 hours)
+    token_expires = timedelta(hours=24)
+    verification_token = create_email_verification_token(
+        user.id, 
+        expires_delta=token_expires
+    )
+    
+    # Generate verification URL
+    verification_url = f"{settings.FRONTEND_URL}/verify-email?token={verification_token}"
+    
+    # Send verification email as a background task
+    background_tasks.add_task(
+        send_verification_email,
+        email_to=user.email,
+        name=f"{user.first_name} {user.last_name}",
+        verification_url=verification_url
+    )
+    
+    # Create and return response
+    result = EmailVerificationResult(
+        success=True,
+        email=user.email,
+        user_id=str(user.id),
+        already_verified=False,
+        message=f"Verification email has been sent to {user.email}"
+    )
+    
+    return create_response(
+        data=result,
+        message=f"Verification email has been sent to {user.email}"
+    )
+
+
+@router.get("/{user_id}/verification-status", response_model=IGetResponseBase[UserVerificationStatus])
+async def check_user_verification_status(
+    user: User = Depends(user_deps.is_valid_user),
+    current_user: User = Depends(
+        deps.get_current_user(required_roles=[IRoleEnum.admin])
+    ),
+) -> IGetResponseBase[UserVerificationStatus]:
+    """
+    Get a user's email verification status.
+    
+    This endpoint allows administrators to check whether a user's
+    email has been verified.
+    
+    Required roles:
+    - admin
+    """
+    verification_status = UserVerificationStatus(
+        email=user.email,
+        email_verified=user.email_verified,
+        user_id=str(user.id),
+        created_at=user.created_at
+    )
+    
+    return create_response(
+        data=verification_status,
+        message="User verification status retrieved successfully"
+    )
+
+
+@router.post("/bulk/send-verification", response_model=IPostResponseBase[BulkVerificationResponse])
+async def admin_bulk_send_verification_emails(
+    background_tasks: BackgroundTasks,
+    limit: int = Query(default=10, ge=1, le=100, description="Maximum number of emails to send"),
+    current_user: User = Depends(
+        deps.get_current_user(required_roles=[IRoleEnum.admin])
+    ),
+    db_session: AsyncSession = Depends(deps.get_db)
+) -> IPostResponseBase[BulkVerificationResponse]:
+    """
+    Admin endpoint to send verification emails to unverified users in bulk.
+    
+    This endpoint allows administrators to send verification emails to 
+    multiple unverified users at once. The limit parameter controls
+    how many emails will be sent in a single request to prevent
+    overwhelming the email server.
+    
+    Required roles:
+    - admin
+    """
+    # Query for unverified users
+    query = select(User).where(User.email_verified == False).limit(limit)
+    result = await db_session.execute(query)
+    users = result.scalars().all()
+    
+    if not users:
+        return create_response(
+            data=BulkVerificationResponse(sent_count=0, users=[]),
+            message="No unverified users found"
+        )
+    
+    sent_count = 0
+    user_list = []
+    
+    # Send verification emails to each user
+    for user in users:
+        # Create verification token (valid for 24 hours)
+        token_expires = timedelta(hours=24)
+        verification_token = create_email_verification_token(
+            user.id, 
+            expires_delta=token_expires
+        )
+        
+        # Generate verification URL
+        verification_url = f"{settings.FRONTEND_URL}/verify-email?token={verification_token}"
+        
+        # Send verification email as a background task
+        background_tasks.add_task(
+            send_verification_email,
+            email_to=user.email,
+            name=f"{user.first_name} {user.last_name}",
+            verification_url=verification_url
+        )
+        
+        sent_count += 1
+        user_list.append(
+            BulkVerificationUserInfo(
+                id=str(user.id),
+                email=user.email,
+                name=f"{user.first_name} {user.last_name}"
+            )
+        )
+    
+    response_data = BulkVerificationResponse(
+        sent_count=sent_count,
+        users=user_list
+    )
+    
+    return create_response(
+        data=response_data,
+        message=f"Verification emails sent to {sent_count} users"
     )
