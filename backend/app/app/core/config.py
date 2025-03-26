@@ -47,21 +47,19 @@ class Settings(BaseSettings):
     DEFAULT_ROLE_NAME:  str ="user"
     USE_REDIS_TOKEN_BLACKLIST: bool = True
 
-    # Email settings
+    # Email settings - fixed naming and added missing variables
     MAIL_SMTP_SERVER: str
     MAIL_SMTP_PORT: int
-    MAIL_SMTP_TLS: bool
-    MAIL_SMTP_SSL: bool
-    MAIL_SMTP_USE_CREDENTIALS: bool
+    MAIL_STARTTLS: bool = False  # Added default
+    MAIL_SSL_TLS: bool
+    MAIL_USE_CREDENTIALS: bool
+    MAIL_VALIDATE_CERTS: bool
     MAIL_SMTP_USERNAME: str
     MAIL_SMTP_PASSWORD: str
-    MAIL_FROM: str
+    MAIL_FROM: EmailStr
     MAIL_FROM_NAME: str
-    SUPPORT_EMAIL: str
-    FRONTEND_URL: str
-    MAIL_VALIDATE_CERTS: bool = True
-    MAIL_SMTP_USE_CREDENTIALS: bool = True
-    # Define a default value for TEMPLATE_FOLDER
+    SUPPORT_EMAIL: EmailStr
+    FRONTEND_URL: AnyHttpUrl
     TEMPLATE_FOLDER: str = str(os.path.join(os.path.dirname(os.path.dirname(__file__)), "templates"))
 
     # Database - Use a method that gets evaluated after class creation
