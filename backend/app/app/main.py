@@ -34,7 +34,7 @@ from app.core.security import decode_token
 from app.schemas.common_schema import IChatResponse, IUserMessage
 from app.utils.fastapi_globals import GlobalsMiddleware, g
 from app.utils.uuid6 import uuid7
-
+from transformers import pipeline
 from app.db.session import engine
 from app.health import router as health_router
 
@@ -107,7 +107,7 @@ async def lifespan(app: FastAPI):
             model_dir = "/code/models"
             os.makedirs(model_dir, exist_ok=True)
             
-            from transformers import pipeline
+           
             print("Loading sentiment analysis model...")
             
             # Load a pre-trained sentiment analysis model
@@ -138,15 +138,6 @@ async def lifespan(app: FastAPI):
     gc.collect()
 
 
-# # Create an empty admin interface
-# admin = Admin(
-#     engine,
-#     title="ExamPapel Admin Panel",
-#     base_url="/admin",
-#     route_name="admin",
-#     # statics_dir="statics/admin",
-#     templates_dir="templates",
-# )
  
 
 # Core Application Instance

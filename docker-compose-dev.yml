@@ -5,32 +5,17 @@ services:
     container_name: fastapi_server
     build: ./backend
     restart: always
-    command: >
-      sh -c "
-      echo 'Waiting for database...' &&
-      sleep 5 &&
-      alembic upgrade head &&
-      echo 'Starting FastAPI server...' &&
-      uvicorn app.main:app --host 0.0.0.0 --port 8000
-      "
+    command: "sh -c 'alembic upgrade head && uvicorn app.main:app --reload --workers 3 --host 0.0.0.0 --port 8000'"
+    #command: "sh -c 'alembic upgrade head && gunicorn -w 3 -k uvicorn.workers.UvicornWorker app.main:app  --bind 0.0.0.0:8000 --preload --log-level=debug --timeout 120'"
     volumes:
       - ./backend/app:/code
-      - ./static:/code/static
-      - ml_models:/code/models
-    ports:
-      - "8000:8000"  # Expose port directly
     expose:
       - 8000
     env_file: ".env"
-    networks:
-      - app_network
     depends_on:
       - database
-      - redis_server
-    environment:
-      - DATABASE_URL=postgresql+asyncpg://${DATABASE_USER}:${DATABASE_PASSWORD}@database:5432/${DATABASE_NAME}
-    healthcheck:
-      disable: true
+    links:
+      - caddy_reverse_proxy:storage.localhost
 
   database:
     image: bitnami/postgresql
@@ -45,17 +30,10 @@ services:
       - 5454:5432 # Remove this on production
     expose:
       - 5432
-    networks:
-      - app_network
     environment:
       - POSTGRESQL_USERNAME=${DATABASE_USER}
       - POSTGRESQL_PASSWORD=${DATABASE_PASSWORD}
       - POSTGRESQL_DATABASE=${DATABASE_NAME}
-    healthcheck:
-      test: ["CMD", "pg_isready", "-U", "${DATABASE_USER}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
   redis_server:
     image: redis:alpine
@@ -66,62 +44,42 @@ services:
     ports:
       - "6379:6379"
     env_file: .env
-    networks:
-      - app_network
     environment:
       - ALLOW_EMPTY_PASSWORD=yes
     volumes:
       - redis_data:/data
     command: redis-server --appendonly yes
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
   celery_worker:
     container_name: celery_worker
     restart: always
+    # platform: linux/arm64/v8
     build: ./backend
-    command: >
-      sh -c "
-      sleep 15 &&
-      pip install --no-cache-dir psycopg2-binary celery[redis] &&
-      watchfiles 'celery -A app.core.celery worker -l info --concurrency=2'"
+    command: "watchfiles 'celery -A app.core.celery worker -l info' "
     volumes:
       - ./backend/app:/code
-    networks:
-      - app_network
+      # - "${EB_LOG_BASE_DIR}/php-app:/var/log/celery"
     depends_on:
       - database
       - redis_server
     env_file: .env
-    environment:
-      - DATABASE_URL=postgresql+asyncpg://${DATABASE_USER}:${DATABASE_PASSWORD}@database:5432/${DATABASE_NAME}
   
-  celery_beat:
+  celery_beat:  #Good for crontab and schedule tasks
     container_name: celery_beat
     restart: always
+    # platform: linux/arm64/v8
     build:
       context: ./backend
       args:
         INSTALL_DEV: ${INSTALL_DEV-false}
-    command: >
-      sh -c "
-      sleep 20 &&
-      pip install --no-cache-dir psycopg2-binary celery[redis] sqlalchemy celery-sqlalchemy-scheduler pytz &&
-      celery -A app.core.celery beat -l info -S celery_sqlalchemy_scheduler.schedulers:DatabaseScheduler"
+    command: celery -A app.core.celery beat -l info -S celery_sqlalchemy_scheduler.schedulers:DatabaseScheduler -l info
     volumes:
       - ./backend/app:/code
-    networks:
-      - app_network
+      # - "${EB_LOG_BASE_DIR}/php-app:/var/log/celery-beat"
     depends_on:
       - database
       - redis_server
     env_file: .env
-    environment:
-      - DATABASE_URL=postgresql+asyncpg://${DATABASE_USER}:${DATABASE_PASSWORD}@database:5432/${DATABASE_NAME}
-      - TZ=UTC
 
   minio_server:
     image: minio/minio
@@ -129,62 +87,43 @@ services:
     container_name: minio_server
     volumes:
       - ./minio/data:/data
+    
     expose:
       - 9000
-      - 9002
-    networks:
-      - app_network
+    #   - 9000
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+      # MINIO_BROWSER_REDIRECT_URL: http://stash.localhost
       MINIO_BUCKET_NAME: ${MINIO_BUCKET}
       MINIO_URL: ${MINIO_URL}
-      MINIO_SECURE: "false"
+      MINIO_SECURE: False
       MINIO_ADDRESS: ':9000'
+      # MINIO_ACCESS_KEY: HLWUPhDTtg4ZeEygSEuE
+      # MINIO_SECRET_KEY: FBvuDyJbVOHbJ6XrTwNavnUqy0d1vLgqEksIw3SW
     command: server /data --console-address ":9002"
     ports:
       - "9000:9000"
       - "9002:9002"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-      interval: 30s
-      timeout: 20s
-      retries: 3
 
   caddy_reverse_proxy:
     container_name: caddy_reverse_proxy
     image: caddy:latest
     restart: always
     ports:
-      - "80:80"      
-      - "443:443"
+      - 80:80      
     environment:
-      - EXT_ENDPOINT1=${EXT_ENDPOINT1:-localhost}
-      - LOCAL_1=${LOCAL_1:-localhost}
-      - LOCAL_2=${LOCAL_2:-127.0.0.1}
+      - EXT_ENDPOINT1=${EXT_ENDPOINT1}
+      - LOCAL_1=${LOCAL_1}
+      - LOCAL_2=${LOCAL_2}
     volumes:
-      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
-      - ./static:/code/static:ro
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile
+      - ./static:/code/static
       - caddy_data:/data
       - caddy_config:/config
-    networks:
-      - app_network
-    depends_on:
-      - fastapi_server
-    # Add extra hosts for name resolution
-    extra_hosts:
-      - "fastapi.localhost:127.0.0.1"
-      - "localhost:127.0.0.1"
-    healthcheck:
-      disable: true
-
-networks:
-  app_network:
-    driver: bridge
 
 volumes:
   db_docker:
   caddy_data:
   caddy_config:
   redis_data:
-  ml_models:

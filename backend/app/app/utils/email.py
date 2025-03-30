@@ -19,7 +19,7 @@ email_config = ConnectionConfig(
     VALIDATE_CERTS=settings.MAIL_VALIDATE_CERTS,
     TEMPLATE_FOLDER=Path(settings.TEMPLATE_FOLDER),
 )
-print(email_config)
+# print(email_config)
 # Set up Jinja2 template environment
 template_env = Environment(
     loader=FileSystemLoader(settings.TEMPLATE_FOLDER),
