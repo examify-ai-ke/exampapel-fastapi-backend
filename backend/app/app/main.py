@@ -276,13 +276,13 @@ async def websocket_endpoint(websocket: WebSocket, user_id: UUID):
 
 
 # Add health check router
-app.include_router(health_router)
+# app.include_router(health_router)
 
 # Add API router
 app.include_router(api_router_v1, prefix=settings.API_V1_STR)
 
-# Add a simple health check at the root path for maximum compatibility
-@app.get("/health", status_code=status.HTTP_200_OK)
-async def health_check():
-    return {"status": "healthy"}
+# # Add a simple health check at the root path for maximum compatibility
+# @app.get("/health", status_code=status.HTTP_200_OK)
+# async def health_check():
+#     return {"status": "healthy"}
  

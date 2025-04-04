@@ -1,4 +1,13 @@
-from sqlmodel import Field, Relationship, SQLModel, Enum, Column, DateTime, String
+from sqlmodel import (
+    Field,
+    Relationship,
+    SQLModel,
+    Enum,
+    Column,
+    DateTime,
+    String,
+    Index,
+)
 from app.models.base_uuid_model import BaseUUIDModel
 from uuid import UUID
 import enum
@@ -37,14 +46,19 @@ class InstitutionFacultyLink(BaseUUIDModel, SQLModel, table=True):
 
 # Define the base Institution model
 class InstitutionBase(SQLModel):
-    name: str = Field(nullable=False, unique=True)
-    description: Optional[str] = Field(nullable=True, default="An Institution of choice")
+    name: str = Field(unique=True, index=True)
+    # description: Optional[str] = Field(nullable=True, default="An Institution of choice")
+    description: Optional[str] = Field(
+        # nullable=False,
+        default="An Institution of choice",
+        sa_column=Column(String, index=True),
+    )  # Indexed for search
     institution_type: InstitutionTypes = Field(
         sa_column=Column(Enum(InstitutionTypes), nullable=False))
     email: EmailStr = Field(sa_column=Column(String, index=True, unique=True))
     phone_number: Optional[str] = Field(nullable=False)
     # Slug with a validator to generate it from the name
-    slug: Optional[str] = Field(default=None, unique=True)
+    slug: Optional[str] = Field(default=None, unique=True, index=True)
 
 
 class Institution(BaseUUIDModel, InstitutionBase, table=True): 
@@ -56,17 +70,17 @@ class Institution(BaseUUIDModel, InstitutionBase, table=True):
             "primaryjoin": "Institution.image_id==ImageMedia.id",
         }
     )
-    created_by_id: UUID | None = Field(default=None, foreign_key="User.id")
+    created_by_id: UUID | None = Field(default=None, foreign_key="User.id", index=True)
     created_by: "User" = Relationship(  # noqa: F821
         sa_relationship_kwargs={
-            "lazy": "joined",
+            "lazy": "selectin",
             "primaryjoin": "Institution.created_by_id==User.id",
         }
     )
 
     # Relationships
     campuses: List["Campus"] = Relationship(
-        back_populates="institution", sa_relationship_kwargs={"lazy": "joined"}
+        back_populates="institution", sa_relationship_kwargs={"lazy": "selectin"}
     )
 
     # # Many-to-many relationship with Faculty via a linktable
@@ -78,6 +92,16 @@ class Institution(BaseUUIDModel, InstitutionBase, table=True):
 
     exam_papers: List["ExamPaper"] = Relationship(
         back_populates="institution", sa_relationship_kwargs={"lazy": "selectin"}
+    )
+    # Optional: Explicitly declare table-level indexes (redundant with Field(index=True) but for clarity)
+    __table_args__ = (
+        Index("idx_institution_name", "name"),  # Already added
+        Index("idx_institution_created_at", "created_at"),  # Already added
+        Index("idx_institution_email", "email"),  # Already added
+        Index("idx_institution_slug", "slug"),  # Already added
+        Index("idx_institution_type", "institution_type"),  # Already added
+        Index("idx_institution_image_id", "image_id"),  # Already added
+        Index("idx_institution_created_by_id", "created_by_id"),  # Already added
     )
 
     @validator("slug")
@@ -98,68 +122,3 @@ class Institution(BaseUUIDModel, InstitutionBase, table=True):
     def faculties_count(self):
         count_faculties = len(self.faculties)
         return count_faculties
-
-
-# class CustomModelView(ModelView):
-#     def get_list(self, request, *args, **kwargs):
-#         """
-#         Overrides the default get_list method to transform the response.
-#         """
-#         response = super().get_list(request, *args, **kwargs)
-
-#         # Transform the response to extract the 'items' field
-#         if isinstance(response, dict):
-#             response = response.get("data", {}).get("items", [])
-#         print(response)
-#         return response
-
-
-# class InstitutionView(ModelView):
-#     page_size = 50
-#     page_size_options = [-1]
-#     name = "Institution"
-#     responsive_table = True
-#     pk_attr = "id"
-
-#     list_fields = ["name", "institution_type", "email"]
-#     search_fields = ["name", "email", "description", "slug"]
-#     fields = [
-#         fields.StringField("id"),
-#         fields.StringField("name"),
-#         fields.StringField("description"),
-#         fields.StringField("institution_type"),
-#         fields.StringField("email"),
-#         fields.StringField("phone_number"),
-#         fields.StringField("slug"),
-#         fields.IntegerField("exams_count"),
-#         fields.IntegerField("campuses_count", label="Campuses"),
-#         fields.IntegerField("faculties_count", label="Faculties"),
-#     ]
-
-#     async def serialize_list(self, objects, request):
-#         """
-#         Override serialize_list to handle the nested response structure
-#         """
-#         print("serialize_list called...................")
-#         if isinstance(objects, dict):
-#             if "data" in objects and "items" in objects["data"]:
-#                 objects = objects["data"]["items"]
-#         return await super().serialize_list(objects, request)
-
-#     async def serialize_item(self, obj, request):
-#         """
-#         Override serialize_item to handle the nested response structure
-#         """
-#         print("serialize_item called...................")
-#         if isinstance(obj, dict) and "data" in obj:
-#             obj = obj["data"]
-#         return await super().serialize_item(obj, request)
-
-#     async def serialize_value(self, value, field_name, request):
-#         """
-#         Override serialize_value to handle specific field transformations if needed
-#         """
-#         print(f"serialize_value called for {field_name}...................")
-#         return await super().serialize_value(value, field_name, request)
-
-     

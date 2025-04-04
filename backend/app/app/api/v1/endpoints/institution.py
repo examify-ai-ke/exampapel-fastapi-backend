@@ -48,9 +48,6 @@ router = APIRouter()
 
 @router.get("")
 async def get_institution_list(
-    # params: Params = Depends(),
-    # current_user: User = Depends(deps.get_current_user()),
-    # current_user: User = None
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1),
     db_session: AsyncSession = Depends(deps.get_db)

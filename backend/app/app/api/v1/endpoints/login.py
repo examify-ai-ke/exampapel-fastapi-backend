@@ -2,7 +2,7 @@ from datetime import timedelta
 from uuid import UUID
 import logging
 
-from fastapi import APIRouter, Body, Depends, HTTPException, status
+from fastapi import APIRouter, Body, Depends, HTTPException 
 from fastapi.security import OAuth2PasswordRequestForm
 from jwt import DecodeError, ExpiredSignatureError, MissingRequiredClaimError
 from pydantic import EmailStr
