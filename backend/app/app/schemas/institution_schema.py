@@ -8,7 +8,7 @@ from app.schemas.campus_schema import CampusRead
 from pydantic import  BaseModel
 
 from app.schemas.exam_paper_schema import ExamPaperRead
-
+from .image_media_schema import IImageMediaRead
 
 class InstitutionCreate(InstitutionBase):
     pass
@@ -54,5 +54,6 @@ class InstitutionRead(InstitutionBase):
     exams_count: int | None = 0
     campuses_count: int | None =0
     faculties_count: int | None =0
+    logo: IImageMediaRead | None = None
     class Config:
         from_attributes = True  # This allows the schema to work with ORM objects

@@ -253,11 +253,11 @@ async def upload_institution_logo(
             content_type=institution_logo.content_type,
         )
         media = IMediaCreate(
-            title=title, description=description, path=data_file.file_name
+            title=title, description=description, path=data_file.url
         )
         inst = await crud.institution.update_institution_logo(
             institution=valid_institution,
-            image=media,
+            media=media,
             heigth=image_modified.height,
             width=image_modified.width,
             file_format=image_modified.file_format,
