@@ -7,7 +7,7 @@ from app.models.hero_model import Hero
 from app.db.session import SessionLocal
 import logging
 from celery import Task
-from transformers import pipeline
+# from transformers import pipeline
 
 
 class PredictTransformersPipelineTask(Task):
@@ -30,7 +30,7 @@ class PredictTransformersPipelineTask(Task):
         """
         if not self.pipeline:
             logging.info("Loading pipeline...")
-            self.pipeline = pipeline(self.task_name, model=self.model_name)
+            # self.pipeline = pipeline(self.task_name, model=self.model_name)
             logging.info("Pipeline loaded")
         return self.run(*args, **kwargs)
 

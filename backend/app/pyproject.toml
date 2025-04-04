@@ -63,7 +63,6 @@ oso = "^0.27.0"
 celery = "^5.3.6"
 celery-sqlalchemy-scheduler = "^0.3.0"
 psycopg2-binary = "^2.9.5"
-transformers = "^4.35.2"
 torch = [
   {url = "https://download.pytorch.org/whl/cpu/torch-2.0.0%2Bcpu-cp311-cp311-linux_x86_64.whl", markers = "sys_platform == 'linux'"},
   {url = "https://download.pytorch.org/whl/cpu/torch-2.0.0%2Bcpu-cp311-cp311-win_amd64.whl", markers = "sys_platform == 'win32'"}
@@ -81,6 +80,8 @@ pydantic-extra-types = "^2.7.0"
 pydantic-core = "^2.18.2"
 starlette-admin = {extras = ["sqlmodel"], version = "^0.14.1"}
 fastapi-mail = "^1.4.2"
+boto3 = "^1.37.27"
+accelerate = "^1.6.0"
 
 
 [tool.poetry.group.dev.dependencies]

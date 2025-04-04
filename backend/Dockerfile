@@ -17,5 +17,8 @@ ARG INSTALL_DEV=false
 # RUN pip install -r requirements.txt
 RUN bash -c "if [ $INSTALL_DEV == 'true' ] ; then poetry install --no-root ; else poetry install --no-root --only main ; fi"
 
+# Install boto3 for AWS S3 integration
+RUN pip install boto3
+
 ENV PYTHONPATH=/code
 EXPOSE 8000

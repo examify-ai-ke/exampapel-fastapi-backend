@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 from app.api import deps
-from app.api.celery_task import predict_transformers_pipeline
+# from app.api.celery_task import predict_transformers_pipeline
 from app.models.user_model import User
 from fastapi import APIRouter, Depends, HTTPException
 from app.utils.fastapi_globals import g
