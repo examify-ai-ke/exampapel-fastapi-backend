@@ -36,11 +36,11 @@ jobs:
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           ECR_REPOSITORY_API: exam-papel-api
-          ECR_REPOSITORY_REDIS: exam-papel-redis
-          ECR_REPOSITORY_CELERY_WORKER: exam-papel-celery-worker
-          ECR_REPOSITORY_CELERY_BEAT: exam-papel-celery-beat
-          ECR_REPOSITORY_MINIO: exam-papel-minio
-          ECR_REPOSITORY_CADDY: exam-papel-caddy
+          # ECR_REPOSITORY_REDIS: exam-papel-redis
+          # ECR_REPOSITORY_CELERY_WORKER: exam-papel-celery-worker
+          # ECR_REPOSITORY_CELERY_BEAT: exam-papel-celery-beat
+          # ECR_REPOSITORY_MINIO: exam-papel-minio
+          # ECR_REPOSITORY_CADDY: exam-papel-caddy
           IMAGE_TAG: latest
         run: |
           # Build images using Docker Compose V2
@@ -49,24 +49,26 @@ jobs:
           # List built images
           docker images
 
-          # Pull redis:alpine image from Docker Hub
-          docker pull redis:alpine
+          # # Pull images from Docker Hub
+          # docker pull redis:alpine
+          # docker pull minio/minio:latest
+          # docker pull caddy:alpine
 
           # Tag images for ECR
           docker tag exampapel-fastapi-backend-fastapi_server:latest $ECR_REGISTRY/$ECR_REPOSITORY_API:$IMAGE_TAG
-          docker tag redis:alpine $ECR_REGISTRY/$ECR_REPOSITORY_REDIS:$IMAGE_TAG
-          docker tag exampapel-fastapi-backend-celery_worker:latest $ECR_REGISTRY/$ECR_REPOSITORY_CELERY_WORKER:$IMAGE_TAG
-          docker tag exampapel-fastapi-backend-celery_beat:latest $ECR_REGISTRY/$ECR_REPOSITORY_CELERY_BEAT:$IMAGE_TAG
-          docker tag minio/minio:latest $ECR_REGISTRY/$ECR_REPOSITORY_MINIO:$IMAGE_TAG
-          docker tag caddy:alpine $ECR_REGISTRY/$ECR_REPOSITORY_CADDY:$IMAGE_TAG
+          # docker tag redis:alpine $ECR_REGISTRY/$ECR_REPOSITORY_REDIS:$IMAGE_TAG
+          # docker tag exampapel-fastapi-backend-celery_worker:latest $ECR_REGISTRY/$ECR_REPOSITORY_CELERY_WORKER:$IMAGE_TAG
+          # docker tag exampapel-fastapi-backend-celery_beat:latest $ECR_REGISTRY/$ECR_REPOSITORY_CELERY_BEAT:$IMAGE_TAG
+          # docker tag minio/minio:latest $ECR_REGISTRY/$ECR_REPOSITORY_MINIO:$IMAGE_TAG
+          # docker tag caddy:alpine $ECR_REGISTRY/$ECR_REPOSITORY_CADDY:$IMAGE_TAG
 
           # Push images to ECR
           docker push $ECR_REGISTRY/$ECR_REPOSITORY_API:$IMAGE_TAG
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY_REDIS:$IMAGE_TAG
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY_CELERY_WORKER:$IMAGE_TAG
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY_CELERY_BEAT:$IMAGE_TAG
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY_MINIO:$IMAGE_TAG
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY_CADDY:$IMAGE_TAG
+          # docker push $ECR_REGISTRY/$ECR_REPOSITORY_REDIS:$IMAGE_TAG
+          # docker push $ECR_REGISTRY/$ECR_REPOSITORY_CELERY_WORKER:$IMAGE_TAG
+          # docker push $ECR_REGISTRY/$ECR_REPOSITORY_CELERY_BEAT:$IMAGE_TAG
+          # docker push $ECR_REGISTRY/$ECR_REPOSITORY_MINIO:$IMAGE_TAG
+          # docker push $ECR_REGISTRY/$ECR_REPOSITORY_CADDY:$IMAGE_TAG
 
   build:
     name: Build phase
