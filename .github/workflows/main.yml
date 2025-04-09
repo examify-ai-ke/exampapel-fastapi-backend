@@ -44,7 +44,7 @@ jobs:
           IMAGE_TAG: latest
         run: |
           # Build images using Docker Compose
-          docker-compose build
+          docker compose build
 
           # Tag images for ECR
           docker tag exam-papel-api:latest $ECR_REGISTRY/$ECR_REPOSITORY_API:$IMAGE_TAG
