@@ -12,6 +12,7 @@ class CRUDRole(CRUDBase[Role, IRoleCreate, IRoleUpdate]):
         self, *, name: str, db_session: AsyncSession | None = None
     ) -> Role:
         db_session = db_session or super().get_db().session
+        # print(db_session)
         role = await db_session.execute(select(Role).where(Role.name == name))
         return role.scalar_one_or_none()
 

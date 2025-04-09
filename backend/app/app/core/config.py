@@ -6,7 +6,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Any
 import secrets
 from enum import Enum
-
+# import psycopg
 
 class ModeEnum(str, Enum):
     development = "development"
@@ -15,7 +15,7 @@ class ModeEnum(str, Enum):
 
 
 class Settings(BaseSettings):
-    MODE: ModeEnum = ModeEnum.development
+    MODE: ModeEnum = ModeEnum.production
     API_VERSION: str = "v1"
     # API_V1_STR: str = f"/api/{API_VERSION}"
     API_V1_STR: str = "/admin/api"
@@ -66,8 +66,8 @@ class Settings(BaseSettings):
     @property
     def DATABASE_URL(self) -> str:
         return os.getenv(
-            "DATABASE_URL", 
-            f"postgresql+asyncpg://{self.DATABASE_USER}:{self.DATABASE_PASSWORD}@{self.DATABASE_HOST}:{self.DATABASE_PORT}/{self.DATABASE_NAME}"
+            "DATABASE_URL",
+            f"postgresql+psycopg://{self.DATABASE_USER}:{self.DATABASE_PASSWORD}@{self.DATABASE_HOST}:{self.DATABASE_PORT}/{self.DATABASE_NAME}",
         )
 
     @field_validator("ASYNC_DATABASE_URI", mode="after")
@@ -75,7 +75,7 @@ class Settings(BaseSettings):
         if isinstance(v, str):
             if v == "":
                 return PostgresDsn.build(
-                    scheme="postgresql+asyncpg",
+                    scheme="postgresql+psycopg",
                     username=info.data["DATABASE_USER"],
                     password=info.data["DATABASE_PASSWORD"],
                     host=info.data["DATABASE_HOST"],
@@ -129,7 +129,7 @@ class Settings(BaseSettings):
         if isinstance(v, str):
             if v == "":
                 return PostgresDsn.build(
-                    scheme="postgresql+asyncpg",
+                    scheme="postgresql+psycopg",
                     username=info.data["DATABASE_USER"],
                     password=info.data["DATABASE_PASSWORD"],
                     host=info.data["DATABASE_HOST"],
