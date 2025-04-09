@@ -43,14 +43,17 @@ jobs:
           ECR_REPOSITORY_CADDY: exam-papel-caddy
           IMAGE_TAG: latest
         run: |
-          # Build images using Docker Compose
+          # Build images using Docker Compose V2
           docker compose build
 
+          # List built images
+          docker images
+
           # Tag images for ECR
-          docker tag exam-papel-api:latest $ECR_REGISTRY/$ECR_REPOSITORY_API:$IMAGE_TAG
+          docker tag exampapel-fastapi-backend-fastapi_server:latest $ECR_REGISTRY/$ECR_REPOSITORY_API:$IMAGE_TAG
           docker tag redis:alpine $ECR_REGISTRY/$ECR_REPOSITORY_REDIS:$IMAGE_TAG
-          docker tag exam-papel-celery-worker:latest $ECR_REGISTRY/$ECR_REPOSITORY_CELERY_WORKER:$IMAGE_TAG
-          docker tag exam-papel-celery-beat:latest $ECR_REGISTRY/$ECR_REPOSITORY_CELERY_BEAT:$IMAGE_TAG
+          docker tag exampapel-fastapi-backend-celery_worker:latest $ECR_REGISTRY/$ECR_REPOSITORY_CELERY_WORKER:$IMAGE_TAG
+          docker tag exampapel-fastapi-backend-celery_beat:latest $ECR_REGISTRY/$ECR_REPOSITORY_CELERY_BEAT:$IMAGE_TAG
           docker tag minio/minio:latest $ECR_REGISTRY/$ECR_REPOSITORY_MINIO:$IMAGE_TAG
           docker tag caddy:alpine $ECR_REGISTRY/$ECR_REPOSITORY_CADDY:$IMAGE_TAG
 
