@@ -15,7 +15,7 @@ on:
 
 jobs:
   push_to_registry:
-    name: Push Docker image to AWS ECR
+    name: Push Docker images to AWS ECR
     runs-on: ubuntu-latest
     steps:
       - name: Check out the repo
@@ -32,19 +32,35 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
       
-      - name: Extract metadata (tags, labels) for Docker
-        id: meta
-        uses: docker/metadata-action@v4
-        with:
-          images: ${{ steps.login-ecr.outputs.registry }}/exam-papel-api
-      
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v3
-        with:
-          context: ./backend
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+      - name: Build and push images using Docker Compose
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY_API: exam-papel-api
+          ECR_REPOSITORY_REDIS: exam-papel-redis
+          ECR_REPOSITORY_CELERY_WORKER: exam-papel-celery-worker
+          ECR_REPOSITORY_CELERY_BEAT: exam-papel-celery-beat
+          ECR_REPOSITORY_MINIO: exam-papel-minio
+          ECR_REPOSITORY_CADDY: exam-papel-caddy
+          IMAGE_TAG: latest
+        run: |
+          # Build images using Docker Compose
+          docker-compose build
+
+          # Tag images for ECR
+          docker tag exam-papel-api:latest $ECR_REGISTRY/$ECR_REPOSITORY_API:$IMAGE_TAG
+          docker tag redis:alpine $ECR_REGISTRY/$ECR_REPOSITORY_REDIS:$IMAGE_TAG
+          docker tag exam-papel-celery-worker:latest $ECR_REGISTRY/$ECR_REPOSITORY_CELERY_WORKER:$IMAGE_TAG
+          docker tag exam-papel-celery-beat:latest $ECR_REGISTRY/$ECR_REPOSITORY_CELERY_BEAT:$IMAGE_TAG
+          docker tag minio/minio:latest $ECR_REGISTRY/$ECR_REPOSITORY_MINIO:$IMAGE_TAG
+          docker tag caddy:alpine $ECR_REGISTRY/$ECR_REPOSITORY_CADDY:$IMAGE_TAG
+
+          # Push images to ECR
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY_API:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY_REDIS:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY_CELERY_WORKER:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY_CELERY_BEAT:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY_MINIO:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY_CADDY:$IMAGE_TAG
 
   build:
     name: Build phase
