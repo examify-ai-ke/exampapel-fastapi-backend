@@ -49,6 +49,9 @@ jobs:
           # List built images
           docker images
 
+          # Pull redis:alpine image from Docker Hub
+          docker pull redis:alpine
+
           # Tag images for ECR
           docker tag exampapel-fastapi-backend-fastapi_server:latest $ECR_REGISTRY/$ECR_REPOSITORY_API:$IMAGE_TAG
           docker tag redis:alpine $ECR_REGISTRY/$ECR_REPOSITORY_REDIS:$IMAGE_TAG
