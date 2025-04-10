@@ -20,7 +20,12 @@ jobs:
     steps:
       - name: Check out the repo
         uses: actions/checkout@v3
-      
+        
+      - name: Clean up temporary files
+        run: |
+          sudo rm -rf /tmp/*
+          sudo rm -rf /var/tmp/*
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
