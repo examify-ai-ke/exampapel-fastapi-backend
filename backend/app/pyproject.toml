@@ -84,7 +84,6 @@ boto3 = "^1.37.31"
 accelerate = "^1.6.0"
 psycopg = {extras = ["binary"], version = "^3.2.6"}
 
-
 [tool.poetry.group.dev.dependencies]
 black = "^23.1.0"
 ruff = "^0.0.256"
