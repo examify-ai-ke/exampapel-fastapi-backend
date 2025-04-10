@@ -9,11 +9,12 @@ RUN curl -sSL https://install.python-poetry.org | POETRY_HOME=/opt/poetry python
     ln -s /opt/poetry/bin/poetry && \
     poetry config virtualenvs.create false
 
-COPY app/alembic.ini /code/
-COPY app/alembic /code/alembic
- 
+# COPY app/alembic.ini /code/
+# COPY app/alembic /code/alembic
+COPY app/* /code/
+# COPY app /code
 # Copy poetry.lock* in case it doesn't exist in the repo
-COPY app/pyproject.toml app/poetry.lock* /code/
+# COPY app/pyproject.toml app/poetry.lock* /code/
 
 # COPY app/requirements.txt /code/
 # Allow installing dev dependencies to run tests
