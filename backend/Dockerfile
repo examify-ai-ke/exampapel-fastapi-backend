@@ -10,6 +10,8 @@ RUN curl -sSL https://install.python-poetry.org | POETRY_HOME=/opt/poetry python
     poetry config virtualenvs.create false
 
 COPY app/alembic.ini /code/
+COPY app/alembic /code/alembic
+ 
 # Copy poetry.lock* in case it doesn't exist in the repo
 COPY app/pyproject.toml app/poetry.lock* /code/
 
