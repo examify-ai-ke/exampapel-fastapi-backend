@@ -83,6 +83,7 @@ fastapi-mail = "^1.4.2"
 boto3 = "^1.37.31"
 accelerate = "^1.6.0"
 psycopg = {extras = ["binary"], version = "^3.2.6"}
+dotenv = "^0.9.9"
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.1.0"

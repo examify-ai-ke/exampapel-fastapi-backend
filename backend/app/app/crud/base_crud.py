@@ -54,12 +54,12 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         """
         db_session = db_session or self.db.session
         query = select(self.model).where(self.model.id == id)
-        
+
         # Add relationship loading options if provided
         if options:
             for option in options:
                 query = query.options(option)
-                
+
         response = await db_session.execute(query)
         return response.unique().scalar_one_or_none()
 
@@ -133,10 +133,9 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             order_by = "created_at"
 
         if query is None:
-            if order == IOrderEnum.ascendent:
+            if order == IOrderEnum.descendent:
                 query = select(self.model).order_by(columns[order_by].asc())
             else:
-                # print("get_multi_paginated_ordered() order_by created_at Desc......")
                 query = select(self.model).order_by(columns[order_by].desc())
 
         return await paginate(db_session, query, params)
@@ -400,8 +399,6 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         await db_session.commit()
         await db_session.refresh(appended_parent_object)
         return appended_parent_object
-
- 
 
     async def remove(
         self, *, id: UUID | str, db_session: AsyncSession | None = None

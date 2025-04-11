@@ -41,6 +41,7 @@ from app.schemas.response_schema import (
 )
 from app.schemas.role_schema import IRoleEnum
 from app.core.authz import is_authorized
+import time
 
 
 router = APIRouter()
@@ -55,9 +56,29 @@ async def get_institution_list(
     """
     Gets a paginated list of institution
     """
-    institutions = await crud.institution.get_multi_paginated_ordered(db_session=db_session, skip=skip, limit=limit)
-    response=create_response(data=institutions)
-    # print(response)
+    start_time = time.perf_counter()
+    
+    # Measure database query time specifically
+    db_start_time = time.perf_counter()
+    institutions = await crud.institution.get_multi_paginated_ordered(
+        db_session=db_session, skip=skip, limit=limit
+    )
+    db_execution_time = time.perf_counter() - db_start_time
+    
+    # Create the response
+    response = create_response(data=institutions)
+    
+    # Calculate total execution time
+    total_execution_time = time.perf_counter() - start_time
+    
+    # Log or include timing information
+    print(f"Database query execution time: {db_execution_time:.4f} seconds")
+    print(f"Total endpoint execution time: {total_execution_time:.4f} seconds")
+    
+    # Optionally add timing to response headers
+    # response.headers["X-DB-Execution-Time"] = f"{db_execution_time:.4f}"
+    # response.headers["X-Total-Execution-Time"] = f"{total_execution_time:.4f}"
+    
     return response
 
 

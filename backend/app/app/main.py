@@ -36,6 +36,8 @@ from app.utils.uuid6 import uuid7
 # from transformers import pipeline
 from app.health import router as health_router
 
+
+
 # Add these settings at the top of the file
 # Configure Hugging Face to use a persistent cache directory
 # os.environ["TRANSFORMERS_CACHE"] = "/code/models"
@@ -45,6 +47,7 @@ from app.health import router as health_router
 # class DummySentimentModel:
 #     def __call__(self, texts):
 #         return [{"label": "POSITIVE", "score": 0.9} for _ in texts]
+
 
 async def user_id_identifier(request: Request):
     if request.scope["type"] == "http":
