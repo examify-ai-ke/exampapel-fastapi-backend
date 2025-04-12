@@ -50,3 +50,9 @@ class Department(BaseUUIDModel, SQLModel, table=True):
     def set_slug(cls, value, values):
         name = values.get("name", "")
         return generate_slug(name)
+
+    @property
+    def total_programmes(self):
+        total = len(self.programmes)
+        return total
+    programmes_count = total_programmes

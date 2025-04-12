@@ -24,11 +24,18 @@ class ProgrammeReadForDepartments(BaseModel):
         from_attributes = True
 
 
+class FacultyReadForDepartment(BaseModel):
+    id: UUID
+    name: str
+    slug: str
+    class Config:
+        from_attributes = True
 # Read schema for Department
 class DepartmentRead(DepartmentBase):
-    id: Optional[UUID] # Read schema includes the unique identifier
-    faculty_id: Optional[UUID]   # Read schema has faculty reference
+    id: Optional[UUID] # Read schema includes the unique identifier   # Read schema has faculty reference
+    faculty: FacultyReadForDepartment
     programmes: Optional[List[ProgrammeReadForDepartments]]
+    programmes_count: int | None = 0
     class Config:
         from_attributes = True
 

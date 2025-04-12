@@ -24,6 +24,8 @@ class DepartmentReadForProgrammeRead(BaseModel):
     name:str
     slug: str
     faculty_id: Optional[UUID]
+    class Config:
+        from_attributes = True 
 class ProgrammeRead(ProgrammeBase):
     id: UUID  # ID is known after creation
     slug: str

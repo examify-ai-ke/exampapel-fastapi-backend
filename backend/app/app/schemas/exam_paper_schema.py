@@ -99,7 +99,7 @@ class ExamPaperRead(ExamPaperBase):
     id: UUID
     tags: Optional[List[str]] = []
     instructions: Optional[List[InstructionRead]] = []  # To represent the relationship
-    title: "ExamTitleReadForExamPaperRead"   = []
+    title: List["ExamTitleReadForExamPaperRead"]  = []
     description: "ExamDescriptionReadForExamPaper"
     modules: Optional[List[ModuleReadForExamPaper]] = []
     created_by_id: UUID

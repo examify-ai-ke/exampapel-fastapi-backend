@@ -34,12 +34,25 @@ class ModuleReadForCourse(BaseModel):
     name:str
     slug: str
     unit_code:str
+    class Config:
+        from_attributes = True 
+
+
+class ExamTitleRead(BaseModel):
+    id: UUID
+    name: str
+    # slug: str
+
+    class Config:
+        from_attributes = True  #
 
 
 class ExamPapersReadForCourse(BaseModel):
     id:UUID
-    # title: str
+    # title: List[ExamTitleRead]
     # description: str
+    class Config:
+        from_attributes = True 
 
 
 # Schema for reading a Course
