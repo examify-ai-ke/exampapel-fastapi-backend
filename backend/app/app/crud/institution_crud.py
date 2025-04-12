@@ -8,9 +8,12 @@ from app.models.image_media_model import ImageMedia
 from app.models.media_model import Media
 from app.models.faculty_model import Faculty
 
+from app.models.campus_model import Campus
+from app.models.exam_paper_model import ExamPaper
 from fastapi import HTTPException
 from sqlmodel import select, func, and_, col
 from sqlmodel.ext.asyncio.session import AsyncSession
+from app.models.user_model import User
 
 
 class CRUDInstitution(CRUDBase[Institution, InstitutionCreate, InstitutionUpdate]):
@@ -90,6 +93,8 @@ class CRUDInstitution(CRUDBase[Institution, InstitutionCreate, InstitutionUpdate
             return None  # Handle the case where no record is found
         else:
             return existing_association  # Return the existing record
+
+   
 
 
 institution = CRUDInstitution(Institution)

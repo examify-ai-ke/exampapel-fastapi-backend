@@ -22,28 +22,21 @@ class InstitutionForFaculty(BaseModel):
     slug: str
     name: str
     id :UUID
+    class Config:
+        from_attributes = True
+
 
 class FacultyRead(FacultyBase):
     id: UUID
-    department_count: int | None
+    department_count: int | None = 0
     departments: list[DepartmentReadForFaculty] | None = []
 
     institutions: list[InstitutionForFaculty] | None =[]
-    institution_count: int | None
+    institution_count: int | None = 0
 
     class Config:
         from_attributes = True
 
-class DepartmentReadForFacultyReadForInstitution(BaseModel):
-    name: str
-    id :UUID
-    slug: str
-class FacultyReadForInstitution(BaseModel):
-    id: UUID
-    name: str
-    slug: str
-    departments: list[DepartmentReadForFacultyReadForInstitution] | None = []
-    # department_count: int | None
 
 @optional()
 class FacultyUpdate(BaseModel):

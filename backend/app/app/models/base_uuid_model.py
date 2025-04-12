@@ -22,4 +22,4 @@ class BaseUUIDModel(SQLModel):
     updated_at: datetime | None = Field(
         default_factory=datetime.utcnow, sa_column_kwargs={"onupdate": datetime.utcnow, }
     )
-    created_at: datetime | None = Field(default_factory=datetime.utcnow, index=True)
+    created_at: datetime | None = Field(default_factory=datetime.utcnow)

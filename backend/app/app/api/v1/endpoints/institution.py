@@ -42,12 +42,13 @@ from app.schemas.response_schema import (
 from app.schemas.role_schema import IRoleEnum
 from app.core.authz import is_authorized
 import time
-
+null =None
 
 router = APIRouter()
 
 
-@router.get("")
+@ router.get("") 
+# @cache(expire=300)
 async def get_institution_list(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1),
@@ -57,28 +58,31 @@ async def get_institution_list(
     Gets a paginated list of institution
     """
     start_time = time.perf_counter()
-    
+
     # Measure database query time specifically
     db_start_time = time.perf_counter()
+ 
+    # Use explicitly controlled relationship loading
     institutions = await crud.institution.get_multi_paginated_ordered(
         db_session=db_session, skip=skip, limit=limit
     )
+    print("institutions received")
+     
     db_execution_time = time.perf_counter() - db_start_time
-    
-    # Create the response
+
+    # Measure response creation time
+    response_start_time = time.perf_counter()
     response = create_response(data=institutions)
-    
+    response_time = time.perf_counter() - response_start_time
+
     # Calculate total execution time
     total_execution_time = time.perf_counter() - start_time
-    
-    # Log or include timing information
+
+    # Log timing information
     print(f"Database query execution time: {db_execution_time:.4f} seconds")
+    print(f"Response creation time: {response_time:.4f} seconds")
     print(f"Total endpoint execution time: {total_execution_time:.4f} seconds")
-    
-    # Optionally add timing to response headers
-    # response.headers["X-DB-Execution-Time"] = f"{db_execution_time:.4f}"
-    # response.headers["X-Total-Execution-Time"] = f"{total_execution_time:.4f}"
-    
+
     return response
 
 

@@ -20,6 +20,10 @@ class ProgrammeReadForDepartments(BaseModel):
     id: UUID
     name: str
     slug: str
+    class Config:
+        from_attributes = True
+
+
 # Read schema for Department
 class DepartmentRead(DepartmentBase):
     id: Optional[UUID] # Read schema includes the unique identifier
@@ -34,6 +38,8 @@ class DepartmentReadForFaculty(BaseModel):
     name: str
     slug:Optional[str]
     programmes: Optional[List[ProgrammeReadForDepartments]]
+    class Config:
+        from_attributes = True
 
 
 # Update schema for Department

@@ -60,6 +60,9 @@ class ModuleReadForExamPaper(BaseModel):
     name: str
     slug: str
     unit_code: str
+    class Config:
+        from_attributes = True  #
+
 
 class InstructionCreate(BaseModel):
     name: str
@@ -87,6 +90,10 @@ class CourseReadForExamPaper(BaseModel):
     id:UUID
     name:str
     slug:str
+    class Config:
+        from_attributes = True  #
+
+
 # Schema for reading a ExamPaper
 class ExamPaperRead(ExamPaperBase):
     id: UUID
@@ -134,6 +141,8 @@ class ExamTitleReadForExamPaperRead(BaseModel):
     id: UUID
     name: str
     slug: str
+    class Config:
+        from_attributes = True  #
 
 
 # ExamDescription
@@ -143,6 +152,8 @@ class ExamDescriptionCreate(BaseModel):
     description: Optional[str] = (
         "The description usually provides additional information about the exam, such as its level, degree program, or specific course details. e.g SECOND YEAR STAGE EXAMINATION For...."
     )
+    class Config:
+        from_attributes = True  #
 
 
 @optional()
@@ -164,3 +175,5 @@ class ExamDescriptionReadForExamPaper(BaseModel):
     id: UUID
     name: str
     slug: str
+    class Config:
+        from_attributes = True

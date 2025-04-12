@@ -4,7 +4,8 @@ from fastapi import HTTPException
 from typing import Any, Generic, TypeVar
 from uuid import UUID
 from app.schemas.common_schema import IOrderEnum
-from fastapi_pagination.ext.sqlmodel import paginate
+# from fastapi_pagination.ext.sqlmodel import paginate
+from fastapi_pagination.ext.sqlalchemy import paginate
 from fastapi_async_sqlalchemy import db
 from fastapi_pagination import Params, Page
 from pydantic import BaseModel
@@ -126,67 +127,27 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         db_session: AsyncSession | None = None,
     ) -> Page[ModelType]:
         db_session = db_session or self.db.session
+        print("db session 2.....")
+        print(db_session)
         params = Params(page=skip // limit + 1, size=limit)  # Convert skip/limit to page/size
+        
         columns = self.model.__table__.columns
+        print("Columns...")      
+        print(columns)
 
         if order_by is None or order_by not in columns:
-            order_by = "created_at"
-
+            order_by = "id"
+        print("order_by...")
+        print(order_by)
         if query is None:
-            if order == IOrderEnum.descendent:
+            if order == IOrderEnum.ascendent:
                 query = select(self.model).order_by(columns[order_by].asc())
             else:
                 query = select(self.model).order_by(columns[order_by].desc())
-
+        print("get_multi_paginated_ordered() called......")
+        print(query)
         return await paginate(db_session, query, params)
-
-    async def get_multi_paginated_ordered_answers_with_children(
-        self,
-        *,
-        skip: int = 0,
-        limit: int = 50,
-        order_by: str | None = None,
-        order: IOrderEnum | None = IOrderEnum.descendent,
-        query: T | Select[T] | None = None,
-        db_session: AsyncSession | None = None,
-    ) -> Page[ModelType]:
-        db_session = db_session or self.db.session
-        params = Params(page=skip // limit + 1, size=limit)  # Convert skip/limit to page/size
-        columns = self.model.__table__.columns
-
-        if order_by is None or order_by not in columns:
-            order_by = "created_at"
-
-        if query is None:
-            if order == IOrderEnum.ascendent:
-                # query = select(self.model).options(
-                #     selectinload(self.model.children)
-                # ).order_by(columns[order_by].asc())
-                query = (
-                    select(self.model)
-                    .options(
-                        selectinload(self.model.children),
-                        selectinload(self.model.parent),
-                    )
-                    .order_by(columns[order_by].asc())
-                )
-            else:
-                # query = select(self.model).options(
-                #     selectinload(self.model.children)
-                # ).order_by(columns[order_by].desc())
-                query = (
-                    select(self.model)
-                    .options(
-                        selectinload(self.model.children),
-                        selectinload(self.model.parent),
-                    )
-                    .order_by(columns[order_by].desc())
-                )
-        else:
-            # If a custom query is provided, add the eager loading option
-            query = query.options(selectinload(self.model.children))
-
-        return await paginate(db_session, query, params)
+         
 
     async def get_multi_ordered(
         self,
@@ -218,9 +179,9 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
                 .limit(limit)
                 .order_by(columns[order_by].desc())
             )
-        # print("get_multi_ordered()......called.............")
+        print("get_multi_ordered()......called.............")
         response = await db_session.execute(query)
-        # print(response)
+        print(response)
         return response.scalars().unique().all()
 
     async def create(

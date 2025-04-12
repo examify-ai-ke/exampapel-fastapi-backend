@@ -22,7 +22,7 @@ class Faculty(BaseUUIDModel, SQLModel, table=True):
     image_id: UUID | None = Field(default=None, foreign_key="ImageMedia.id")
     image: ImageMedia | None = Relationship(
         sa_relationship_kwargs={
-            "lazy": "joined",
+            "lazy": "selectin",
             "primaryjoin": "Faculty.image_id==ImageMedia.id",
         }
     )
@@ -32,17 +32,18 @@ class Faculty(BaseUUIDModel, SQLModel, table=True):
     institutions: List[Institution] = Relationship(
         back_populates="faculties",
         link_model=InstitutionFacultyLink,
-        sa_relationship_kwargs={"lazy": "selectin"},
+        # sa_relationship_kwargs={"lazy": "selectin"},
     )
 
     departments: List[Department] = Relationship(
-        back_populates="faculty", sa_relationship_kwargs={"lazy": "selectin"}
+        back_populates="faculty",
+        # sa_relationship_kwargs={"lazy": "selectin"}
     )
 
     created_by_id: UUID | None = Field(default=None, foreign_key="User.id")
     created_by: "User" = Relationship(  # noqa: F821
         sa_relationship_kwargs={
-            "lazy": "joined",    
+            "lazy": "selectin",     
             "primaryjoin": "Faculty.created_by_id==User.id",
         }
     )
