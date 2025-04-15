@@ -7,6 +7,7 @@ from io import BytesIO
 from app.deps import user_deps
 from app.schemas.media_schema import IMediaCreate
 from app.utils.slugify_string import generate_slug
+from app.models.question_model import QuestionSet, MainQuestion
 from fastapi import APIRouter, Depends, HTTPException, Query
 from app.utils.minio_client import MinioClient
 from fastapi_pagination import Params
@@ -25,6 +26,8 @@ from app.api import deps
 from app.models.exam_paper_model import ExamPaper, ExamInstruction, ExamPaperQuestionLink
 from app.models.user_model import User
 from app.schemas.common_schema import IOrderEnum
+from app.models.question_model import SubQuestion
+from app.models.answer_model import Answer
 from app.schemas.exam_paper_schema import (
     ExamPaperCreate,
     ExamPaperRead,
@@ -44,25 +47,47 @@ from app.schemas.response_schema import (
 from app.schemas.role_schema import IRoleEnum
 from app.core.authz import is_authorized
 from sqlmodel.ext.asyncio.session import AsyncSession
+from sqlalchemy.orm import selectinload
+from sqlmodel import select
+from sqlalchemy import delete
 
 router = APIRouter()
 
 
 @router.get("")
 async def get_exam_paper_list(
-    # params: Params = Depends(),
-    # current_user: User = Depends(deps.get_current_user()),
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1),
     db_session: AsyncSession = Depends(deps.get_db),
 ) -> IGetResponsePaginated[ExamPaperRead]:
     """
-    Gets a paginated list of ExamPapers
+    Gets a paginated list of exam papers
     """
-    exams = await crud.exam_paper.get_multi_paginated_ordered(
-        db_session=db_session, skip=skip, limit=limit, order=IOrderEnum.descendent
+    query = (
+        select(ExamPaper).options(
+            selectinload(ExamPaper.course),  # Load related course
+            selectinload(ExamPaper.description),  # Load related exam description
+            selectinload(ExamPaper.institution),  # Load related institution
+            selectinload(ExamPaper.question_sets)
+            .selectinload(QuestionSet.main_questions)
+            .selectinload(MainQuestion.subquestions),  # Load question sets, main questions, and subquestions
+            selectinload(ExamPaper.question_sets)
+            .selectinload(QuestionSet.main_questions)
+            .selectinload(MainQuestion.answers),  # Load answers for main questions
+            selectinload(ExamPaper.main_questions),  # Load related main questions
+            selectinload(ExamPaper.created_by),  # Load creator details
+            selectinload(ExamPaper.instructions),  # Load related instructions
+            selectinload(ExamPaper.modules),  # Load related modules
+            selectinload(ExamPaper.title),  # Load related exam title
+        )
+        .offset(skip)
+        .limit(limit)
     )
-    return create_response(data=exams)
+    exam_papers = await crud.exam_paper.get_multi_paginated_ordered(
+        db_session=db_session, skip=skip, limit=limit, query=query
+    )
+    return create_response(data=exam_papers)
+
 
 @router.get("/get_exam_paper_properties")
 async def get_exam_paper_properties(
@@ -95,11 +120,33 @@ async def get_exams_list_order_by_created_at(
 async def get_exam_paper_by_id(
     exampaper_id: UUID,
     # current_user: User = Depends(deps.get_current_user()),
+    db_session: AsyncSession = Depends(deps.get_db),
 ) -> IGetResponseBase[ExamPaperRead]:
     """
-    Gets a ExamPaper by its id
+    Get an ExamPaper by ID with all related modules and nested relationships.
     """
-    exampaper = await crud.exam_paper.get(id=exampaper_id)
+    options = [
+        selectinload(ExamPaper.course),  # Load related course
+        selectinload(ExamPaper.description),  # Load related exam description
+        selectinload(ExamPaper.institution),  # Load related institution
+        selectinload(ExamPaper.question_sets)
+        .selectinload(QuestionSet.main_questions)
+        .selectinload(
+            MainQuestion.subquestions
+        ),  # Load question sets, main questions, and subquestions
+        selectinload(ExamPaper.question_sets)
+        .selectinload(QuestionSet.main_questions)
+        .selectinload(MainQuestion.answers),  # Load answers for main questions
+        selectinload(ExamPaper.created_by),  # Load creator details
+        selectinload(ExamPaper.instructions),  # Load related instructions
+        selectinload(ExamPaper.modules),  # Load related modules
+        selectinload(ExamPaper.title),  # Load related exam title
+    ]
+
+    exampaper = await crud.exam_paper.get(
+        id=exampaper_id, db_session=db_session
+    )
+    # exampaper = await crud.exam_paper.get(id=exampaper_id)
     if not exampaper:
         raise IdNotFoundException(ExamPaper, exampaper_id)
 
@@ -224,72 +271,86 @@ async def add_question_set_to_exam_paper(
     current_user: User = Depends(
         deps.get_current_user(required_roles=[IRoleEnum.admin, IRoleEnum.manager])
     ),
+    db_session: AsyncSession = Depends(deps.get_db),
 ) -> IPostResponseBase[ExamPaperRead]:
     """
-    Add a QuestionSet to an ExamPaper by ids
+    Add a QuestionSet to an ExamPaper by IDs.
 
     Required roles:
     - admin
     - manager
     """
-    exam_paper = await crud.exam_paper.get(id=exampaper_id)
-    question_set = await crud.question_set.get(id=question_set_id)
-    if not exam_paper or not question_set:
-        raise HTTPException(status_code=404, detail="ExamPaper or QuestionSet not found")
+    # Fetch the ExamPaper
+    exam_paper = await crud.exam_paper.get(id=exampaper_id, db_session=db_session)
+    if not exam_paper:
+        raise HTTPException(status_code=404, detail="ExamPaper not found")
 
-    
-    if question_set.id in [q.id for q in exam_paper.question_sets]:
-        print({question_set.id},"is found:...............")
+    # Fetch the QuestionSet
+    question_set = await crud.question_set.get(id=question_set_id, db_session=db_session)
+    if not question_set:
+        raise HTTPException(status_code=404, detail="QuestionSet not found")
+
+    # Check if the QuestionSet is already associated with the ExamPaper
+    if question_set.id in [qs.id for qs in exam_paper.question_sets]:
         raise HTTPException(
             status_code=400,
-            detail=f"ExamPaper: '{exam_paper.year_of_exam}-{exam_paper.title.name}-{exam_paper.description.name}' is already associated with QuestionSet:'{question_set.title}'",
-        )
-     
-    else:
-        exam_paper.question_sets.append(question_set)
-        exampaper_with_quizset = await crud.exam_paper.add_related(
-            appended_parent_object=exam_paper
+            detail=f"ExamPaper '{exam_paper.year_of_exam}-{exam_paper.title.name}-{exam_paper.description.name}' is already associated with QuestionSet '{question_set.title}'",
         )
 
-        return  create_response(data=exampaper_with_quizset)
+    # Add the QuestionSet to the ExamPaper
+    exam_paper.question_sets.append(question_set)
+
+    # Save the updated ExamPaper
+    updated_exam_paper = await crud.exam_paper.update(
+        obj_current=exam_paper, obj_new=exam_paper, db_session=db_session
+    )
+
+    return create_response(data=updated_exam_paper)
 
 
-# @router.post("/{institution_id}/logo")
-# async def upload_institution_logo(
-#     valid_institution: Institution = Depends(user_deps.is_valid_institution),
-#     title: str | None = Body(None),
-#     description: str | None = Body(None),
-#     institution_logo: UploadFile = File(...),
-#     current_user: User = Depends(
-#         deps.get_current_user(required_roles=[IRoleEnum.admin, IRoleEnum.manager])
-#     ),
-#     minio_client: MinioClient = Depends(deps.minio_auth),
-# ) -> IPostResponseBase[InstitutionRead]:
-#     """
-#     Uploads a institution official logo by id
+@router.delete("/{exampaper_id}/question-sets/{question_set_id}")
+async def remove_question_set_from_exam_paper(
+    exampaper_id: UUID,
+    question_set_id: UUID,
+    current_user: User = Depends(
+        deps.get_current_user(required_roles=[IRoleEnum.admin, IRoleEnum.manager])
+    ),
+    db_session: AsyncSession = Depends(deps.get_db),
+) -> IDeleteResponseBase[ExamPaperRead]:
+    """
+    Remove a QuestionSet from an ExamPaper by IDs without deleting the QuestionSet.
 
-#     Required roles:
-#     - admin
-#     - manager
-#     """
-#     try:
-#         image_modified = modify_image(BytesIO(institution_logo.file.read()))
-#         data_file = minio_client.put_object(
-#             file_name=institution_logo.filename,
-#             file_data=BytesIO(image_modified.file_data),
-#             content_type=institution_logo.content_type,
-#         )
-#         media = IMediaCreate(
-#             title=title, description=description, path=data_file.file_name
-#         )
-#         inst = await crud.institution.update_institution_logo(
-#             institution=valid_institution,
-#             image=media,
-#             heigth=image_modified.height,
-#             width=image_modified.width,
-#             file_format=image_modified.file_format,
-#         )
-#         return create_response(data=inst)
-#     except Exception as e:
-#         print(e)
-#         return Response("Internal server error", status_code=500)
+    Required roles:
+    - admin
+    - manager
+    """
+    # Fetch the ExamPaper
+    exam_paper = await crud.exam_paper.get(id=exampaper_id, db_session=db_session)
+    if not exam_paper:
+        raise HTTPException(status_code=404, detail="ExamPaper not found")
+
+    # Fetch the QuestionSet
+    question_set = await crud.question_set.get(id=question_set_id, db_session=db_session)
+    if not question_set:
+        raise HTTPException(status_code=404, detail="QuestionSet not found")
+
+    # Check if the QuestionSet is associated with the ExamPaper
+    if question_set.id not in [qs.id for qs in exam_paper.question_sets]:
+        raise HTTPException(
+            status_code=400,
+            detail=f"QuestionSet '{question_set.title}' is not associated with ExamPaper '{exam_paper.year_of_exam}-{exam_paper.title.name}-{exam_paper.description.name}'",
+        )
+
+    # Unlink the QuestionSet from the ExamPaper by deleting the association in the linking table
+    await db_session.execute(
+        delete(ExamPaperQuestionLink).where(
+            ExamPaperQuestionLink.exam_id == exampaper_id,
+            ExamPaperQuestionLink.question_set_id == question_set_id,
+        )
+    )
+    await db_session.commit()
+
+    # Fetch the updated ExamPaper to return in the response
+    updated_exam_paper = await crud.exam_paper.get(id=exampaper_id, db_session=db_session)
+
+    return create_response(data=updated_exam_paper)

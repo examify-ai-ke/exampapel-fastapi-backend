@@ -54,13 +54,18 @@ class ExamPapersReadForCourse(BaseModel):
     class Config:
         from_attributes = True 
 
-
+class ProgrammeReadForCourse(BaseModel):
+    name:str
+    id: UUID  # ID is known after creation
+    slug: str
+    class Config:
+        from_attributes = True 
 # Schema for reading a Course
 class CourseRead(CourseBase):
     id: UUID
     slug:str
     course_acronym: str | None
-    programme_id: UUID
+    programme: ProgrammeReadForCourse
     modules: Optional[list[ModuleReadForCourse]]
     exam_papers: Optional[List[ExamPapersReadForCourse]]
     image: IImageMediaRead | None

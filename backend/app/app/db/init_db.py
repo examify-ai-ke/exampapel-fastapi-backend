@@ -269,119 +269,81 @@ async def init_db(db_session: AsyncSession, skip_institutions=False) -> None:
             db_session.add(module_exam_link)
             await db_session.flush()
 
-            # Create a question set
-            question_set = QuestionSet(
-                title=QuestionSetTitleEnum.QUESTION_ONE,
-                slug="question-one-set",
-                created_by_id=ADMIN_USER_ID,
+            # Create all question sets from the QuestionSetTitleEnum
+            question_sets = []
+            for question_set_title in QuestionSetTitleEnum:
+                question_set = QuestionSet(
+                    title=question_set_title,
+                    slug=question_set_title.value.lower().replace(" ", "-"),  # Generate slug from title
+                    created_by_id=ADMIN_USER_ID,
+                )
+                db_session.add(question_set)
+                question_sets.append(question_set)  # Keep track of all question sets
+            await db_session.flush()
+
+            # Link only QUESTION_ONE to the ExamPaper
+            question_one_set = next(
+                (qs for qs in question_sets if qs.title == QuestionSetTitleEnum.QUESTION_ONE), None
             )
-            db_session.add(question_set)
-            await db_session.flush()
+            if question_one_set:
+                # Link QUESTION_ONE to the ExamPaper
+                exam_paper_question_link = ExamPaperQuestionLink(
+                    exam_id=exam_paper.id,
+                    question_set_id=question_one_set.id,
+                )
+                db_session.add(exam_paper_question_link)
+                await db_session.flush()
 
-            # Link question set to exam paper
-            exam_paper_question_link = ExamPaperQuestionLink(
-                exam_id=exam_paper.id,
-                question_set_id=question_set.id
-            )
-            db_session.add(exam_paper_question_link)
-            await db_session.flush()
-
-            # Create main questions - now with the required exam_paper_id
-            main_questions = [
-                MainQuestion(
-                    text={
-                        "time": 1742156891249,
-                        "blocks": [
-                            {
-                                "id": "dCcbQeoht6",
-                                "type": "paragraph",
-                                "data": {
-                                    "text":"Explain the concept of variables in Python and provide examples of different data types.",
+                # Create main questions linked to QUESTION_ONE and the ExamPaper
+                main_questions = [
+                    MainQuestion(
+                        text={
+                            "time": 1742156891249,
+                            "blocks": [
+                                {
+                                    "id": "dCcbQeoht6",
+                                    "type": "paragraph",
+                                    "data": {
+                                        "text": "Explain the concept of variables in Python and provide examples of different data types.",
+                                    },
                                 }
-                            }
-                        ],
-                    },
-                    marks=5,
-                    numbering_style="ROMAN",
-                    question_number="i",
-                    slug="python-variables-and-data-types",
-                    question_set_id=question_set.id,
-                    exam_paper_id=exam_paper.id,
-                    created_by_id=ADMIN_USER_ID,
-                ),
-                MainQuestion(
-                    text={
-                        "time": 1742156891260,
-                        "blocks": [
-                            {
-                                "id": "dCcbQeoht12",
-                                "type": "paragraph",
-                                "data": {
-                                    "text":"Write a Python function that calculates the factorial of a given number. Explain your code.",
+                            ],
+                        },
+                        marks=5,
+                        numbering_style="ROMAN",
+                        question_number="i",
+                        slug="python-variables-and-data-types",
+                        question_set_id=question_one_set.id,  # Link to QUESTION_ONE
+                        exam_paper_id=exam_paper.id,  # Link to the ExamPaper
+                        created_by_id=ADMIN_USER_ID,
+                    ),
+                    MainQuestion(
+                        text={
+                            "time": 1742156891260,
+                            "blocks": [
+                                {
+                                    "id": "dCcbQeoht12",
+                                    "type": "paragraph",
+                                    "data": {
+                                        "text": "Write a Python function that calculates the factorial of a given number. Explain your code.",
+                                    },
                                 }
-                            }
-                        ],
-                    },
-                    marks=15,
-                    numbering_style="ROMAN",
-                    question_number="ii",
-                    slug="python-factorial-function",
-                    question_set_id=question_set.id,
-                    exam_paper_id=exam_paper.id,
-                    created_by_id=ADMIN_USER_ID,
-                ),
-            ]
+                            ],
+                        },
+                        marks=15,
+                        numbering_style="ROMAN",
+                        question_number="ii",
+                        slug="python-factorial-function",
+                        question_set_id=question_one_set.id,  # Link to QUESTION_ONE
+                        exam_paper_id=exam_paper.id,  # Link to the ExamPaper
+                        created_by_id=ADMIN_USER_ID,
+                    ),
+                ]
 
-            # Add the main questions to the session
-            for question in main_questions:
-                db_session.add(question)
-            await db_session.flush()
-
-            # Create subquestions for the first main question
-            subquestions = [
-                SubQuestion(
-                    text={
-                        "time": 1742156891270,
-                        "blocks": [
-                            {
-                                "id": "subq1",
-                                "type": "paragraph",
-                                "data": {
-                                    "text": "Define what a variable is in Python.",
-                                },
-                            }
-                        ],
-                    },
-                    marks=2,
-                    question_number="a",
-                    numbering_style="ALPHA",
-                    main_question_id=main_questions[0].id,
-                    created_by_id=ADMIN_USER_ID,
-                ),
-                SubQuestion(
-                    text={
-                        "time": 1742156891280,
-                        "blocks": [
-                            {
-                                "id": "subq2",
-                                "type": "paragraph",
-                                "data": {
-                                    "text": "List and explain 3 different data types in Python with examples.",
-                                },
-                            }
-                        ],
-                    },
-                    marks=3,
-                    question_number="b",
-                    numbering_style="ALPHA",
-                    main_question_id=main_questions[0].id,
-                    created_by_id=ADMIN_USER_ID,
-                ),
-            ]
-
-            # Add the subquestions to the session
-            for subquestion in subquestions:
-                db_session.add(subquestion)
+                # Add the main questions to the session
+                for question in main_questions:
+                    db_session.add(question)
+                await db_session.flush()
 
             # Link exam instruction to exam paper
             instruction_link = InstructionExamsLink(
@@ -485,237 +447,6 @@ async def init_db(db_session: AsyncSession, skip_institutions=False) -> None:
         print(f"Error during database initialization: {e}")
         await db_session.rollback()
         raise
-
-# async def init_db_institution(db_session: AsyncSession, admin_user_id) -> None:
-#     """Initialize DB with institutions and related data"""
-#     try:
-#         # Create an Institution
-#         institution = Institution(
-#             name="Example University",
-#             description="A prestigious university",
-#             institution_type=InstitutionTypes.UNIVERSITY,
-#             email="info@example.edu",
-#             phone_number="+254712345678",
-#             created_by_id=admin_user_id,
-#             slug="example-university",
-#         )
-#         db_session.add(institution)
-#         await db_session.flush()  # Ensure the institution has an ID
-
-#         # Create a Faculty
-#         faculty = Faculty(
-#             name="Faculty of Computing and Information Technology",
-#             description="Computer Science and IT Faculty",
-#             created_by_id=admin_user_id,
-#             slug="faculty-of-computing-and-information-technology",
-#         )
-#         db_session.add(faculty)
-#         await db_session.flush()  # Ensure the faculty has an ID
-
-#         # Create InstitutionFacultyLink
-#         institution_faculty_link = InstitutionFacultyLink(
-#             institution_id=institution.id,
-#             faculty_id=faculty.id,
-#         )
-#         db_session.add(institution_faculty_link)
-#         await db_session.flush()
-
-#         # Create a Department
-#         department = Department(
-#             name="Computer Science Department",
-#             slug="computer-science-department",
-#             description="Department of Computer Science",
-#             faculty_id=faculty.id,
-#             created_by_id=admin_user_id,
-#         )
-#         db_session.add(department)
-#         await db_session.flush()
-
-#         # Create a Programme
-#         programme = Programme(
-#             name=ProgrammeTypes.UNDERGRADUATE,
-#             slug="undergraduate-programme",
-#             description="Undergraduate Programme",
-#             created_by_id=admin_user_id,
-#         )
-#         db_session.add(programme)
-#         await db_session.flush()
-
-#         # IMPORTANT: Use link model instead of append
-#         # DO NOT use: department.programmes.append(programme)
-#         # Instead, create the link explicitly:
-#         programme_department_link = ProgrammeDepartmentLink(
-#             programme_id=programme.id,
-#             department_id=department.id
-#         )
-#         db_session.add(programme_department_link)
-#         await db_session.flush()
-
-#         # Create a Course
-#         course = Course(
-#             name="Bachelor of Science in Information Technology",
-#             description="BSc in IT Programme",
-#             programme_id=programme.id,
-#             course_acronym="BSc IT",
-#             slug="bachelor-of-science-in-information-technology",
-#             created_by_id=admin_user_id,
-#         )
-#         db_session.add(course)
-#         await db_session.flush()
-
-#         # Create a Module
-#         module = Module(
-#             name="Introduction to Python Programming",
-#             description="Basic concepts of Python programming",
-#             unit_code="CS101",
-#             slug="introduction-to-python-programming",
-#             created_by_id=admin_user_id,
-#         )
-#         db_session.add(module)
-#         await db_session.flush()
-
-#         # Link Course and Module using the link model directly
-#         course_module_link = CourseModuleLink(
-#             course_id=course.id,
-#             module_id=module.id,
-#         )
-#         db_session.add(course_module_link)
-#         await db_session.flush()
-
-#         # Create ExamTitle
-#         exam_title = ExamTitle(
-#             name="UNIVERSITY EXAMINATIONS",
-#             description="End of Semester Examinations",
-#             slug="university-examinations",
-#             created_by_id=admin_user_id,
-#         )
-#         db_session.add(exam_title)
-#         await db_session.flush()
-
-#         # Create ExamDescription
-#         exam_description = ExamDescription(
-#             name="FIRST YEAR SECOND SEMESTER EXAMINATION",
-#             description="End of Second Semester Examination for First Year Students",
-#             slug="first-year-second-semester-examination",
-#             created_by_id=admin_user_id,
-#         )
-#         db_session.add(exam_description)
-#         await db_session.flush()
-
-#         # Create ExamInstruction
-#         exam_instruction = ExamInstruction(
-#             name="Answer ALL Questions",
-#             slug="answer-all-questions",
-#             created_by_id=admin_user_id,
-#         )
-#         db_session.add(exam_instruction)
-#         await db_session.flush()
-
-#         # Create an ExamPaper
-#         exam_paper = ExamPaper(
-#             year_of_exam="2023/2024",
-#             exam_duration=120,
-#             exam_date=date(2024, 4, 15),
-#             course_id=course.id,
-#             institution_id=institution.id,
-#             title_id=exam_title.id,
-#             description_id=exam_description.id,
-#             created_by_id=admin_user_id,
-#             hash_code="123456789abcdef",
-#         )
-#         db_session.add(exam_paper)
-#         await db_session.flush()
-
-#         # Link the Instruction to the ExamPaper
-#         instruction_exam_link = InstructionExamsLink(
-#             instruction_id=exam_instruction.id,
-#             exam_id=exam_paper.id,
-#         )
-#         db_session.add(instruction_exam_link)
-#         await db_session.flush()
-
-#         # Link the Module to the ExamPaper
-#         module_exam_link = ModuleExamsLink(
-#             module_id=module.id,
-#             exam_id=exam_paper.id,
-#         )
-#         db_session.add(module_exam_link)
-#         await db_session.flush()
-
-#         # Create a QuestionSet
-#         question_set = QuestionSet(
-#             title=QuestionSetTitleEnum.QUESTION_ONE,
-#             slug="question-one",
-#             created_by_id=admin_user_id,
-#         )
-#         db_session.add(question_set)
-#         await db_session.flush()
-
-#         # Link the QuestionSet to the ExamPaper
-#         exam_paper_question_link = ExamPaperQuestionLink(
-#             question_set_id=question_set.id,
-#             exam_id=exam_paper.id,
-#         )
-#         db_session.add(exam_paper_question_link)
-#         await db_session.flush()
-
-#         # Create main questions with the required exam_paper_id
-#         main_questions = [
-#             MainQuestion(
-#                 text={
-#                     "time": 1742156891249,
-#                     "blocks": [
-#                         {
-#                             "id": "dCcbQeoht6",
-#                             "type": "paragraph",
-#                             "data": {
-#                                 "text":"Explain the concept of variables in Python and provide examples of different data types.",
-#                             }
-#                         }
-#                     ],
-#                 },
-#                 marks=5,
-#                 numbering_style="ROMAN",
-#                 question_number="i",
-#                 slug="python-variables-and-data-types",
-#                 question_set_id=question_set.id,
-#                 exam_paper_id=exam_paper.id,
-#                 created_by_id=admin_user_id,
-#             ),
-#             MainQuestion(
-#                 text={
-#                     "time": 1742156891260,
-#                     "blocks": [
-#                         {
-#                             "id": "dCcbQeoht12",
-#                             "type": "paragraph",
-#                             "data": {
-#                                 "text":"Write a Python function that calculates the factorial of a given number. Explain your code.",
-#                             }
-#                         }
-#                     ],
-#                 },
-#                 marks=15,
-#                 numbering_style="ROMAN",
-#                 question_number="ii",
-#                 slug="python-factorial-function",
-#                 question_set_id=question_set.id,
-#                 exam_paper_id=exam_paper.id,
-#                 created_by_id=admin_user_id,
-#             ),
-#         ]
-
-#         # Add the main questions to the session
-#         for question in main_questions:
-#             db_session.add(question)
-#         await db_session.flush()
-
-#         await db_session.commit()
-#         print("Database initialized with institution data and relationships.")
-#     except Exception as e:
-#         print(f"Error initializing institution data: {e}")
-#         await db_session.rollback()
-#         raise
 
 # This function helps run the init_db function in an async context
 def run_init_db():

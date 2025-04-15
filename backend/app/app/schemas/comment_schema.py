@@ -5,8 +5,40 @@ from pydantic import BaseModel
 
 from app.utils.partial import optional
 
+
+class BlockData(BaseModel):
+    text: str
+
+
+class Block(BaseModel):
+    id: str
+    data: Dict[str, Any]
+    type: str
+
+
+class CommentTextSchema(BaseModel):
+    time: int
+    blocks: list[Block]
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "time": 1742156891260,
+                "blocks": [
+                    {
+                        "id": "dCcbQeoht12",
+                        "data": {
+                            "text": "Write a Python function that calculates the factorial of a given number. Explain your code."
+                        },
+                        "type": "paragraph",
+                    }
+                ],
+            }
+        }
+
+
 class CommentBase(BaseModel):
-    text: Optional[Dict[str, Any]]
+    text: CommentTextSchema
     answer_id: UUID
     parent_id: Optional[UUID] = None
 
@@ -26,7 +58,7 @@ class CommentUpdate(CommentBase):
 
 class CommentReplyRead(BaseModel):
     id: UUID
-    text: Optional[Dict[str, Any]]
+    text: CommentTextSchema
     likes: int = 0
     dislikes: int = 0
     created_by_id: Optional[UUID] = None

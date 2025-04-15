@@ -87,3 +87,21 @@ class InstitutionRead(InstitutionBase):
     logo: IImageMediaRead | None = None
     class Config:
         from_attributes = True  # This allows the schema to work with ORM objects
+
+
+ 
+
+
+class InstitutionDetailedStatistics(BaseModel):
+    total_institutions:int
+    total_courses: int
+    total_departments: int
+    total_modules: int
+    total_faculties: int
+    total_main_questions: int
+    total_users: int
+    total_exam_papers: int
+    total_answers: int
+    total_campuses: int
+    class Config:
+        from_attributes = True  

@@ -60,19 +60,19 @@ class Module(BaseUUIDModel, SQLModel, table=True):
     courses: List["Course"] = Relationship(
         back_populates="modules",
         link_model=CourseModuleLink,
-        sa_relationship_kwargs={"lazy": "joined"}
+        sa_relationship_kwargs={"lazy": "selectin"}
     )
 
     exam_papers: List["ExamPaper"] = Relationship(
         back_populates="modules",
         link_model=ModuleExamsLink,
-        sa_relationship_kwargs={"lazy": "joined"},
+        sa_relationship_kwargs={"lazy": "selectin"},
     )
 
     created_by_id: UUID | None = Field(default=None, foreign_key="User.id")
     created_by: "User" = Relationship(  # noqa: F821
         sa_relationship_kwargs={
-            "lazy": "joined",
+            "lazy": "selectin",
             "primaryjoin": "Module.created_by_id==User.id",
         }
     )
@@ -80,7 +80,7 @@ class Module(BaseUUIDModel, SQLModel, table=True):
     image_id: UUID | None = Field(default=None, foreign_key="ImageMedia.id")
     image: ImageMedia = Relationship(
         sa_relationship_kwargs={
-            "lazy": "joined",
+            "lazy": "selectin",
             "primaryjoin": "Module.image_id==ImageMedia.id",
         }
     )

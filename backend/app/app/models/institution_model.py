@@ -1,3 +1,7 @@
+from app.models.campus_model import Campus
+from app.models.exam_paper_model import ExamPaper
+# from app.models.faculty_model import Faculty
+from app.models.user_model import User
 from sqlmodel import (
     Field,
     Relationship,
@@ -63,26 +67,25 @@ class InstitutionBase(SQLModel):
 
 
 class Institution(BaseUUIDModel, InstitutionBase, table=True): 
-
     image_id: UUID | None = Field(default=None, foreign_key="ImageMedia.id")
     logo: ImageMedia = Relationship(
         sa_relationship_kwargs={
-            # "lazy": "selectin",  # Changed from "joined" to "selectin" for better performance
-            "primaryjoin": "Institution.image_id==ImageMedia.id",
+            "lazy": "selectin",  # Changed from "joined" to "selectin" for better performance
         }
     )
     created_by_id: UUID | None = Field(default=None, foreign_key="User.id", index=True)
-    created_by: "User" = Relationship(
+    created_by: User = Relationship(
         sa_relationship_kwargs={
-            # "lazy": "selectin",  # Changed from "selectin" to optimize loading
-            "primaryjoin": "Institution.created_by_id==User.id",
+            "lazy": "selectin",  # Changed from "selectin" to optimize loading
         }
     )
 
     # Relationships
-    campuses: List["Campus"] = Relationship(        
+    campuses: List[Campus] = Relationship(
         back_populates="institution",
-        # sa_relationship_kwargs={"lazy": "selectin"}  # Changed from "joined" to "selectin"
+        sa_relationship_kwargs={
+            "lazy": "selectin",  # Changed from "selectin" to optimize loading
+        },
     )
 
     # Many-to-many relationship with Faculty via a linktable
@@ -90,15 +93,15 @@ class Institution(BaseUUIDModel, InstitutionBase, table=True):
         link_model=InstitutionFacultyLink,
         back_populates="institutions",
         sa_relationship_kwargs={
-            "lazy": "joined"
-        },  # Changed from "joined" to "selectin"
+            "lazy": "selectin",  # Changed from "selectin" to optimize loading
+        },
     )
 
-    exam_papers: List["ExamPaper"] = Relationship(
+    exam_papers: List[ExamPaper] = Relationship(
         back_populates="institution",
-        # sa_relationship_kwargs={
-        #     "lazy": "joined"
-        # },  # Changed from "joined" to "selectin"
+        sa_relationship_kwargs={
+            "lazy": "selectin",  # Changed from "selectin" to optimize loading
+        },
     )
     # Optional: Explicitly declare table-level indexes (redundant with Field(index=True) but for clarity)
     __table_args__ = (

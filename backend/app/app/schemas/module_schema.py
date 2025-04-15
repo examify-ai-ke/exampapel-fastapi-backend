@@ -31,19 +31,20 @@ class ModuleCreate(ModuleBase):
     pass
 
 class CourseReadForModule(BaseModel):
-    id:UUID
-    name:str
-    slug:str
-# class ExamPaperReadForModule(BaseModel):
-#     id:UUID
-#     slug:str
-#     name:str
+    id: UUID
+    name: str
+    slug: str
+    class Config:
+        from_attributes = True  # Allows ORM-based data to be converted to Pydantic
 
 
 class ExamPaperReadForModule(ExamPaperBase):
     id: UUID
     tags: Optional[List]
     title: "ExamTitleReadForExamPaperRead" = []
+    class Config:
+        from_attributes = True  # Allows ORM-based data to be converted to Pydantic
+
 
 
 # Schema for reading a Module

@@ -7,6 +7,7 @@ from io import BytesIO
 from app.deps import user_deps
 from app.schemas.media_schema import IMediaCreate
 from app.utils.slugify_string import generate_slug
+from app.models.department_model import Department
 from fastapi import APIRouter, Depends, HTTPException, Query
 from app.utils.minio_client import MinioClient
 from fastapi_pagination import Params
@@ -41,7 +42,8 @@ from app.schemas.response_schema import (
 )
 from app.schemas.role_schema import IRoleEnum
 from app.core.authz import is_authorized
-
+from sqlalchemy.orm import selectinload
+from sqlmodel import  select
 
 router = APIRouter()
 
@@ -57,8 +59,19 @@ async def get_faculty_list(
     """
     Gets a paginated list of faculties
     """
+    query = (
+        select(Faculty)
+        .options(
+            selectinload(Faculty.institutions),
+            selectinload(Faculty.departments).selectinload(Department.programmes),
+            selectinload(Faculty.image),
+            selectinload(Faculty.created_by),
+        )
+        # .offset(skip)
+        # .limit(limit)
+    )
     faculties = await crud.faculty.get_multi_paginated_ordered(
-        db_session=db_session, skip=skip, limit=limit
+        db_session=db_session, skip=skip, limit=limit, query=query
     )
     return create_response(data=faculties)
 

@@ -28,7 +28,8 @@ from app.utils.exceptions import (
 from app.schemas.common_schema import IOrderEnum
 from fastapi import Query
 from sqlmodel.ext.asyncio.session import AsyncSession
-# from app.schemas.delete_schema import IDeleteResponseBase
+from sqlalchemy.orm import selectinload
+from sqlmodel import select
 
 router = APIRouter()
 
@@ -38,15 +39,28 @@ async def get_groups(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1),
     db_session: AsyncSession = Depends(deps.get_db),
-    current_user: User = Depends(deps.get_current_user(required_roles=[IRoleEnum.admin,IRoleEnum.manager])),
+    current_user: User = Depends(
+        deps.get_current_user(required_roles=[IRoleEnum.admin, IRoleEnum.manager])
+    ),
 ) -> IGetResponsePaginated[IGroupRead]:
     """
     Gets a paginated list of groups
     """
+    query = (
+        select(Group)
+        .options(
+            selectinload(Group.users),  # Load related users in the group
+            selectinload(Group.created_by),  # Load creator details
+            
+        )
+        .offset(skip)
+        .limit(limit)
+    )
     groups = await crud.group.get_multi_paginated_ordered(
         db_session=db_session,
         skip=skip,
         limit=limit,
+        query=query,
         order=IOrderEnum.ascendent,
         order_by="name",
     )

@@ -53,12 +53,12 @@ class QuestionSet(BaseUUIDModel,QuestionSetBase, table=True):
     exam_papers: List["ExamPaper"] = Relationship(
         back_populates="question_sets",
         link_model=ExamPaperQuestionLink,
-        sa_relationship_kwargs={"lazy": "joined"},
+        sa_relationship_kwargs={"lazy": "selectin"},
     )
     created_by_id: UUID | None = Field(default=None, foreign_key="User.id")
     created_by: "User" = Relationship(  # noqa: F821
         sa_relationship_kwargs={
-            "lazy": "joined",
+            "lazy": "selectin",
             "primaryjoin": "QuestionSet.created_by_id==User.id",
         }
     )
@@ -66,7 +66,7 @@ class QuestionSet(BaseUUIDModel,QuestionSetBase, table=True):
     def count_questions(self):
         total = len(self.main_questions)
         return total
-
+    
     main_questions_count = count_questions
 
     @validator("slug", pre=True, always=True)
@@ -86,6 +86,7 @@ class QuestionBase(SQLModel):
     # text: Optional[Dict[str, Any]] = Field(
     #     default=None, sa_column=Column(JSON, nullable=True)
     # )
+    
     text: Optional[Dict[str, Any]] = Field(
         default_factory={}, sa_column=Column(JSONB, nullable=False)
     )
@@ -111,7 +112,7 @@ class MainQuestion(BaseUUIDModel, QuestionBase, table=True):
     question_set: QuestionSet = Relationship(
         back_populates="main_questions",
         sa_relationship_kwargs={
-            "lazy": "joined",
+            "lazy": "selectin",
             "primaryjoin": "MainQuestion.question_set_id==QuestionSet.id",
         },
     )
@@ -129,7 +130,7 @@ class MainQuestion(BaseUUIDModel, QuestionBase, table=True):
     subquestions: List["SubQuestion"] = Relationship(
         back_populates="main_question",
         sa_relationship_kwargs={
-            "lazy": "joined",
+            "lazy": "selectin",
             "cascade": "all, delete-orphan",
             "single_parent": True,  # Ensures orphan removal
         },
@@ -137,24 +138,24 @@ class MainQuestion(BaseUUIDModel, QuestionBase, table=True):
 
     @validator("slug", pre=True, always=True)
     def set_slug(cls, value, values):
-        # text = values.get("text", "").get("blocks", [])[0].get("data",{}).get("text")
-        string_to_slugify = ""        
-        # Slugify the text in each block
-        for block in values.get("text", "").get("blocks", []):
-            if "text" in block["data"]:
-                string_to_slugify = block["data"]["text"]
+        text = values.get("text", {})
+        string_to_slugify = ""
+        if isinstance(text, dict):
+            for block in text.get("blocks", []):
+                if "text" in block.get("data", {}):
+                    string_to_slugify = block["data"]["text"]
         return generate_slug_for_question_text(string_to_slugify)
 
     created_by_id: UUID | None = Field(default=None, foreign_key="User.id")
     created_by: "User" = Relationship(  # noqa: F821
         sa_relationship_kwargs={
-            "lazy": "joined",
+            "lazy": "selectin",
             "primaryjoin": " MainQuestion.created_by_id==User.id",
         }
     )
     answers: List["Answer"] | None = Relationship(
         back_populates="main_question",
-        sa_relationship_kwargs={"lazy": "joined"}
+        sa_relationship_kwargs={"lazy": "selectin"}
     )
     # Define unique constraint
     __table_args__ = (
@@ -202,7 +203,7 @@ class SubQuestion(BaseUUIDModel,SQLModel, table=True):
     )
     answers: List["Answer"] | None = Relationship(
         back_populates="sub_question", 
-        sa_relationship_kwargs={"lazy": "joined"}
+        sa_relationship_kwargs={"lazy": "selectin"}
     )
 
 

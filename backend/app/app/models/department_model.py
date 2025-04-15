@@ -28,10 +28,11 @@ class Department(BaseUUIDModel, SQLModel, table=True):
 
     # Relationship with Faculty
     faculty: "Faculty" = Relationship(
-        back_populates="departments", sa_relationship_kwargs={"lazy": "joined"}
+        back_populates="departments", 
+        sa_relationship_kwargs={"lazy": "selectin"}
     )
 
-    # Relationship with Faculty
+    # Relationship with Programmes
     programmes: List["Programme"] = Relationship(
         link_model=ProgrammeDepartmentLink,
         back_populates="departments",
@@ -41,7 +42,7 @@ class Department(BaseUUIDModel, SQLModel, table=True):
     created_by_id: UUID | None = Field(default=None, foreign_key="User.id")
     created_by: "User" = Relationship(  # noqa: F821
         sa_relationship_kwargs={
-            "lazy": "joined",
+            "lazy": "selectin",
             "primaryjoin": "Department.created_by_id==User.id",
         }
     )

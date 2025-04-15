@@ -1,11 +1,43 @@
 from typing import Any, Dict, List, Optional
 from app.utils.partial import optional
 from uuid import UUID
+
 from pydantic import BaseModel
 
 
+class BlockData(BaseModel):
+    text: str
+
+
+class Block(BaseModel):
+    id: str
+    data: Dict[str, Any]
+    type: str
+
+
+class AnswerTextSchema(BaseModel):
+    time: int
+    blocks: list[Block]
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "time": 1742156891260,
+                "blocks": [
+                    {
+                        "id": "dCcbQeoht12",
+                        "data": {
+                            "text": "Write a Python function that calculates the factorial of a given number. Explain your code."
+                        },
+                        "type": "paragraph",
+                    }
+                ],
+            }
+        }
+
+
 class AnswerBase(BaseModel):
-    text: Optional[Dict[str, Any]]   
+    text: AnswerTextSchema
     main_question_id: Optional[UUID] = None
     sub_question_id: Optional[UUID] = None
 
@@ -26,7 +58,7 @@ class AnswerCreate(AnswerBase):
 class ChildrenReadForAnswerRead(BaseModel):
     id: UUID
     parent_id: UUID
-    text: Optional[Dict[str, Any]]
+    text: AnswerTextSchema
     likes: Optional[int] = 0
     dislikes: Optional[int] = 0
     reviewed: bool = False

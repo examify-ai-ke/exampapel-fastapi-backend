@@ -7,6 +7,10 @@ from io import BytesIO
 from app.deps import user_deps
 from app.schemas.media_schema import IMediaCreate
 from app.utils.slugify_string import generate_slug
+from app.models.faculty_model import Faculty
+from app.models.exam_paper_model import ExamPaper
+from app.models.question_model import QuestionSet, MainQuestion
+
 from fastapi import APIRouter, Depends, HTTPException, Query
 from app.utils.minio_client import MinioClient
 from fastapi_pagination import Params
@@ -42,48 +46,53 @@ from app.schemas.response_schema import (
 from app.schemas.role_schema import IRoleEnum
 from app.core.authz import is_authorized
 import time
-null =None
+from sqlmodel import SQLModel, Session, select
+from sqlalchemy.orm import selectinload
+# from fastapi_sqla import Base, Page, AsyncPagination, AsyncSession
 
 router = APIRouter()
 
 
-@ router.get("") 
-# @cache(expire=300)
+@router.get("")
 async def get_institution_list(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1),
-    db_session: AsyncSession = Depends(deps.get_db)
+    db_session: AsyncSession = Depends(deps.get_db),
 ) -> IGetResponsePaginated[InstitutionRead]:
     """
-    Gets a paginated list of institution
+    Gets a paginated list of institutions
     """
-    start_time = time.perf_counter()
-
-    # Measure database query time specifically
-    db_start_time = time.perf_counter()
- 
-    # Use explicitly controlled relationship loading
-    institutions = await crud.institution.get_multi_paginated_ordered(
-        db_session=db_session, skip=skip, limit=limit
+    query = (
+        select(Institution)
+        .options(
+            # Load faculties and their departments
+            selectinload(Institution.faculties).selectinload(Faculty.departments),
+            # Load exam papers and their related entities
+            selectinload(Institution.exam_papers)
+            .selectinload(ExamPaper.question_sets)
+            .selectinload(QuestionSet.main_questions)
+            .selectinload(MainQuestion.subquestions),
+            # .selectinload(ExamPaper.instructions)  # Load instructions
+            # .selectinload(ExamPaper.title)  # Load exam title
+            # .selectinload(ExamPaper.description)  # Load exam description
+            # .selectinload(ExamPaper.course)  # Load related course
+            # .selectinload(ExamPaper.question_sets)
+            # .selectinload(QuestionSet.main_questions)
+            # .selectinload(MainQuestion.subquestions),  # Load question sets, main questions, and subquestions
+            # Load campuses
+            selectinload(Institution.campuses),
+            # Load institution logo
+            selectinload(Institution.logo),
+            # Load creator details
+            selectinload(Institution.created_by),
+        )
+        .offset(skip)
+        .limit(limit)
     )
-    print("institutions received")
-     
-    db_execution_time = time.perf_counter() - db_start_time
-
-    # Measure response creation time
-    response_start_time = time.perf_counter()
-    response = create_response(data=institutions)
-    response_time = time.perf_counter() - response_start_time
-
-    # Calculate total execution time
-    total_execution_time = time.perf_counter() - start_time
-
-    # Log timing information
-    print(f"Database query execution time: {db_execution_time:.4f} seconds")
-    print(f"Response creation time: {response_time:.4f} seconds")
-    print(f"Total endpoint execution time: {total_execution_time:.4f} seconds")
-
-    return response
+    institutions = await crud.institution.get_multi_paginated_ordered(
+        db_session=db_session, skip=skip, limit=limit, query=query
+    )
+    return create_response(data=institutions)
 
 
 @router.get("/get_by_created_at")

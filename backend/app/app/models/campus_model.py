@@ -26,7 +26,7 @@ class Campus(BaseUUIDModel,CampusBase, table=True):
     created_by_id: UUID | None = Field(default=None, foreign_key="User.id")
     created_by: "User" = Relationship(  # noqa: F821
         sa_relationship_kwargs={
-            "lazy": "joined",
+            "lazy": "selectin",
             "primaryjoin": "Campus.created_by_id==User.id",
         }
     )

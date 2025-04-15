@@ -22,7 +22,7 @@ from fastapi import (
 )
 from app import crud
 from app.api import deps
-from app.models.question_model import QuestionSet
+from app.models.question_model import MainQuestion, QuestionSet
 from app.models.user_model import User
 from app.schemas.common_schema import IOrderEnum
 from app.schemas.question_schema import (
@@ -41,78 +41,63 @@ from app.schemas.response_schema import (
 from app.schemas.role_schema import IRoleEnum
 from app.core.authz import is_authorized
 from sqlmodel.ext.asyncio.session import AsyncSession
+from sqlalchemy.orm import selectinload
+from sqlmodel import select
 
 router = APIRouter()
 
 
 @router.get("")
 async def get_question_set_list(
-    # params: Params = Depends(),
-    # current_user: User = Depends(deps.get_current_user()),
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1),
     db_session: AsyncSession = Depends(deps.get_db),
 ) -> IGetResponsePaginated[QuestionSetRead]:
     """
-    Gets a paginated list of question set
+    Gets a paginated list of question sets
     """
+    query = (
+        select(QuestionSet)
+        .options(
+            selectinload(QuestionSet.exam_papers),  # Load related exam paper
+            selectinload(QuestionSet.main_questions),  # Load related questions
+            selectinload(QuestionSet.created_by),  # Load creator details
+        )
+        .offset(skip)
+        .limit(limit)
+    )
     q_sets = await crud.question_set.get_multi_paginated_ordered(
-        db_session=db_session,
-        skip=skip,
-        limit=limit,
-        order=IOrderEnum.ascendent,
-        order_by="title",
+        db_session=db_session, skip=skip, limit=limit, query=query,
+        order=IOrderEnum.ascendent, order_by="title"
     )
     return create_response(data=q_sets)
-
-
-# @router.get("/get_by_created_at")
-# async def get_programme_list_order_by_created_at(
-#     order: IOrderEnum
-#     | None = Query(
-#         default=IOrderEnum.ascendent, description="It is optional. Default is ascendent"
-#     ),
-#     params: Params = Depends(),
-#     current_user: User = Depends(deps.get_current_user()),
-# ) -> IGetResponsePaginated[ProgrammeRead]:
-#     """
-#     Gets a paginated list of programmes ordered by created at datetime
-#     """
-#     programmes = await crud.programme.get_multi_paginated_ordered(
-#         params=params, order=order
-#     )
-#     return create_response(data=programmes)
 
 
 @router.get("/get_by_id/{question_set_id}")
 async def get_question_set_by_id(
     question_set_id: UUID,
+    db_session: AsyncSession = Depends(deps.get_db),
     current_user: User = Depends(deps.get_current_user()),
 ) -> IGetResponseBase[QuestionSetRead]:
     """
-    Gets a QuestionSet by its id
+    Gets a QuestionSet by its id with all related entities.
     """
-    question_set = await crud.question_set.get(id=question_set_id)
+    options = [
+        selectinload(QuestionSet.exam_papers),  # Load related exam papers
+        selectinload(QuestionSet.main_questions)
+        .selectinload(MainQuestion.subquestions),  # Load main questions and their subquestions
+        selectinload(QuestionSet.main_questions)
+        .selectinload(MainQuestion.answers),  # Load answers for main questions
+        selectinload(QuestionSet.created_by),  # Load creator details
+    ]
+
+    question_set = await crud.question_set.get(
+        id=question_set_id, db_session=db_session
+    )
     if not question_set:
         raise IdNotFoundException(QuestionSet, question_set_id)
 
-    # print_hero.delay(hero.id)
     return create_response(data=question_set)
-
-
-# @router.get("/get_by_slug/{question_set_slug}")
-# async def get_question_set_by_slug(
-#     question_set_slug: str,
-#     current_user: User = Depends(deps.get_current_user()),
-# ) -> IGetResponseBase[list[QuestionSetRead]]:
-#     """
-#     Gets a QuestionSet by slug
-#     """
-#     quiz_set = await crud.question_set.get_question_by_slug(slug=programme_slug)
-#     if not programme:
-#         raise NameNotFoundException(Programme, programme_slug)
-
-#     return create_response(data=programme)
 
 
 @router.post("")

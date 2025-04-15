@@ -5,16 +5,39 @@ from app.utils.partial import optional
 from uuid import UUID
 from app.models.question_model import QuestionSetBase
 from app.schemas.answer_schema import AnswerRead
-from pydantic import field_validator, BaseModel
+from pydantic import field_validator, BaseModel, Field
 
 
-# class AnswerRead(BaseModel):
-#     id: UUID
-#     text: Optional[Dict[str, Any]]
+class BlockData(BaseModel):
+    text: str
 
+class Block(BaseModel):
+    id: str
+    data: Dict[str, Any]
+    type: str
+
+class QuestionTextSchema(BaseModel):
+    time: int
+    blocks: list[Block]
+
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "time": 1742156891260,
+                "blocks": [
+                    {
+                        "id": "dCcbQeoht12",
+                        "data": {
+                            "text": "Write a Python function that calculates the factorial of a given number. Explain your code."
+                        },
+                        "type": "paragraph",
+                    }
+                ],
+            }
+        }
 
 class SubQuestionBase(BaseModel):
-    text: Optional[Dict[str, Any]]
+    text: Optional[QuestionTextSchema]
     marks: Optional[int] = None
     numbering_style: str
     question_number: str
@@ -40,24 +63,32 @@ class SubQuestionRead(SubQuestionBase):
 
 # ------------------------------Main Question-----------
 class MainQuestionBase(BaseModel):
-    # text: Optional[str] = ""
-    text: Optional[Dict[str, Any]]
-    marks: Optional[int] =None
+    text: Optional[QuestionTextSchema]
+    marks: Optional[int] = None
     numbering_style: str
     question_number: str
-    created_at: datetime
 
+    @field_validator("text", mode="before")
+    @classmethod
+    def text_to_dict(cls, v):
+        if v is None:
+            return v
+        if isinstance(v, dict):
+            return v
+        if hasattr(v, "model_dump"):
+            return v.model_dump()
+        return v
 
 class MainQuestionCreate(MainQuestionBase):
-    question_set_id:UUID 
-    exam_paper_id:UUID
-    pass
+    question_set_id: UUID 
+    exam_paper_id: UUID
+
 
 @optional()
 class MainQuestionUpdate(MainQuestionBase):
     question_set_id: UUID
     exam_paper_id: UUID
-    pass
+
 
 class QuestionSetReadForMain(BaseModel):
     title:str
@@ -72,6 +103,7 @@ class MainQuestionRead(MainQuestionBase):
     answers:Optional[list[AnswerRead]]= []
     question_set_id: UUID
     exam_paper_id: UUID
+    created_at: datetime
     # order_within_question_set: Optional[str]
 
     class Config:
@@ -104,38 +136,7 @@ class QuestionSetRead(QuestionSetBase):
     id: UUID
     slug:str
     main_questions: Optional[list[MainQuestionRead]] = []
-    main_questions_count: int | None = 0
+    main_questions_count: Optional[int] = 0
     # created_at: datetime
     class Config:
         from_attributes = True
-
-
-# # Create schema for Department
-# class DepartmentCreate(DepartmentBase):
-#     faculty_id: UUID # Needed to create a Department in a specific Faculty
-
-# class ProgrammeReadForDepartments(BaseModel):
-#     id: UUID
-#     name: str
-#     slug: str
-# # Read schema for Department
-# class DepartmentRead(DepartmentBase):
-#     id: Optional[UUID] # Read schema includes the unique identifier
-#     faculty_id: Optional[UUID]   # Read schema has faculty reference
-#     programmes: Optional[List[ProgrammeReadForDepartments]]
-#     class Config:
-#         from_attributes = True
-
-
-# class DepartmentReadForFaculty(BaseModel):
-#     id: Optional[UUID]  # Read schema includes the unique identifier
-#     name: str
-#     slug:Optional[str]
-#     programmes: Optional[List[ProgrammeReadForDepartments]]
-
-
-# # Update schema for Department
-# class DepartmentUpdate(BaseModel):
-#     name: Optional[str]  # Optional fields for updating
-#     description: Optional[str]
-#     slug:Optional[str]

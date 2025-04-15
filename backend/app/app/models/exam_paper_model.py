@@ -137,14 +137,14 @@ class ExamPaper(BaseUUIDModel,ExamPaperBase, table=True):
     instructions: List["ExamInstruction"] = Relationship(
         link_model=InstructionExamsLink,
         back_populates="exam_papers",
-        sa_relationship_kwargs={"lazy": "joined"},
+        sa_relationship_kwargs={"lazy": "selectin"},
     )
     # Relationship
     description_id: UUID | None = Field(default=None, foreign_key="ExamDescription.id")
     description: "ExamDescription" = Relationship(
         back_populates="exam_papers",
         sa_relationship_kwargs={
-            "lazy": "joined",
+            "lazy": "selectin",
             "primaryjoin": "ExamPaper.description_id==ExamDescription.id",
         },
     )
@@ -153,7 +153,7 @@ class ExamPaper(BaseUUIDModel,ExamPaperBase, table=True):
     title: "ExamTitle" = Relationship(
         back_populates="exam_papers",
         sa_relationship_kwargs={
-            "lazy": "joined",
+            "lazy": "selectin",
             "primaryjoin": "ExamPaper.title_id==ExamTitle.id",
         },
     )
@@ -161,7 +161,7 @@ class ExamPaper(BaseUUIDModel,ExamPaperBase, table=True):
     course: "Course" = Relationship(
         back_populates="exam_papers",
         sa_relationship_kwargs={
-            "lazy": "joined",
+            "lazy": "selectin",
             "primaryjoin": "ExamPaper.course_id==Course.id",
         },
     )
@@ -170,7 +170,7 @@ class ExamPaper(BaseUUIDModel,ExamPaperBase, table=True):
     institution: "Institution" = Relationship(
         back_populates="exam_papers",
         sa_relationship_kwargs={
-            "lazy": "joined",
+            "lazy": "selectin",
             "primaryjoin": "ExamPaper.institution_id==Institution.id",
         },
     )
@@ -179,12 +179,13 @@ class ExamPaper(BaseUUIDModel,ExamPaperBase, table=True):
         back_populates="exam_papers",
         link_model=ExamPaperQuestionLink,
         sa_relationship_kwargs={
-            "lazy": "joined",
+            "lazy": "selectin",
             "cascade": "all, delete-orphan",
             "single_parent": True,  # This allows delete-orphan to work
+            "order_by": "QuestionSet.title.asc()",  # Sort question_sets by slug in ascending order
         },
     )
-    
+
     # One-to-many relationship with MainQuestion
     main_questions: List["MainQuestion"] = Relationship(
         back_populates="exam_paper",
@@ -199,23 +200,52 @@ class ExamPaper(BaseUUIDModel,ExamPaperBase, table=True):
     modules: List["Module"] = Relationship(
         link_model=ModuleExamsLink,
         back_populates="exam_papers",
-        sa_relationship_kwargs={"lazy": "joined"},
+        sa_relationship_kwargs={
+            "lazy": "selectin",
+            "cascade": "all, delete-orphan",
+            "single_parent": True,
+        },
     )
 
     # Hash value field
-    hash_code: Optional[str] = Field(nullable=False, unique=True,default=None)
+    hash_code: Optional[str] = Field(nullable=False, unique=True, default=None)
+
+    # identifying_name: Optional[str] = Field(
+    #     default="University Examination",
+    #     nullable=True,
+    # )  # e.g UNIVERSITY EXAMINATIONS
+
+    @property
+    def identifying_name(self) -> str:
+        """
+        Generate a unique identifying name for the exam paper based on its attributes.
+        """
+        title_name = self.title.name if self.title else "Unnamed Exam"
+        year = self.year_of_exam if self.year_of_exam else "Unknown Year"
+        exam_date = self.exam_date.strftime("%Y-%m-%d") if self.exam_date else "No Date"
+        course_name = self.course.name if self.course else "No Course"
+        institution_name = (
+            self.institution.name if self.institution else "No Institution"
+        )
+
+        # Combine attributes to create a unique identifying name
+        return (
+            f"{title_name}-{year}-{course_name}-{institution_name}"
+        )
 
     @property
     def calculate_hash(self):
-        input_string = input_string = (
-            f"{self.title_id}-{self.year_of_exam}-{self.institution_id}-{self.description_id}-{str(self.exam_date.strftime('%Y-%m-%d'))}-{str(self.exam_duration)}-{''.join(str(m.name) for m in self.modules)}-{''.join(str(i.name) for i in self.instructions)}"
-        )
+        input_string = (
+            f"{self.title_id}-{self.year_of_exam}-{self.institution_id}-{self.description_id}-{str(self.exam_date.strftime('%Y-%m-%d'))}-{str(self.exam_duration)}-{''.join(str(m.name) for m in self.modules)}-{''.join(str(i.name) for i in self.instructions)}-{self.identifying_name}"
+        ) 
+
         # Add more fields as needed
         # Compute SHA-256 hash
         hash_object = hashlib.sha256(input_string.encode())
         hash_value = hash_object.hexdigest()
         # print(hash_value)
         return hash_value
+
 
 # -----------------------------------------------------------------------
 # Instruction model
@@ -230,7 +260,7 @@ class ExamInstruction(BaseUUIDModel,SQLModel, table=True):
     created_by_id: UUID | None = Field(default=None, foreign_key="User.id")
     created_by: "User" = Relationship(  # noqa: F821
         sa_relationship_kwargs={
-            "lazy": "joined",
+            "lazy": "selectin",
             "primaryjoin": "ExamInstruction.created_by_id==User.id",
         }
     )
@@ -257,7 +287,7 @@ class ExamTitle(BaseUUIDModel, ExamTitleBase,  table=True):
     slug: Optional[str] = Field(default=None, unique=True)
     exam_papers: List["ExamPaper"] = Relationship(
         back_populates="title",
-        sa_relationship_kwargs={"lazy": "joined"},
+        # sa_relationship_kwargs={"lazy": "joined"},
     )
 
     created_by_id: UUID | None = Field(default=None, foreign_key="User.id")
@@ -296,7 +326,7 @@ class ExamDescription(BaseUUIDModel, SQLModel, table=True):
 
     exam_papers: List["ExamPaper"] = Relationship(
         back_populates="description",
-        sa_relationship_kwargs={"lazy": "joined"},
+        # sa_relationship_kwargs={"lazy": "joined"},
     )
 
     created_by_id: UUID | None = Field(default=None, foreign_key="User.id")

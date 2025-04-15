@@ -36,7 +36,7 @@ from app.utils.uuid6 import uuid7
 # from transformers import pipeline
 from app.health import router as health_router
 # from transformers import pipeline
-from fastapi_pagination import  add_pagination 
+from fastapi_pagination import add_pagination, pagination_ctx
 
 # Add these settings at the top of the file
 # Configure Hugging Face to use a persistent cache directory
@@ -127,8 +127,8 @@ app = FastAPI(
     lifespan=lifespan,
     # root_path="",
 )
-add_pagination(app)  # important! add pagination to your app
- 
+# add_pagination(app)  # important! add pagination to your app
+
 app.add_middleware(
     SQLAlchemyMiddleware,
     db_url=str(settings.ASYNC_DATABASE_URI),

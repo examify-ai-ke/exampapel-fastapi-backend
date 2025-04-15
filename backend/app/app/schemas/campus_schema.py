@@ -19,7 +19,7 @@ class CampusCreate(BaseModel):
 
 class CampusRead(CampusBase):
     id: UUID
-    institution_id: UUID  # Reference to which institution this campus belongs to
+    # institution_id: UUID  # Reference to which institution this campus belongs to
 
     class Config:
         from_attributes = True

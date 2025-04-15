@@ -41,25 +41,37 @@ from app.schemas.response_schema import (
 from app.schemas.role_schema import IRoleEnum
 from app.core.authz import is_authorized
 from sqlmodel.ext.asyncio.session import AsyncSession
+from sqlalchemy.orm import selectinload
+from sqlmodel import select
 
 router = APIRouter()
 
 
 @router.get("")
 async def get_main_question_list(
-    # params: Params = Depends(),
-    # current_user: User = Depends(deps.get_current_user()),
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1),
     db_session: AsyncSession = Depends(deps.get_db),
 ) -> IGetResponsePaginated[MainQuestionRead]:
     """
-    Gets a paginated list of MainQuestion
+    Gets a paginated list of main questions
     """
-    questions = await crud.main_question.get_multi_paginated_ordered(
-        db_session=db_session, skip=skip, limit=limit
+    query = (
+        select(MainQuestion)
+        .options(
+            selectinload(MainQuestion.question_set),  # Load related question set
+            selectinload(MainQuestion.exam_paper),  # Load related sub-questions
+            selectinload(MainQuestion.created_by),  # Load creator details
+            selectinload(MainQuestion.answers),  # Load related sub-questions
+            # selectinload(MainQuestion.),  # Load question image
+        )
+        # .offset(skip)
+        # .limit(limit)
     )
-    return create_response(data=questions)
+    main_questions = await crud.main_question.get_multi_paginated_ordered(
+        db_session=db_session, skip=skip, limit=limit, query=query
+    )
+    return create_response(data=main_questions)
 
 
 # @router.get("/get_by_created_at")
@@ -125,6 +137,7 @@ async def create_main_question(
     - admin
     - manager
     """
+    print(question)
     # related_quiz_set = await crud.question_set.get(id=question.question_set_id)
     quiz = await crud.main_question.create(
         obj_in=question, created_by_id=current_user.id

@@ -66,6 +66,7 @@ from jwt.exceptions import ExpiredSignatureError, DecodeError, InvalidTokenError
 import logging
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.utils.token import add_email_verification_token, verify_email_token, invalidate_email_verification_tokens
+from sqlalchemy.orm import selectinload
 
 router = APIRouter()
 
@@ -80,14 +81,14 @@ async def read_user_me(
     return create_response(data=current_user)
 
 
-@router.get("/list",response_model=IGetResponsePaginated[IUserReadWithoutGroups])
+@router.get("/list", response_model=IGetResponsePaginated[IUserReadWithoutGroups])
 async def read_users_list(
-    # params: Params = Depends(),
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1),
     current_user: User = Depends(
         deps.get_current_user(required_roles=[IRoleEnum.admin, IRoleEnum.manager])
     ),
+    db_session: AsyncSession = Depends(deps.get_db),
 ) -> IGetResponsePaginated[IUserReadWithoutGroups]:
     """
     Retrieve users. Requires admin or manager role
@@ -96,7 +97,20 @@ async def read_users_list(
     - admin
     - manager
     """
-    users = await crud.user.get_multi_paginated_ordered(skip=skip, limit=limit, order_by="created_at")
+    query = (
+        select(User)
+        .options(
+            selectinload(User.role),  # Load related role
+            selectinload(User.image),  # Load creator details
+            selectinload(User.groups),  # Load followers
+            # selectinload(User.),  # Load following
+        )
+        # .offset(skip)
+        # .limit(limit)
+    )
+    users = await crud.user.get_multi_paginated_ordered(
+        db_session=db_session, skip=skip, limit=limit, query=query
+    )
     return create_response(data=users)
 
 

@@ -32,7 +32,7 @@ class Answer(BaseUUIDModel,AnswerBase, table=True):
     parent_id: UUID | None = Field(default=None, foreign_key="Answer.id", nullable=True)
     parent: Optional["Answer"] = Relationship(
         back_populates="children",
-        sa_relationship_kwargs={"remote_side": "Answer.id", "lazy": "joined"},
+        sa_relationship_kwargs={"remote_side": "Answer.id", "lazy": "selectin"},
     )
     # child_id: UUID | None = Field(default=None, foreign_key="Answer.id", nullable=True)
     # children: List["Answer"] = Relationship(
@@ -57,7 +57,9 @@ class Answer(BaseUUIDModel,AnswerBase, table=True):
 
     sub_question_id: UUID | None = Field(default=None, foreign_key="SubQuestion.id")
     sub_question: Optional["SubQuestion"] = Relationship(
-        back_populates="answers"
+        back_populates="answers",
+        sa_relationship_kwargs={"lazy": "selectin"},
+        
     )
 
     comments: List["Comment"] = Relationship(

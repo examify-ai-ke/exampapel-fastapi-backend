@@ -67,6 +67,8 @@ class ModuleReadForExamPaper(BaseModel):
 class InstructionCreate(BaseModel):
     name: str
     slug:Optional[str]
+    class Config:
+        from_attributes = True
 
 @optional()
 class InstructionUpdate(BaseModel):
@@ -77,15 +79,15 @@ class InstructionRead(BaseModel):
     id:UUID
     name: str
     slug:str
-    
-
     class Config:
         from_attributes = True  # Allows ORM-based data to be converted to Pydantic
 
 class InstitutionReadForExamPaper(BaseModel):
     id:UUID
     name:str
-    # slug: str
+    
+    class Config:
+        from_attributes = True
 class CourseReadForExamPaper(BaseModel):
     id:UUID
     name:str
@@ -97,9 +99,9 @@ class CourseReadForExamPaper(BaseModel):
 # Schema for reading a ExamPaper
 class ExamPaperRead(ExamPaperBase):
     id: UUID
-    tags: Optional[List[str]] = []
-    instructions: Optional[List[InstructionRead]] = []  # To represent the relationship
-    title: List["ExamTitleReadForExamPaperRead"]  = []
+    tags: Optional[list[str]] = []
+    instructions: Optional[list[InstructionRead]] = []  # To represent the relationship
+    title: "ExamTitleReadForExamPaperRead" 
     description: "ExamDescriptionReadForExamPaper"
     modules: Optional[List[ModuleReadForExamPaper]] = []
     created_by_id: UUID
@@ -107,6 +109,7 @@ class ExamPaperRead(ExamPaperBase):
     # hash_code: Optional[str]
     course:Optional[CourseReadForExamPaper]
     question_sets: Optional[List[QuestionSetRead]] = []
+    identifying_name: Optional[str]
 
     class Config:
         from_attributes = True  # Allows ORM-based data to be converted to Pydantic
@@ -121,6 +124,8 @@ class ExamTitleCreate(ExamTitleBase):
 class ExamTitleUpdate(BaseModel):
     name: Optional[str]
     description: Optional[str]
+    class Config:
+        from_attributes = True
 
 
 class ExamTitleRead(BaseModel):
@@ -136,13 +141,16 @@ class ExamPaperReadForExamTitle(BaseModel):
     id:UUID
     year_of_exam:str
     exam_date: date
+    class Config:
+        from_attributes = True
+        # Allows ORM-based data to be converted to Pydantic
 
 class ExamTitleReadForExamPaperRead(BaseModel):
     id: UUID
     name: str
     slug: str
     class Config:
-        from_attributes = True  #
+        from_attributes = True
 
 
 # ExamDescription
@@ -160,6 +168,8 @@ class ExamDescriptionCreate(BaseModel):
 class ExamDescriptionUpdate(BaseModel):
     name: str
     desciption:str
+    class Config:
+        from_attributes = True
 
 
 class ExamDescriptionRead(BaseModel):

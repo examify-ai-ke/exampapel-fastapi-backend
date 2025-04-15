@@ -66,7 +66,7 @@ class Programme(BaseUUIDModel, ProgrammeBase, table=True):
     created_by_id: UUID | None = Field(default=None, foreign_key="User.id")
     created_by: "User" = Relationship(  # noqa: F821
         sa_relationship_kwargs={
-            "lazy": "joined",
+            "lazy": "selectin",
             "primaryjoin": "Programme.created_by_id==User.id",
         }
     )
@@ -74,7 +74,7 @@ class Programme(BaseUUIDModel, ProgrammeBase, table=True):
     image_id: UUID | None = Field(default=None, foreign_key="ImageMedia.id")
     image: ImageMedia = Relationship(
         sa_relationship_kwargs={
-            "lazy": "joined",
+            "lazy": "selectin",
             "primaryjoin": "Programme.image_id==ImageMedia.id",
         }
     )

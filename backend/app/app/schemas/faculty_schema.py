@@ -13,7 +13,7 @@ from pydantic import field_validator, BaseModel
 class FacultyBase(BaseModel):
     name: str
     description: Optional[str]
-    slug: Optional[str]
+    # slug: Optional[str]
 
 class FacultyCreate(FacultyBase):
     pass
@@ -28,9 +28,8 @@ class InstitutionForFaculty(BaseModel):
 
 class FacultyRead(FacultyBase):
     id: UUID
-    department_count: int | None = 0
     departments: list[DepartmentReadForFaculty] | None = []
-
+    department_count: int | None = 0
     institutions: list[InstitutionForFaculty] | None =[]
     institution_count: int | None = 0
 
@@ -42,5 +41,5 @@ class FacultyRead(FacultyBase):
 class FacultyUpdate(BaseModel):
     name: Optional[str]
     description: Optional[str]
-    slug: Optional[str]
+    # slug: Optional[str]
     # institution_faculty: Optional[InstitutionFacultyBase]

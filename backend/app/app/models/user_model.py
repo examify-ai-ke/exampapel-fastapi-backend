@@ -60,7 +60,7 @@ class User(BaseUUIDModel, UserBase, table=True):
     image_id: UUID | None = Field(default=None, foreign_key="ImageMedia.id")
     image: ImageMedia = Relationship(
         sa_relationship_kwargs={
-            "lazy": "joined",
+            "lazy": "selectin",
             "primaryjoin": "User.image_id==ImageMedia.id",
         }
     )

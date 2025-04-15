@@ -9,6 +9,7 @@ from app.schemas.media_schema import IMediaCreate
 from app.utils.slugify_string import generate_slug
 from app.models.programme_model import Programme
 from app.schemas.programme_schema import ProgrammeCreate
+from app.models.user_model import User
 from fastapi import APIRouter, Depends, HTTPException, Query
 from app.utils.minio_client import MinioClient
 from fastapi_pagination import Params
@@ -25,7 +26,6 @@ from fastapi import (
 from app import crud
 from app.api import deps
 from app.models.department_model import Department
-from app.models.user_model import User
 from app.schemas.common_schema import IOrderEnum
 from app.schemas.department_schema import (
     DepartmentRead,
@@ -43,14 +43,14 @@ from app.schemas.response_schema import (
 from app.schemas.role_schema import IRoleEnum
 from app.core.authz import is_authorized
 from sqlmodel.ext.asyncio.session import AsyncSession
+from sqlalchemy.orm import selectinload
+from sqlmodel import select
 
 router = APIRouter()
 
 
 @router.get("")
 async def get_department_list(
-    # params: Params = Depends(),
-    # current_user: User = Depends(deps.get_current_user()),
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1),
     db_session: AsyncSession = Depends(deps.get_db),
@@ -58,7 +58,20 @@ async def get_department_list(
     """
     Gets a paginated list of departments
     """
-    departments = await crud.department.get_multi_paginated_ordered(db_session=db_session, skip=skip, limit=limit)
+    query = (
+        select(Department)
+        .options(
+            selectinload(Department.faculty),  # Load related faculty
+            selectinload(Department.programmes),  # Load related programmes
+            selectinload(Department.image),  # Load department image
+            selectinload(Department.created_by),  # Load creator details
+        )
+        # .offset(skip)
+        # .limit(limit)
+    )
+    departments = await crud.department.get_multi_paginated_ordered(
+        db_session=db_session, skip=skip, limit=limit, query=query
+    )
     return create_response(data=departments)
 
 
