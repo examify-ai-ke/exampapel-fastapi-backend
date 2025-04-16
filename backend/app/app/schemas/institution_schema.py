@@ -45,7 +45,7 @@ class InstitutionFacultyCreate(InstitutionFacultyBase):
 class DepartmentReadForFacultyReadForInstitution(BaseModel):
     name: str
     id: UUID
-    slug: str
+    # slug: str
     class Config:
         from_attributes = True
 
@@ -53,7 +53,7 @@ class DepartmentReadForFacultyReadForInstitution(BaseModel):
 class FacultyReadForInstitution(BaseModel):
     id: UUID
     name: str
-    slug: str
+    # slug: str
     departments: list[DepartmentReadForFacultyReadForInstitution] | None = []
     class Config:
         from_attributes = True

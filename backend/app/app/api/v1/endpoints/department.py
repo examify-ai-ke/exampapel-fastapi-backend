@@ -140,7 +140,7 @@ async def create_department(
     - admin
     - manager
     """
-    print(department)
+    # print(department)
     _department = await crud.department.create(
         obj_in=department, created_by_id=current_user.id
     )

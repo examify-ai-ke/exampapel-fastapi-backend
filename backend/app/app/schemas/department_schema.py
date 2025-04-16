@@ -9,7 +9,6 @@ from pydantic import field_validator, BaseModel
 class DepartmentBase(BaseModel):
     name: str
     description: Optional[str]
-    slug: Optional[str]
 
 
 # Create schema for Department
@@ -19,7 +18,7 @@ class DepartmentCreate(DepartmentBase):
 class ProgrammeReadForDepartments(BaseModel):
     id: UUID
     name: str
-    slug: str
+    # slug: str
     class Config:
         from_attributes = True
 
@@ -27,7 +26,7 @@ class ProgrammeReadForDepartments(BaseModel):
 class FacultyReadForDepartment(BaseModel):
     id: UUID
     name: str
-    slug: str
+    # slug: str
     class Config:
         from_attributes = True
 # Read schema for Department
@@ -36,6 +35,7 @@ class DepartmentRead(DepartmentBase):
     faculty: FacultyReadForDepartment
     programmes: Optional[List[ProgrammeReadForDepartments]]
     programmes_count: int | None = 0
+    # slug: Optional[str]
     class Config:
         from_attributes = True
 
@@ -43,7 +43,7 @@ class DepartmentRead(DepartmentBase):
 class DepartmentReadForFaculty(BaseModel):
     id: Optional[UUID]  # Read schema includes the unique identifier
     name: str
-    slug:Optional[str]
+    # slug:Optional[str]
     programmes: Optional[List[ProgrammeReadForDepartments]]
     class Config:
         from_attributes = True
@@ -53,4 +53,4 @@ class DepartmentReadForFaculty(BaseModel):
 class DepartmentUpdate(BaseModel):
     name: Optional[str]  # Optional fields for updating
     description: Optional[str]
-    slug:Optional[str]
+    # slug:Optional[str]

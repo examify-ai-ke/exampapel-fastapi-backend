@@ -23,17 +23,24 @@ class ModuleUpdate(ModuleBase):
     # slug: Optional[str]
     # logo: Optional[str]
     # institution_type: Optional[InstitutionTypeEnum]
+    courses: Optional[List[UUID]] = []  # List of course IDs to create a Module in specific courses
     pass
 
 
 # Schema for creating a Module
 class ModuleCreate(ModuleBase):
+    courses: Optional[List[UUID]] = []
     pass
+
+
+class ModuleAddCourses(BaseModel):
+    course_ids: List[UUID]
+
 
 class CourseReadForModule(BaseModel):
     id: UUID
     name: str
-    slug: str
+    # slug: str
     class Config:
         from_attributes = True  # Allows ORM-based data to be converted to Pydantic
 
@@ -46,11 +53,10 @@ class ExamPaperReadForModule(ExamPaperBase):
         from_attributes = True  # Allows ORM-based data to be converted to Pydantic
 
 
-
 # Schema for reading a Module
 class ModuleRead(ModuleBase):
     id:UUID
-    slug:Optional[str]
+    # slug:Optional[str]
     courses:Optional[list[CourseReadForModule]] = []  # To represent the relationship
     exam_papers: Optional[list[ExamPaperReadForModule]] = []
     exam_papers_count: int  | None=0 #TODO

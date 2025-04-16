@@ -13,9 +13,10 @@ from pydantic import field_validator, BaseModel
 class FacultyBase(BaseModel):
     name: str
     description: Optional[str]
-    # slug: Optional[str]
+
 
 class FacultyCreate(FacultyBase):
+    # institutions: List[UUID] | None = []  # List of institution IDs to create a Faculty in specific institutions
     pass
 
 class InstitutionForFaculty(BaseModel):

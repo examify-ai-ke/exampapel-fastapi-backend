@@ -261,6 +261,63 @@ async def add_faculty_to_institution(
         return create_response(data=institution_with_faculty)
 
 
+@router.delete("/{institution_id}/faculties/{faculty_id}")
+async def remove_faculty_from_institution(
+    institution_id: UUID,
+    faculty_id: UUID,
+    current_user: User = Depends(
+        deps.get_current_user(required_roles=[IRoleEnum.admin, IRoleEnum.manager])
+    ),
+    db_session: AsyncSession = Depends(deps.get_db),
+) -> IDeleteResponseBase[InstitutionRead]:
+    """
+    Remove a Faculty from an Institution by id.
+
+    Required roles:
+    - admin
+    - manager
+    """
+    # Fetch the Institution with its faculties eagerly loaded to check association
+    institution = await crud.institution.get(
+        id=institution_id, 
+        db_session=db_session, 
+        options=[selectinload(Institution.faculties)] # Eager load faculties
+    )
+    if not institution:
+        raise IdNotFoundException(Institution, institution_id)
+
+    # Fetch the Faculty
+    faculty = await crud.faculty.get(id=faculty_id, db_session=db_session)
+    if not faculty:
+        raise IdNotFoundException(Faculty, faculty_id)
+
+    # Check if the faculty is actually associated with the institution
+    if faculty not in institution.faculties:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Faculty '{faculty.name}' is not associated with Institution '{institution.name}'"
+        )
+
+    # Remove the faculty from the institution's list
+    # This works if the relationship is configured correctly in the models
+    institution.faculties.remove(faculty)
+    
+    # Add the institution to the session to mark it for update and commit
+    db_session.add(institution)
+    await db_session.commit()
+    await db_session.refresh(institution) # Refresh to get the updated state
+
+    # Optionally, reload relationships if needed for the response model
+    # This might require another query or ensure the refresh loaded them
+    updated_institution = await crud.institution.get(
+        id=institution_id, 
+        db_session=db_session,
+        options=[selectinload(Institution.faculties)] # Reload faculties for response
+    )
+
+    return create_response(data=updated_institution)
+
+
 @router.post("/{institution_id}/logo")
 async def upload_institution_logo(
     valid_institution: Institution = Depends(user_deps.is_valid_institution),

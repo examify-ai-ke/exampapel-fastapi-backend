@@ -22,13 +22,13 @@ class ProgrammeUpdate(ProgrammeBase):
 class DepartmentReadForProgrammeRead(BaseModel):
     id:UUID
     name:str
-    slug: str
+    # slug: str
     faculty_id: Optional[UUID]
     class Config:
         from_attributes = True 
 class ProgrammeRead(ProgrammeBase):
     id: UUID  # ID is known after creation
-    slug: str
+    # slug: str
     departments: list[DepartmentReadForProgrammeRead] | None = []
     courses: list[CourseRead] | None = [] 
 

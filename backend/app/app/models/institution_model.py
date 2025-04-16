@@ -54,16 +54,15 @@ class InstitutionBase(SQLModel):
     name: str = Field(unique=True)
     # description: Optional[str] = Field(nullable=True, default="An Institution of choice")
     description: Optional[str] = Field(
-        # nullable=False,
         default="An Institution of choice",
         sa_column=Column(String),
     )  # Indexed for search
     institution_type: InstitutionTypes = Field(
         sa_column=Column(Enum(InstitutionTypes), nullable=False))
     email: EmailStr = Field(sa_column=Column(String, unique=True))
-    phone_number: Optional[str] = Field(nullable=False)
+    phone_number: Optional[str] = Field(nullable=True)
     # Slug with a validator to generate it from the name
-    slug: Optional[str] = Field(default=None, unique=True)
+   
 
 
 class Institution(BaseUUIDModel, InstitutionBase, table=True): 
@@ -96,7 +95,7 @@ class Institution(BaseUUIDModel, InstitutionBase, table=True):
             "lazy": "selectin",  # Changed from "selectin" to optimize loading
         },
     )
-
+    slug: Optional[str] = Field(default=None, unique=True)
     exam_papers: List[ExamPaper] = Relationship(
         back_populates="institution",
         sa_relationship_kwargs={

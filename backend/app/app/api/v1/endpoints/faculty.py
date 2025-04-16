@@ -139,8 +139,43 @@ async def create_faculty(
     - admin
     - manager
     """
+    # db_instituions= await crud.institution.get_multi_by_ids(
+    #     ids=faculty.institutions
+    # )
+    # if not db_instituions:
+    #     raise HTTPException(
+    #         status_code=404,
+    #         detail="Institutions not found",
+    #     )
+    # Check if slug already exists
+    # existing_faculty = await crud.faculty.get_faculty_by_slug(
+    #     slug=faculty.slug
 
-    _faculty = await crud.faculty.create(obj_in=faculty, created_by_id=current_user.id)
+    # )
+    # if existing_faculty:
+    #     raise HTTPException(
+    #         status_code=400,
+    #         detail="Faculty with this slug already exists"
+    #     )
+    # db_instituions= await crud.institution.get_multi_by_ids(
+    #     ids=faculty.institutions
+    # )
+    # if not db_instituions:
+    #     raise HTTPException(
+    #         status_code=404,
+    #         detail="Institutions not found",
+    #     )
+    # new_faculty =Faculty(
+    #     name=faculty.name,
+    #     description=faculty.description,
+    #     institutions=db_instituions,
+    #     created_by_id=current_user.id,
+    # ) 
+
+    # Check if slug already exists
+    _faculty = await crud.faculty.create(
+        obj_in=faculty, created_by_id=current_user.id
+    )
     return create_response(data=_faculty)
 
 
