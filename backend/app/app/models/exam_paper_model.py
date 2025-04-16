@@ -210,11 +210,6 @@ class ExamPaper(BaseUUIDModel,ExamPaperBase, table=True):
     # Hash value field
     hash_code: Optional[str] = Field(nullable=False, unique=True, default=None)
 
-    # identifying_name: Optional[str] = Field(
-    #     default="University Examination",
-    #     nullable=True,
-    # )  # e.g UNIVERSITY EXAMINATIONS
-
     @property
     def identifying_name(self) -> str:
         """
@@ -245,7 +240,10 @@ class ExamPaper(BaseUUIDModel,ExamPaperBase, table=True):
         hash_value = hash_object.hexdigest()
         # print(hash_value)
         return hash_value
-
+    
+    @property
+    def hash_code(self):
+        return self.calculate_hash
 
 # -----------------------------------------------------------------------
 # Instruction model
