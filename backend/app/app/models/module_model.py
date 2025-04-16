@@ -8,14 +8,15 @@ from sqlmodel import (
     Column,
     DateTime,
     String,
-    UniqueConstraint
+    UniqueConstraint,
+    Index  # Import Index
 )
 from app.models.base_uuid_model import BaseUUIDModel
 from uuid import UUID
 
 from typing import List, Optional
 from app.models.image_media_model import ImageMedia
-from pydantic import EmailStr, field_validator, validator
+from pydantic import  validator
 from app.utils.slugify_string import generate_slug
 
 
@@ -83,6 +84,17 @@ class Module(BaseUUIDModel, SQLModel, table=True):
             "lazy": "selectin",
             "primaryjoin": "Module.image_id==ImageMedia.id",
         }
+    )
+    # Define table arguments for indexes and constraints
+    __table_args__ = (
+        Index(
+            "ix_module_name", "name"
+        ),  # Index for name (though unique=True already does this)
+        Index(
+            "ix_module_unit_code", "unit_code"
+        ),  # Index for unit_code (though unique=True already does this)
+        Index("ix_module_description", "description"),  # Index for description search
+        # Add other indexes or constraints here if needed
     )
 
     @validator("slug", pre=True, always=True)

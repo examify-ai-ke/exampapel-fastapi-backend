@@ -1,3 +1,4 @@
+from typing import Optional
 from uuid import UUID
 from app.api.celery_task import print_hero
 from app.utils.exceptions import IdNotFoundException, NameNotFoundException
@@ -45,6 +46,7 @@ from app.crud import module as crud_module, course as crud_course
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlmodel import select
+from sqlalchemy import or_
 
 router = APIRouter()
 
@@ -53,6 +55,10 @@ router = APIRouter()
 async def get_module_list(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1),
+    search: Optional[str] = Query(
+        default=None,
+        description="Search term for module name, unit code, or description",
+    ),  # Add search parameter
     db_session: AsyncSession = Depends(deps.get_db),
 ) -> IGetResponsePaginated[ModuleRead]:
     """
@@ -67,6 +73,17 @@ async def get_module_list(
             selectinload(Module.created_by),  # Load creator details
         )
     )
+    # Add search filter if provided
+    if search:
+        search_term = f"%{search}%"  # Prepare search term for LIKE/ILIKE
+        query = query.where(
+            or_(
+                Module.name.ilike(search_term),
+                Module.unit_code.ilike(search_term),
+                Module.description.ilike(search_term),
+                # Add other searchable fields here if needed
+            )
+        )
     modules = await crud.module.get_multi_paginated_ordered(
         db_session=db_session, skip=skip, limit=limit, query=query
     )
