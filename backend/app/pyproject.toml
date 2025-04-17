@@ -40,14 +40,14 @@ exclude = ["alembic", "__pycache__"]
 
 [tool.poetry.dependencies]
 python = ">3.9,<3.12"
-alembic = "^1.13.0"
+alembic = "^1.15.2"
 asyncpg = "^0.29.0"
 fastapi = "^0.115.12"
 sqlmodel = "^0.0.24"
 cryptography = "^41.0.7"
 bcrypt = "^4.1.1"
 SQLAlchemy-Utils = "^0.41.1"
-SQLAlchemy = "^2.0.23"
+SQLAlchemy = "^2.0.40"
 fastapi-cache2 = "^0.2.1"
 minio = "^7.2.0"
 Pillow = "^10.1.0"

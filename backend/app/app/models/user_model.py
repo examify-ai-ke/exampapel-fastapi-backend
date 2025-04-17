@@ -1,4 +1,3 @@
- 
 from app.models.base_uuid_model import BaseUUIDModel
 from app.models.links_model import LinkGroupUser
 from app.models.image_media_model import ImageMedia
@@ -27,9 +26,14 @@ class UserBase(SQLModel):
     )  # birthday with timezone
     role_id: UUID | None = Field(default=None, foreign_key="Role.id")
     phone: str | None = None
-    gender: IGenderEnum | None = Field(
-        default=IGenderEnum.other,
-        sa_column=Column(Enum(IGenderEnum), nullable=False))
+    gender: IGenderEnum = Field(
+        default=IGenderEnum.male,
+        sa_column=Column(
+            Enum(IGenderEnum),
+            nullable=False, default=IGenderEnum.male.value
+            
+        )
+    )
     email_verified: bool = Field(default=False)
     
     state: str | None = None
