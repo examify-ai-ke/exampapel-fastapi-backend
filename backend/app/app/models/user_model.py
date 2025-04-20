@@ -8,8 +8,7 @@ from typing import Optional
 # from sqlalchemy_utils import ChoiceType
 from pydantic import EmailStr
 from uuid import UUID
- 
- 
+
 
 # Add Provider Enum
 
@@ -30,16 +29,16 @@ class UserBase(SQLModel):
         default=IGenderEnum.male,
         sa_column=Column(
             Enum(IGenderEnum),
-            nullable=False, default=IGenderEnum.male.value
-            
+            nullable=False           
         )
     )
+     
     email_verified: bool = Field(default=False)
-    
+
     state: str | None = None
     country: str | None = None
     address: str | None = None
-    
+
     # Add new fields for auth provider tracking
     provider: AuthProvider = Field(
         default=AuthProvider.email,

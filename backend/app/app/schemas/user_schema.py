@@ -8,7 +8,6 @@ from .image_media_schema import IImageMediaRead
 from .role_schema import IRoleRead
 from pydantic import EmailStr
 from datetime import datetime
-from app.schemas.common_schema import AuthProvider, IGenderEnum
 from typing import List, Optional
 
 

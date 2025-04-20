@@ -24,6 +24,15 @@ from fastapi import (
     UploadFile,
     status,
 )
+
+from app.schemas.response_schema import (
+    IDeleteResponseBase,
+    IGetResponseBase,
+    IGetResponsePaginated,
+    IPostResponseBase,
+    IPutResponseBase,
+    create_response,
+)
 from app import crud
 from app.api import deps
 from app.models.course_model import Course
@@ -35,14 +44,14 @@ from app.schemas.role_schema import IRoleEnum
 
 router = APIRouter()
 
-@router.get("/detailed-statistics", response_model=InstitutionDetailedStatistics)
+@router.get("/detailed-statistics")
 async def get_detailed_statistics(
     
     db_session: AsyncSession = Depends(deps.get_db),
     current_user: User = Depends(
         deps.get_current_user(required_roles=[IRoleEnum.admin, IRoleEnum.manager])
     ),
-) -> InstitutionDetailedStatistics:
+) -> IGetResponseBase[InstitutionDetailedStatistics]:
     """
     Get detailed dashboard statistics for institutions and its related entities.
     """
@@ -78,7 +87,7 @@ async def get_detailed_statistics(
         db_session=db_session
     )
 
-    return InstitutionDetailedStatistics(
+    statsData = InstitutionDetailedStatistics(
         # institution_id=institution.id,
         total_institutions=total_institutions,
         total_courses=total_courses,
@@ -91,3 +100,4 @@ async def get_detailed_statistics(
         total_answers=total_answers,
         total_campuses=total_campuses,
     )
+    return create_response(data=statsData)
