@@ -190,17 +190,27 @@ async def invalidate_email_verification_tokens(
     try:
         # Get current token for user
         user_key = f"user:{user_id}:email_verification"
-        token_bytes = await redis_client.get(user_key)
-        
-        if token_bytes:
+        token_value = await redis_client.get(user_key) # Renamed from token_bytes for clarity
+
+        if token_value:
+            # Check if the value is bytes before decoding
+            if isinstance(token_value, bytes):
+                token = token_value.decode('utf-8')
+            else:
+                # Assume it's already a string if not bytes
+                token = token_value
+
             # Delete token->user mapping
-            token = token_bytes.decode('utf-8')
             token_key = f"email_verification:{token}"
             await redis_client.delete(token_key)
-        
-        # Delete user->token mapping
+
+        # Delete user->token mapping regardless of whether a token was found
         await redis_client.delete(user_key)
         return True
     except Exception as e:
+        # Log the error properly instead of just printing
+        logging.error(f"Error invalidating email verification tokens for user {user_id}: {str(e)}")
+        logging.exception("Exception details:")
+        # Keep print for backward compatibility if needed, but logging is preferred
         print(f"Error invalidating email verification tokens: {str(e)}")
         return False
