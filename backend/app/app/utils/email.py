@@ -15,10 +15,8 @@ email_config = ConnectionConfig(
     MAIL_FROM_NAME=settings.MAIL_FROM_NAME,
     MAIL_STARTTLS=settings.MAIL_STARTTLS,
     MAIL_SSL_TLS=settings.MAIL_SSL_TLS,
-    MAIL_TLS=True,
-    MAIL_SSL=False,
+    # MAIL_SSL_TLS=settings.MAIL_SSL_TLS,
     USE_CREDENTIALS=True,
-    # USE_CREDENTIALS=settings.MAIL_USE_CREDENTIALS,
     VALIDATE_CERTS=settings.MAIL_VALIDATE_CERTS,
     TEMPLATE_FOLDER=Path(settings.TEMPLATE_FOLDER),
 )
