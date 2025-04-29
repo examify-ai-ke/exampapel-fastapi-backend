@@ -9,7 +9,7 @@ from app.schemas.media_schema import IMediaCreate
 from app.utils.slugify_string import generate_slug
 from app.models.department_model import Department
 from fastapi import APIRouter, Depends, HTTPException, Query
-from app.utils.minio_client import MinioClient
+from app.utils.minio_client import MinioClient, S3Client
 from fastapi_pagination import Params
 from fastapi import (
     APIRouter,
@@ -275,7 +275,7 @@ async def upload_faculty_image(
     current_user: User = Depends(
         deps.get_current_user(required_roles=[IRoleEnum.admin, IRoleEnum.manager])
     ),
-    minio_client: MinioClient = Depends(deps.minio_auth),
+    minio_client: S3Client = Depends(deps.minio_auth),
 ) -> IPostResponseBase[FacultyRead]:
     """
     Uploads a faculty hero image by id

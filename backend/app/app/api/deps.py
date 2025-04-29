@@ -17,7 +17,7 @@ from app.core.security import decode_token
 from app.db.session import SessionLocal, SessionLocalCelery
 from app.models.user_model import User
 from app.schemas.common_schema import IMetaGeneral, TokenType
-from app.utils.minio_client import MinioClient, S3Client
+from app.utils.minio_client import S3Client, MinioClient
 from app.utils.token import get_valid_tokens
 
 class DebugOAuth2PasswordBearer(OAuth2PasswordBearer):
@@ -142,7 +142,7 @@ def get_current_user(required_roles: list[str] = None) -> Callable[[], IUserRead
                     # Add any other relationships needed by the schema
                 ],
             )
-           
+
             if not user:
                 raise HTTPException(status_code=404, detail="User not found")
 
@@ -168,7 +168,7 @@ def get_current_user(required_roles: list[str] = None) -> Callable[[], IUserRead
                         status_code=403,
                         detail=f"""Role "{required_roles}" is required for this action""",
                     )
-                
+
             return user
 
         except ExpiredSignatureError:
@@ -197,7 +197,7 @@ def get_current_user(required_roles: list[str] = None) -> Callable[[], IUserRead
     return current_user
 
 
-def minio_auth() -> MinioClient:
+def minio_auth() -> S3Client:
     # minio_client = MinioClient(
     #     access_key=settings.MINIO_ROOT_USER,
     #     secret_key=settings.MINIO_ROOT_PASSWORD,

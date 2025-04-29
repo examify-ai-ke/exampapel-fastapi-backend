@@ -24,11 +24,17 @@ from app import crud
 from app.api import deps
 from app.models.campus_model import Campus
 from app.models.user_model import User
+from app.models.institution_model import Address
 from app.schemas.common_schema import IOrderEnum
 from app.schemas.campus_schema import (
     CampusRead,
     CampusCreate,
     CampusUpdate,
+)
+from app.schemas.address_schema import (
+    AddressCreate,
+    AddressUpdate,
+    AddressRead,
 )
 from app.schemas.response_schema import (
     IDeleteResponseBase,
@@ -41,7 +47,9 @@ from app.schemas.response_schema import (
 from app.schemas.role_schema import IRoleEnum
 from app.core.authz import is_authorized
 from sqlmodel.ext.asyncio.session import AsyncSession
-
+from sqlmodel import select
+from sqlalchemy.orm import selectinload
+ 
 router = APIRouter()
 
 
@@ -56,8 +64,18 @@ async def get_campus_list(
     """
     Gets a paginated list of campus
     """
+    query = (
+        select(Campus)
+        .options(
+            selectinload(Campus.institution),
+            selectinload(Campus.address),
+            selectinload(Campus.created_by),
+        )
+        .offset(skip)
+        .limit(limit)
+    )
     campuses = await crud.campus.get_multi_paginated_ordered(
-        db_session=db_session, skip=skip, limit=limit
+        db_session=db_session, skip=skip, limit=limit, query=query
     )
     return create_response(data=campuses)
 
@@ -83,12 +101,21 @@ async def get_campus_list_order_by_created_at(
 @router.get("/get_by_id/{campus_id}")
 async def get_campus_by_id(
     campus_id: UUID,
+    db_session: AsyncSession = Depends(deps.get_db),
     # current_user: User = Depends(deps.get_current_user()),
 ) -> IGetResponseBase[CampusRead]:
     """
     Gets a campus by its id
     """
-    campus = await crud.campus.get(id=campus_id)
+    campus = await crud.campus.get(
+        id=campus_id,
+        db_session=db_session,
+        options=[
+            selectinload(Campus.institution),
+            selectinload(Campus.address),
+            selectinload(Campus.created_by),
+        ]
+    )
     if not campus:
         raise IdNotFoundException(Campus, campus_id)
 
@@ -155,7 +182,7 @@ async def update_campus(
         )
 
     campus_updated = await crud.campus.update(
-        obj_new=campus, obj_current=campus_updated
+        obj_new=campus, obj_current=current_campus
     )
     return create_response(data=campus_updated)
 
@@ -179,40 +206,6 @@ async def remove_campus(
     campus = await crud.campus.remove(id=campus_id)
     return create_response(data=campus)
 
-
-# @router.post("/logo")
-# async def upload_institution_logo(
-#     title: str | None = Body("Institution Logo"),
-#     description: str | None = Body("The Institution official Logo"),
-#     institution_logo: UploadFile = File(...),
-#     current_user: User = Depends(deps.get_current_user()),
-#     minio_client: MinioClient = Depends(deps.minio_auth),
-# ) -> IPostResponseBase[InstitutionRead]:
-#     """
-#     Uploads a institution official logo/image
-#     """
-#     try:
-#         image_modified = modify_image(BytesIO(institution_logo.file.read()))
-#         data_file = minio_client.put_object(
-#             file_name=institution_logo.filename,
-#             file_data=BytesIO(image_modified.file_data),
-#             content_type=institution_logo.content_type,
-#         )
-#         print("data_file", data_file)
-#         media = IMediaCreate(
-#             title=title, description=description, path=data_file.file_name
-#         )
-#         user = await crud.institution.update_institution_logo(
-#             user=current_user,
-#             institution_logo=media,
-#             heigth=image_modified.height,
-#             width=image_modified.width,
-#             file_format=image_modified.file_format,
-#         )
-#         return create_response(data=user)
-#     except Exception as e:
-#         print(e)
-#         return Response("Internal server error", status_code=500)
 
 
 @router.post("/{campus_id}/image")
@@ -254,3 +247,152 @@ async def upload_campus_image(
     except Exception as e:
         print(e)
         return Response("Internal server error", status_code=500)
+
+
+@router.post("/{campus_id}/address")
+async def create_campus_address(
+    campus_id: UUID,
+    address: AddressCreate,
+    db_session: AsyncSession = Depends(deps.get_db),
+    current_user: User = Depends(
+        deps.get_current_user(required_roles=[IRoleEnum.admin, IRoleEnum.manager])
+    ),
+) -> IPostResponseBase[CampusRead]:
+    """
+    Create an address for a campus
+
+    Required roles:
+    - admin
+    - manager
+    """
+    # Verify campus exists
+    campus = await crud.campus.get(
+        id=campus_id, 
+        db_session=db_session,
+        options=[selectinload(Campus.address)]
+    )
+    if not campus:
+        raise IdNotFoundException(Campus, campus_id)
+    
+    # Check if campus already has an address
+    if campus.address:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Campus '{campus.name}' already has an address. Use PUT to update."
+        )
+    
+    # Create a new address
+    new_address = Address(**address.model_dump())
+    new_address.campus_id = campus_id
+    
+    # Save address to database
+    db_session.add(new_address)
+    await db_session.commit()
+    
+    # Refresh campus to include the new address
+    await db_session.refresh(campus)
+    
+    return create_response(data=campus)
+
+
+@router.put("/{campus_id}/address")
+async def update_campus_address(
+    campus_id: UUID,
+    address: AddressUpdate,
+    db_session: AsyncSession = Depends(deps.get_db),
+    current_user: User = Depends(
+        deps.get_current_user(required_roles=[IRoleEnum.admin, IRoleEnum.manager])
+    ),
+) -> IPutResponseBase[CampusRead]:
+    """
+    Update an address for a campus
+
+    Required roles:
+    - admin
+    - manager
+    """
+    # Verify campus exists
+    campus = await crud.campus.get(
+        id=campus_id, 
+        db_session=db_session,
+        options=[selectinload(Campus.address)]
+    )
+    if not campus:
+        raise IdNotFoundException(Campus, campus_id)
+    
+    # Check if campus has an address
+    if not campus.address:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Campus '{campus.name}' doesn't have an address. Create one first."
+        )
+    
+    # Get address data excluding unset fields
+    address_data = address.model_dump(exclude_unset=True)
+    if not address_data:
+        raise HTTPException(
+            status_code=400,
+            detail="No fields provided for update"
+        )
+    
+    # Update existing address
+    for key, value in address_data.items():
+        setattr(campus.address, key, value)
+    
+    # Save updated address to database
+    db_session.add(campus.address)
+    await db_session.commit()
+    
+    # Refresh campus to include the updated address
+    await db_session.refresh(campus)
+    
+    return create_response(data=campus)
+
+
+@router.delete("/{campus_id}/address")
+async def delete_campus_address(
+    campus_id: UUID,
+    db_session: AsyncSession = Depends(deps.get_db),
+    current_user: User = Depends(
+        deps.get_current_user(required_roles=[IRoleEnum.admin, IRoleEnum.manager])
+    ),
+) -> IDeleteResponseBase[CampusRead]:
+    """
+    Delete an address from a campus
+
+    Required roles:
+    - admin
+    - manager
+    """
+    # Verify campus exists
+    campus = await crud.campus.get(
+        id=campus_id, 
+        db_session=db_session,
+        options=[selectinload(Campus.address)]
+    )
+    if not campus:
+        raise IdNotFoundException(Campus, campus_id)
+    
+    # Check if campus has an address
+    if not campus.address:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Campus '{campus.name}' doesn't have an address to delete."
+        )
+    
+    # Get the address ID for deletion
+    address_id = campus.address.id
+    
+    # Delete the address
+    delete_query = select(Address).where(Address.id == address_id)
+    result = await db_session.execute(delete_query)
+    address_to_delete = result.scalar_one_or_none()
+    
+    if address_to_delete:
+        await db_session.delete(address_to_delete)
+        await db_session.commit()
+    
+    # Refresh campus to reflect the deletion
+    await db_session.refresh(campus)
+    
+    return create_response(data=campus)

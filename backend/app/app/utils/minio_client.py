@@ -137,7 +137,7 @@ class S3Client:
             Params={"Bucket": bucket_name, "Key": object_name},
             ExpiresIn=7 * 24 * 3600,  # 7 days in seconds
         )
-        print("presigned_get_object...", url)
+        # print("presigned_get_object...", url)
         return url
 
     def check_file_name_exists(self, bucket_name, file_name):
@@ -163,7 +163,7 @@ class S3Client:
             data_file = IMinioResponse(
                 bucket_name=self.bucket_name, file_name=object_name, url=url
             )
-            # print("data_file:", data_file)
+            print("pry object data_file:", data_file)
             return data_file
         except Exception as e:
             raise e

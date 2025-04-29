@@ -1,7 +1,7 @@
 from app.models.base_uuid_model import BaseUUIDModel
 from pydantic import computed_field
 from sqlmodel import SQLModel
-from app.utils.minio_client import MinioClient
+from app.utils.minio_client import S3Client, MinioClient
 from app.core.config import settings
 from app import api
 
@@ -20,6 +20,6 @@ class Media(BaseUUIDModel, MediaBase, table=True):
             return ""
         minio: MinioClient = api.deps.minio_auth()
         url = minio.presigned_get_object(
-            bucket_name=settings.MINIO_BUCKET, object_name=self.path
+            bucket_name=settings.S3_BUCKET_NAME, object_name=self.path
         )
         return url

@@ -7,8 +7,11 @@ from app.models.image_media_model import ImageMedia
 from app.models.institution_model import (
     Institution,
     InstitutionFacultyLink,
-    InstitutionTypes,
+    InstitutionCategory,
+    InstitutionType,
+    Address
 )
+from app.models.campus_model import Campus
 from app.models.module_model import CourseModuleLink, Module, ModuleExamsLink
 from app.models.programme_model import Programme, ProgrammeDepartmentLink, ProgrammeTypes
 from app.models.exam_paper_model import (
@@ -210,17 +213,129 @@ async def init_db(db_session: AsyncSession, skip_institutions=False) -> None:
             db_session.add(exam_description)
             await db_session.flush()
 
-            # Create institution
+            # Create institution with new fields
             institution = Institution(
                 name="University of Technology",
                 description="A leading institution in technology education",
-                institution_type=InstitutionTypes.UNIVERSITY,
-                email="info@utech.edu",
-                phone_number="+1234567890",
+                category=InstitutionCategory.UNIVERSITY,
+                institution_type=InstitutionType.PUBLIC,
+
                 created_by_id=ADMIN_USER_ID,
                 slug="university-of-technology",
+                key="UOT001",
+                location="Nairobi County",
+                kuccps_institution_url="https://kuccps.ac.ke/uot",
+                full_profile="The University of Technology is a premier institution dedicated to advancing knowledge in technology fields. Established in 1980, it has grown to become one of the leading institutions in engineering, computer science, and applied technology research. The university is known for its innovative approach to education, combining theoretical learning with practical applications.",
+                parent_ministry="Ministry of Education"
             )
             db_session.add(institution)
+            await db_session.flush()
+            
+            # Create an address for the institution
+            institution_address = Address(
+                address_line1="123 Education Avenue",
+                address_line2="Technology Park",
+                county="Nairobi",
+                constituency="Central",
+                zip_code="00100",
+                telephone="+254-20-123456",
+                telephone2="+254-20-789012",
+                email="address@utech.edu",
+                website="https://www.utech.edu",
+                country="Kenya",
+                institution_id=institution.id
+            )
+            db_session.add(institution_address)
+            await db_session.flush()
+
+            # Create a second institution with different category and type
+            institution2 = Institution(
+                name="Nairobi Technical College",
+                description="A technical college focusing on practical skills",
+                category=InstitutionCategory.COLLEGE,
+                institution_type=InstitutionType.PRIVATE,
+                created_by_id=ADMIN_USER_ID,
+                slug="nairobi-technical-college",
+                key="NTC001",
+                location="Nairobi County",
+                kuccps_institution_url="https://kuccps.ac.ke/ntc",
+                full_profile="Nairobi Technical College is dedicated to providing hands-on technical training for various industries. The college emphasizes practical skills development alongside theoretical knowledge, ensuring graduates are ready for the workforce.",
+                parent_ministry="Ministry of Technical Education"
+            )
+            db_session.add(institution2)
+            await db_session.flush()
+            
+            # Create an address for the second institution
+            institution2_address = Address(
+                address_line1="456 Technical Road",
+                address_line2="Industrial Area",
+                county="Nairobi",
+                constituency="Eastern",
+                zip_code="00200",
+                telephone="+254-20-345678",
+                telephone2="+254-20-890123",
+                email="address@ntc.edu",
+                website="https://www.ntc.edu",
+                country="Kenya",
+                institution_id=institution2.id
+            )
+            db_session.add(institution2_address)
+            await db_session.flush()
+
+            # Create a campus for the main institution
+            campus = Campus(
+                name="Main Campus",
+                description="The main campus of University of Technology",
+                slug="main-campus",
+                institution_id=institution.id,
+                created_by_id=ADMIN_USER_ID
+            )
+            db_session.add(campus)
+            await db_session.flush()
+            
+            # Create an address for the campus
+            campus_address = Address(
+                address_line1="789 Education Drive",
+                address_line2="University Heights",
+                county="Nairobi",
+                constituency="Western",
+                zip_code="00300",
+                telephone="+254-20-567890",
+                telephone2="+254-20-901234",
+                email="campus@utech.edu",
+                website="https://campus.utech.edu",
+                country="Kenya",
+                campus_id=campus.id
+            )
+            db_session.add(campus_address)
+            await db_session.flush()
+            
+            # Create a second campus for the main institution
+            campus2 = Campus(
+                name="Downtown Campus",
+                description="The city center campus of University of Technology",
+                slug="downtown-campus",
+                institution_id=institution.id,
+                created_by_id=ADMIN_USER_ID
+            )
+            db_session.add(campus2)
+            await db_session.flush()
+            
+            # Create an address for the second campus
+            campus2_address = Address(
+                address_line1="100 Central Avenue",
+                address_line2="City Center",
+                county="Nairobi",
+                constituency="Central",
+                zip_code="00400",
+                telephone="+254-20-678901",
+                telephone2="+254-20-012345",
+                email="downtown@utech.edu",
+                website="https://downtown.utech.edu",
+                country="Kenya",
+                campus_id=campus2.id
+            )
+            db_session.add(campus2_address)
             await db_session.flush()
 
             # Create a module

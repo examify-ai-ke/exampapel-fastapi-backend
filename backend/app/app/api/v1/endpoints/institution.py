@@ -10,9 +10,11 @@ from app.utils.slugify_string import generate_slug
 from app.models.faculty_model import Faculty
 from app.models.exam_paper_model import ExamPaper
 from app.models.question_model import QuestionSet, MainQuestion
+from app.models.institution_model import Address
 
+from app.models.campus_model import Campus
 from fastapi import APIRouter, Depends, HTTPException, Query
-from app.utils.minio_client import MinioClient
+from app.utils.minio_client import MinioClient, S3Client
 from fastapi_pagination import Params
 from fastapi import (
     APIRouter,
@@ -34,6 +36,11 @@ from app.schemas.institution_schema import (
     InstitutionCreate,
     InstitutionRead,
     InstitutionUpdate,
+)
+from app.schemas.address_schema import (
+    AddressCreate,
+    AddressRead,
+    AddressUpdate,
 )
 from app.schemas.response_schema import (
     IDeleteResponseBase,
@@ -72,19 +79,14 @@ async def get_institution_list(
             .selectinload(ExamPaper.question_sets)
             .selectinload(QuestionSet.main_questions)
             .selectinload(MainQuestion.subquestions),
-            # .selectinload(ExamPaper.instructions)  # Load instructions
-            # .selectinload(ExamPaper.title)  # Load exam title
-            # .selectinload(ExamPaper.description)  # Load exam description
-            # .selectinload(ExamPaper.course)  # Load related course
-            # .selectinload(ExamPaper.question_sets)
-            # .selectinload(QuestionSet.main_questions)
-            # .selectinload(MainQuestion.subquestions),  # Load question sets, main questions, and subquestions
             # Load campuses
-            selectinload(Institution.campuses),
+            selectinload(Institution.campuses).selectinload(Campus.address),
             # Load institution logo
             selectinload(Institution.logo),
             # Load creator details
             selectinload(Institution.created_by),
+            # Load address
+            selectinload(Institution.address),
         )
         .offset(skip)
         .limit(limit)
@@ -117,13 +119,26 @@ async def get_institution_list_order_by_created_at(
 @router.get("/get_by_id/{institution_id}")
 async def get_institution_by_id(
     institution_id: UUID,
+    db_session: AsyncSession = Depends(deps.get_db),
     # current_user: User = Depends(deps.get_current_user()),
     # current_user: User = None
 ) -> IGetResponseBase[InstitutionRead]:
     """
     Gets a institution by its id
     """
-    institution = await crud.institution.get(id=institution_id)
+    # Add options to load address relationship
+    institution = await crud.institution.get(
+        id=institution_id,
+        db_session=db_session,
+        options=[
+            selectinload(Institution.faculties).selectinload(Faculty.departments),
+            selectinload(Institution.campuses).selectinload(Campus.address),
+            selectinload(Institution.exam_papers),
+            selectinload(Institution.logo),
+            selectinload(Institution.created_by),
+            selectinload(Institution.address),
+        ],
+    )
     if not institution:
         raise IdNotFoundException(Institution, institution_id)
 
@@ -134,12 +149,17 @@ async def get_institution_by_id(
 @router.get("/get_by_slug/{institution_slug}")
 async def get_institution_by_slug(
     institution_slug: str,
+    db_session: AsyncSession = Depends(deps.get_db),
     # current_user: User = Depends(deps.get_current_user()),
 ) -> IGetResponseBase[list[InstitutionRead]]:
     """
     Gets a institution by slug
     """
-    institution = await crud.institution.get_institution_by_slug(slug=institution_slug)
+    # Use db_session parameter and load address relationship
+    institution = await crud.institution.get_institution_by_slug(
+        slug=institution_slug, 
+        db_session=db_session
+    )
     if not institution:
         raise NameNotFoundException(Institution, institution_slug)
 
@@ -164,8 +184,7 @@ async def create_institution(
     # print(current_user)
     inst = await crud.institution.create(
         obj_in=institution, created_by_id=current_user.id
-    )
-    
+    )    
     return create_response(data=inst)
 
 
@@ -176,6 +195,7 @@ async def update_institution(
     current_user: User = Depends(
         deps.get_current_user(required_roles=[IRoleEnum.admin, IRoleEnum.manager])
     ),
+    db_session: AsyncSession = Depends(deps.get_db),
 ) -> IPutResponseBase[InstitutionRead]:
     """
     Updates a institution by its id
@@ -184,14 +204,20 @@ async def update_institution(
     - admin
     - manager
     """
-    current_inst = await crud.institution.get(id=institution_id)
+    current_inst = await crud.institution.get(
+        id=institution_id,
+        db_session=db_session,
+        options=[
+            selectinload(Institution.faculties).selectinload(Faculty.departments),
+            selectinload(Institution.campuses).selectinload(Campus.address),
+            selectinload(Institution.exam_papers),
+            selectinload(Institution.logo),
+            selectinload(Institution.created_by),
+            selectinload(Institution.address),
+        ],
+    )
     if not current_inst:
         raise IdNotFoundException(Institution, institution_id)
-    # if not is_authorized(current_user, "read", current_inst):
-    #     raise HTTPException(
-    #         status_code=403,
-    #         detail="You are not Authorized to update this institution because you did not created it",
-    #     )
 
     institution_updated = await crud.institution.update(
         obj_new=institution, obj_current=current_inst
@@ -323,11 +349,11 @@ async def upload_institution_logo(
     valid_institution: Institution = Depends(user_deps.is_valid_institution),
     title: str | None = Body(None),
     description: str | None = Body(None),
-    institution_logo: UploadFile = File(...),
+    institution_logo: UploadFile = File(...),    
     current_user: User = Depends(
         deps.get_current_user(required_roles=[IRoleEnum.admin, IRoleEnum.manager])
     ),
-    minio_client: MinioClient = Depends(deps.minio_auth),
+    minio_client: S3Client = Depends(deps.minio_auth),
 ) -> IPostResponseBase[InstitutionRead]:
     """
     Uploads a institution official logo by id
@@ -336,6 +362,7 @@ async def upload_institution_logo(
     - admin
     - manager
     """
+    # print(institution_logo)
     try:
         image_modified = modify_image(BytesIO(institution_logo.file.read()))
         data_file = minio_client.put_object(
@@ -343,6 +370,7 @@ async def upload_institution_logo(
             file_data=BytesIO(image_modified.file_data),
             content_type=institution_logo.content_type,
         )
+        print("data_file:", data_file)
         media = IMediaCreate(
             title=title, description=description, path=data_file.url
         )
@@ -357,3 +385,152 @@ async def upload_institution_logo(
     except Exception as e:
         print(e)
         return Response("Internal server error", status_code=500)
+
+
+@router.post("/{institution_id}/address")
+async def create_institution_address(
+    institution_id: UUID,
+    address: AddressCreate,
+    db_session: AsyncSession = Depends(deps.get_db),
+    current_user: User = Depends(
+        deps.get_current_user(required_roles=[IRoleEnum.admin, IRoleEnum.manager])
+    ),
+) -> IPostResponseBase[InstitutionRead]:
+    """
+    Create an address for an institution
+
+    Required roles:
+    - admin
+    - manager
+    """
+    # Verify institution exists
+    institution = await crud.institution.get(
+        id=institution_id, 
+        db_session=db_session,
+        options=[selectinload(Institution.address)]
+    )
+    if not institution:
+        raise IdNotFoundException(Institution, institution_id)
+    
+    # Check if institution already has an address
+    if institution.address:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Institution '{institution.name}' already has an address. Use PUT to update."
+        )
+    
+    # Create a new address
+    new_address = Address(**address.model_dump())
+    new_address.institution_id = institution_id
+    
+    # Save address to database
+    db_session.add(new_address)
+    await db_session.commit()
+    
+    # Refresh institution to include the new address
+    await db_session.refresh(institution)
+    
+    return create_response(data=institution)
+
+
+@router.put("/{institution_id}/address")
+async def update_institution_address(
+    institution_id: UUID,
+    address: AddressUpdate,
+    db_session: AsyncSession = Depends(deps.get_db),
+    current_user: User = Depends(
+        deps.get_current_user(required_roles=[IRoleEnum.admin, IRoleEnum.manager])
+    ),
+) -> IPutResponseBase[InstitutionRead]:
+    """
+    Update an address for an institution
+
+    Required roles:
+    - admin
+    - manager
+    """
+    # Verify institution exists
+    institution = await crud.institution.get(
+        id=institution_id, 
+        db_session=db_session,
+        options=[selectinload(Institution.address)]
+    )
+    if not institution:
+        raise IdNotFoundException(Institution, institution_id)
+    
+    # Check if institution has an address
+    if not institution.address:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Institution '{institution.name}' doesn't have an address. Create one first."
+        )
+    
+    # Get address data excluding unset fields
+    address_data = address.model_dump(exclude_unset=True)
+    if not address_data:
+        raise HTTPException(
+            status_code=400,
+            detail="No fields provided for update"
+        )
+    
+    # Update existing address
+    for key, value in address_data.items():
+        setattr(institution.address, key, value)
+    
+    # Save updated address to database
+    db_session.add(institution.address)
+    await db_session.commit()
+    
+    # Refresh institution to include the updated address
+    await db_session.refresh(institution)
+    
+    return create_response(data=institution)
+
+
+@router.delete("/{institution_id}/address")
+async def delete_institution_address(
+    institution_id: UUID,
+    db_session: AsyncSession = Depends(deps.get_db),
+    current_user: User = Depends(
+        deps.get_current_user(required_roles=[IRoleEnum.admin, IRoleEnum.manager])
+    ),
+) -> IDeleteResponseBase[InstitutionRead]:
+    """
+    Delete an address from an institution
+
+    Required roles:
+    - admin
+    - manager
+    """
+    # Verify institution exists
+    institution = await crud.institution.get(
+        id=institution_id, 
+        db_session=db_session,
+        options=[selectinload(Institution.address)]
+    )
+    if not institution:
+        raise IdNotFoundException(Institution, institution_id)
+    
+    # Check if institution has an address
+    if not institution.address:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Institution '{institution.name}' doesn't have an address to delete."
+        )
+    
+    # Get the address ID for deletion
+    address_id = institution.address.id
+    
+    # Delete the address
+    delete_query = select(Address).where(Address.id == address_id)
+    result = await db_session.execute(delete_query)
+    address_to_delete = result.scalar_one_or_none()
+    
+    if address_to_delete:
+        await db_session.delete(address_to_delete)
+        await db_session.commit()
+    
+    # Refresh institution to reflect the deletion
+    await db_session.refresh(institution)
+    
+    return create_response(data=institution)

@@ -16,7 +16,7 @@ from app.api import deps
 from app.deps import user_deps
 from app.models import User, UserFollow
 from app.models.role_model import Role
-from app.utils.minio_client import MinioClient
+from app.utils.minio_client import MinioClient, S3Client
 from app.utils.resize_image import modify_image
 from app.core import security
 from app.schemas.common_schema import AuthProvider
@@ -699,7 +699,7 @@ async def upload_my_image(
     description: str | None = Body(None),
     image_file: UploadFile = File(...),
     current_user: User = Depends(deps.get_current_user()),
-    minio_client: MinioClient = Depends(deps.minio_auth),
+    minio_client: S3Client = Depends(deps.minio_auth),
 ) -> IPostResponseBase[IUserRead]:
     """
     Uploads a user image
@@ -711,9 +711,9 @@ async def upload_my_image(
             file_data=BytesIO(image_modified.file_data),
             content_type=image_file.content_type,
         )
-        print("data_file", data_file)
+        print("data_file:", data_file)
         media = IMediaCreate(
-            title=title, description=description, path=data_file.file_name
+            title=title, description=description, path=data_file.url
         )
         user = await crud.user.update_photo(
             user=current_user,
@@ -737,7 +737,7 @@ async def upload_user_image(
     current_user: User = Depends(
         deps.get_current_user(required_roles=[IRoleEnum.admin])
     ),
-    minio_client: MinioClient = Depends(deps.minio_auth),
+    minio_client: S3Client = Depends(deps.minio_auth),
 ) -> IPostResponseBase[IUserRead]:
     """
     Uploads a user image by his/her id
@@ -753,7 +753,7 @@ async def upload_user_image(
             content_type=image_file.content_type,
         )
         media = IMediaCreate(
-            title=title, description=description, path=data_file.file_name
+            title=title, description=description, path=data_file.url
         )
         user = await crud.user.update_photo(
             user=user,

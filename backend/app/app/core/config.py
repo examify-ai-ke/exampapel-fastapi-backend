@@ -145,7 +145,7 @@ class Settings(BaseSettings):
     MINIO_ROOT_USER: str
     MINIO_ROOT_PASSWORD: str
     MINIO_URL: str
-    MINIO_BUCKET: str
+    # MINIO_BUCKET: str
     # MINIO_ACCESS_KEY: str
     # MINIO_SECRET_KEY: str
     WHEATER_URL: AnyHttpUrl

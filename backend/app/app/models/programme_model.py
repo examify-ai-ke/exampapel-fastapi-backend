@@ -19,8 +19,7 @@ class ProgrammeTypes(enum.Enum):
     PHD_PROGRAMMES = "PhD Programmes"
     ONLINE_MBA = "Online MBA"
     OTHERS = "Others"
-    # Set a default value
-    DEFAULT = UNDERGRADUATE
+
 
 
 # Define the association table for the many-to-many relationship
@@ -38,7 +37,7 @@ class ProgrammeDepartmentLink(BaseUUIDModel, SQLModel, table=True):
 # Define the Programme model
 class ProgrammeBase(SQLModel):  
     # Use ENUM for the name field
-    name: ProgrammeTypes = Field(
+    name: ProgrammeTypes = Field(default=ProgrammeTypes.UNDERGRADUATE,
         sa_column=Column(Enum(ProgrammeTypes), nullable=False, unique=True)
     )
     description: Optional[str] = Field(default="Academic Programmes offered by the University/College")

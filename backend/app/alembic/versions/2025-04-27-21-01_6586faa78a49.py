@@ -1,8 +1,8 @@
 """empty message
 
-Revision ID: c70add3b225d
+Revision ID: 6586faa78a49
 Revises: 
-Create Date: 2025-04-22 08:13:21.553376
+Create Date: 2025-04-27 21:01:13.805669
 
 """
 from alembic import op
@@ -12,7 +12,7 @@ import sqlmodel # added
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision = 'c70add3b225d'
+revision = '6586faa78a49'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -163,9 +163,13 @@ def upgrade():
     op.create_table('Institution',
     sa.Column('name', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
     sa.Column('description', sa.String(), nullable=True),
-    sa.Column('institution_type', sa.Enum('UNIVERSITY', 'COLLEGE', 'TVET', 'OTHER', name='institutiontypes'), nullable=False),
-    sa.Column('email', sa.String(), nullable=True),
-    sa.Column('phone_number', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+    sa.Column('category', sa.Enum('UNIVERSITY', 'COLLEGE', 'TVET', 'OTHER', name='institutioncategory'), nullable=True),
+    sa.Column('key', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+    sa.Column('location', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+    sa.Column('kuccps_institution_url', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+    sa.Column('institution_type', sa.Enum('PUBLIC', 'PRIVATE', name='institutiontype'), nullable=True),
+    sa.Column('full_profile', sa.Text(), nullable=True),
+    sa.Column('parent_ministry', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
     sa.Column('id', sa.Uuid(), nullable=False),
     sa.Column('updated_at', sa.DateTime(), nullable=True),
     sa.Column('created_at', sa.DateTime(), nullable=True),
@@ -175,13 +179,12 @@ def upgrade():
     sa.ForeignKeyConstraint(['created_by_id'], ['User.id'], ),
     sa.ForeignKeyConstraint(['image_id'], ['ImageMedia.id'], ),
     sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('email'),
     sa.UniqueConstraint('name'),
     sa.UniqueConstraint('slug')
     )
+    op.create_index('idx_institution_category', 'Institution', ['category'], unique=False)
     op.create_index('idx_institution_created_at', 'Institution', ['created_at'], unique=False)
     op.create_index('idx_institution_created_by_id', 'Institution', ['created_by_id'], unique=False)
-    op.create_index('idx_institution_email', 'Institution', ['email'], unique=False)
     op.create_index('idx_institution_image_id', 'Institution', ['image_id'], unique=False)
     op.create_index('idx_institution_name', 'Institution', ['name'], unique=False)
     op.create_index('idx_institution_slug', 'Institution', ['slug'], unique=False)
@@ -254,7 +257,6 @@ def upgrade():
     sa.Column('name', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
     sa.Column('description', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
     sa.Column('slug', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
-    sa.Column('address', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
     sa.Column('id', sa.Uuid(), nullable=False),
     sa.Column('updated_at', sa.DateTime(), nullable=True),
     sa.Column('created_at', sa.DateTime(), nullable=True),
@@ -263,7 +265,6 @@ def upgrade():
     sa.ForeignKeyConstraint(['created_by_id'], ['User.id'], ),
     sa.ForeignKeyConstraint(['institution_id'], ['Institution.id'], ),
     sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('address'),
     sa.UniqueConstraint('slug')
     )
     op.create_index(op.f('ix_Campus_id'), 'Campus', ['id'], unique=False)
@@ -343,6 +344,29 @@ def upgrade():
     sa.PrimaryKeyConstraint('id', 'group_id', 'user_id')
     )
     op.create_index(op.f('ix_LinkGroupUser_id'), 'LinkGroupUser', ['id'], unique=False)
+    op.create_table('Address',
+    sa.Column('id', sa.Uuid(), nullable=False),
+    sa.Column('updated_at', sa.DateTime(), nullable=True),
+    sa.Column('created_at', sa.DateTime(), nullable=True),
+    sa.Column('address_line1', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+    sa.Column('address_line2', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+    sa.Column('county', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+    sa.Column('constituency', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+    sa.Column('zip_code', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+    sa.Column('telephone', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+    sa.Column('telephone2', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+    sa.Column('email', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+    sa.Column('website', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+    sa.Column('country', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
+    sa.Column('institution_id', sa.Uuid(), nullable=True),
+    sa.Column('campus_id', sa.Uuid(), nullable=True),
+    sa.ForeignKeyConstraint(['campus_id'], ['Campus.id'], ),
+    sa.ForeignKeyConstraint(['institution_id'], ['Institution.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index('idx_address_campus_id', 'Address', ['campus_id'], unique=False)
+    op.create_index('idx_address_institution_id', 'Address', ['institution_id'], unique=False)
+    op.create_index(op.f('ix_Address_id'), 'Address', ['id'], unique=False)
     op.create_table('CourseModuleLink',
     sa.Column('id', sa.Uuid(), nullable=False),
     sa.Column('updated_at', sa.DateTime(), nullable=True),
@@ -516,6 +540,10 @@ def downgrade():
     op.drop_table('ExamPaper')
     op.drop_index(op.f('ix_CourseModuleLink_id'), table_name='CourseModuleLink')
     op.drop_table('CourseModuleLink')
+    op.drop_index(op.f('ix_Address_id'), table_name='Address')
+    op.drop_index('idx_address_institution_id', table_name='Address')
+    op.drop_index('idx_address_campus_id', table_name='Address')
+    op.drop_table('Address')
     op.drop_index(op.f('ix_LinkGroupUser_id'), table_name='LinkGroupUser')
     op.drop_table('LinkGroupUser')
     op.drop_index(op.f('ix_InstitutionFacultyLink_id'), table_name='InstitutionFacultyLink')
@@ -548,9 +576,9 @@ def downgrade():
     op.drop_index('idx_institution_slug', table_name='Institution')
     op.drop_index('idx_institution_name', table_name='Institution')
     op.drop_index('idx_institution_image_id', table_name='Institution')
-    op.drop_index('idx_institution_email', table_name='Institution')
     op.drop_index('idx_institution_created_by_id', table_name='Institution')
     op.drop_index('idx_institution_created_at', table_name='Institution')
+    op.drop_index('idx_institution_category', table_name='Institution')
     op.drop_table('Institution')
     op.drop_index(op.f('ix_Group_id'), table_name='Group')
     op.drop_table('Group')
