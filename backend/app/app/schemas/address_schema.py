@@ -13,7 +13,7 @@ class AddressBase(BaseModel):
     zip_code: Optional[str] = None
     telephone: Optional[str] = None
     telephone2: Optional[str] = None
-    email: Optional[EmailStr] = None
+    email: Optional[str] = None
     website: Optional[str] = None
 
 

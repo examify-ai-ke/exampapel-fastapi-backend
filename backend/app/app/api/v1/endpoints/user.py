@@ -105,8 +105,6 @@ async def read_users_list(
             selectinload(User.groups),  # Load followers
             # selectinload(User.),  # Load following
         )
-        # .offset(skip)
-        # .limit(limit)
     )
     users = await crud.user.get_multi_paginated_ordered(
         db_session=db_session, skip=skip, limit=limit, query=query

@@ -1,6 +1,15 @@
 from app.models.institution_model import Institution, InstitutionFacultyLink
 from app.models.department_model import Department
-from sqlmodel import Field, Relationship, SQLModel, Enum, Column, DateTime, String
+from sqlmodel import (
+    Field,
+    Relationship,
+    SQLModel,
+    Index,
+    Enum,
+    Column,
+    DateTime,
+    String,
+)
 from app.models.base_uuid_model import BaseUUIDModel
 from uuid import UUID
 
@@ -71,3 +80,9 @@ class Faculty(BaseUUIDModel, SQLModel, table=True):
 
     institution_count = total_institutions
     department_count = total_departments
+
+    __table_args__ = (
+        Index("idx_faculty_name", "name"),
+        Index("idx_faculty_slug", "slug"),
+ 
+    )

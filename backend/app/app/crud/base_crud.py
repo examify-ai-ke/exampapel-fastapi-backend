@@ -136,9 +136,10 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         # print(columns)
 
         if order_by is None or order_by not in columns:
-            order_by = "id"
-        # print("order_by...")
-        # print(order_by)
+            order_by = "created_at"
+
+        if query is None:
+            query = select(self.model).order_by(columns[order_by].desc())
         if query is None and order==IOrderEnum.ascendent:
             query = select(self.model).order_by(columns[order_by].asc())
         elif query is None and order==IOrderEnum.descendent:
@@ -146,16 +147,13 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         elif query is not None and order==IOrderEnum.ascendent:
             query = query.order_by(columns[order_by].asc())
         elif query is not None and order==IOrderEnum.descendent:
+            # print("descendent is wahts run as a query..")
             query = query.order_by(columns[order_by].desc())
-        # # print("order...")
-        #     if order == IOrderEnum.ascendent:
-        #         query = select(self.model).order_by(columns[order_by].asc())
-        #     else:
-        #         query = query.order_by(columns[order_by].desc())
-
-        print("get_multi_paginated_ordered() called......")
-        print(query)
-        return await paginate(db_session, query,params)
+        # This ensures the total count is included in pagination results
+        result = await paginate(db_session, query, params)
+        # print(result)
+        # print("result.total_count:", result.dict())
+        return result
 
     async def get_multi_ordered(
         self,
@@ -187,7 +185,7 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
                 .limit(limit)
                 .order_by(columns[order_by].desc())
             )
-        print("get_multi_ordered()......called.............")
+        # print("get_multi_ordered()......called.............")
         response = await db_session.execute(query)
         # print(response)
         return response.scalars().unique().all()

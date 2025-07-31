@@ -63,8 +63,6 @@ async def get_instruction_list(
             selectinload(ExamInstruction.exam_papers),  # Load related exam paper
             selectinload(ExamInstruction.created_by),  # Load creator details
         )
-        # .offset(skip)
-        # .limit(limit)
     )
     instructions = await crud.instruction.get_multi_paginated_ordered(
         db_session=db_session, skip=skip, limit=limit, query=query

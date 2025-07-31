@@ -1,8 +1,8 @@
 """empty message
 
-Revision ID: 6586faa78a49
+Revision ID: 1bd14aff86f7
 Revises: 
-Create Date: 2025-04-27 21:01:13.805669
+Create Date: 2025-05-01 09:26:49.429490
 
 """
 from alembic import op
@@ -12,7 +12,7 @@ import sqlmodel # added
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision = '6586faa78a49'
+revision = '1bd14aff86f7'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -148,6 +148,8 @@ def upgrade():
     sa.UniqueConstraint('name'),
     sa.UniqueConstraint('slug')
     )
+    op.create_index('idx_faculty_name', 'Faculty', ['name'], unique=False)
+    op.create_index('idx_faculty_slug', 'Faculty', ['slug'], unique=False)
     op.create_index(op.f('ix_Faculty_id'), 'Faculty', ['id'], unique=False)
     op.create_table('Group',
     sa.Column('name', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
@@ -167,9 +169,10 @@ def upgrade():
     sa.Column('key', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
     sa.Column('location', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
     sa.Column('kuccps_institution_url', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
-    sa.Column('institution_type', sa.Enum('PUBLIC', 'PRIVATE', name='institutiontype'), nullable=True),
+    sa.Column('institution_type', sa.Enum('PUBLIC', 'PRIVATE', 'OTHER', name='institutiontype'), nullable=True),
     sa.Column('full_profile', sa.Text(), nullable=True),
     sa.Column('parent_ministry', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+    sa.Column('tags', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
     sa.Column('id', sa.Uuid(), nullable=False),
     sa.Column('updated_at', sa.DateTime(), nullable=True),
     sa.Column('created_at', sa.DateTime(), nullable=True),
@@ -188,6 +191,7 @@ def upgrade():
     op.create_index('idx_institution_image_id', 'Institution', ['image_id'], unique=False)
     op.create_index('idx_institution_name', 'Institution', ['name'], unique=False)
     op.create_index('idx_institution_slug', 'Institution', ['slug'], unique=False)
+    op.create_index('idx_institution_tags', 'Institution', ['tags'], unique=False, postgresql_using='gin')
     op.create_index('idx_institution_type', 'Institution', ['institution_type'], unique=False)
     op.create_index(op.f('ix_Institution_created_by_id'), 'Institution', ['created_by_id'], unique=False)
     op.create_index(op.f('ix_Institution_id'), 'Institution', ['id'], unique=False)
@@ -213,7 +217,7 @@ def upgrade():
     op.create_index('ix_module_name', 'Module', ['name'], unique=False)
     op.create_index('ix_module_unit_code', 'Module', ['unit_code'], unique=False)
     op.create_table('Programme',
-    sa.Column('name', sa.Enum('CERTIFICATE', 'DIPLOMA', 'UNDERGRADUATE', 'MASTERS', 'POSTGRADUATE_DIPLOMA', 'PHD_PROGRAMMES', 'ONLINE_MBA', 'OTHERS', name='programmetypes'), nullable=False),
+    sa.Column('name', sa.Enum('CERTIFICATE', 'DIPLOMA', 'BACHELORS', 'MASTERS', 'DOCTORATE', 'POSTGRADUATE_DIPLOMA', 'PHD_PROGRAMMES', 'ONLINE_MBA', 'OTHERS', name='programmetypes'), nullable=False),
     sa.Column('description', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
     sa.Column('id', sa.Uuid(), nullable=False),
     sa.Column('updated_at', sa.DateTime(), nullable=True),
@@ -573,6 +577,7 @@ def downgrade():
     op.drop_index(op.f('ix_Institution_id'), table_name='Institution')
     op.drop_index(op.f('ix_Institution_created_by_id'), table_name='Institution')
     op.drop_index('idx_institution_type', table_name='Institution')
+    op.drop_index('idx_institution_tags', table_name='Institution', postgresql_using='gin')
     op.drop_index('idx_institution_slug', table_name='Institution')
     op.drop_index('idx_institution_name', table_name='Institution')
     op.drop_index('idx_institution_image_id', table_name='Institution')
@@ -583,6 +588,8 @@ def downgrade():
     op.drop_index(op.f('ix_Group_id'), table_name='Group')
     op.drop_table('Group')
     op.drop_index(op.f('ix_Faculty_id'), table_name='Faculty')
+    op.drop_index('idx_faculty_slug', table_name='Faculty')
+    op.drop_index('idx_faculty_name', table_name='Faculty')
     op.drop_table('Faculty')
     op.drop_index(op.f('ix_ExamTitle_id'), table_name='ExamTitle')
     op.drop_table('ExamTitle')

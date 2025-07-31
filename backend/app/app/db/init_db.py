@@ -12,6 +12,7 @@ from app.models.institution_model import (
     Address
 )
 from app.models.campus_model import Campus
+from app.models.media_model import Media
 from app.models.module_model import CourseModuleLink, Module, ModuleExamsLink
 from app.models.programme_model import Programme, ProgrammeDepartmentLink, ProgrammeTypes
 from app.models.exam_paper_model import (
@@ -23,6 +24,9 @@ from app.models.exam_paper_model import (
     InstructionExamsLink,
 )
 from app.models.question_model import MainQuestion, QuestionSet, QuestionSetTitleEnum, SubQuestion
+
+from app.schemas.media_schema import IMediaCreate
+from app.utils.resize_image import modify_image
 from sqlmodel.ext.asyncio.session import AsyncSession
 from app import crud
 from app.schemas.role_schema import IRoleCreate
@@ -34,7 +38,14 @@ from app.schemas.group_schema import IGroupCreate
 import uuid
 import asyncio
 from sqlalchemy import select
+import json
+from pathlib import Path
+from uuid import uuid4
 
+from io import BytesIO
+from app.utils.minio_client import MinioClient, S3Client
+from app.core.config import settings
+import requests
 
 roles: list[IRoleCreate] = [
     IRoleCreate(name="admin", description="This the Admin role"),
@@ -96,7 +107,7 @@ heroes: list[dict[str, str | IHeroCreate]] = [
 ]
 
 
-async def init_db(db_session: AsyncSession, skip_institutions=False) -> None:
+async def init_db(db_session: AsyncSession) -> None:
     """
     Initialize database with core data and optionally institutions.
     
@@ -184,13 +195,13 @@ async def init_db(db_session: AsyncSession, skip_institutions=False) -> None:
                 )
 
         # Check if we should skip institution initialization
-        if skip_institutions:
-            return
+        # if skip_institutions:
+        #     return
 
         # Check if institutions already exist
         existing_institutions = await db_session.execute(select(Institution))
         if existing_institutions.scalars().first():
-            print("Institutions already exist. Skipping institution initialization.")
+            print("Institutions already exist. Skipping institution initialization....")
             return
 
         # Initialize institutions and related entities
@@ -230,7 +241,7 @@ async def init_db(db_session: AsyncSession, skip_institutions=False) -> None:
             )
             db_session.add(institution)
             await db_session.flush()
-            
+
             # Create an address for the institution
             institution_address = Address(
                 address_line1="123 Education Avenue",
@@ -264,7 +275,7 @@ async def init_db(db_session: AsyncSession, skip_institutions=False) -> None:
             )
             db_session.add(institution2)
             await db_session.flush()
-            
+
             # Create an address for the second institution
             institution2_address = Address(
                 address_line1="456 Technical Road",
@@ -292,7 +303,7 @@ async def init_db(db_session: AsyncSession, skip_institutions=False) -> None:
             )
             db_session.add(campus)
             await db_session.flush()
-            
+
             # Create an address for the campus
             campus_address = Address(
                 address_line1="789 Education Drive",
@@ -309,7 +320,7 @@ async def init_db(db_session: AsyncSession, skip_institutions=False) -> None:
             )
             db_session.add(campus_address)
             await db_session.flush()
-            
+
             # Create a second campus for the main institution
             campus2 = Campus(
                 name="Downtown Campus",
@@ -320,7 +331,7 @@ async def init_db(db_session: AsyncSession, skip_institutions=False) -> None:
             )
             db_session.add(campus2)
             await db_session.flush()
-            
+
             # Create an address for the second campus
             campus2_address = Address(
                 address_line1="100 Central Avenue",
@@ -505,13 +516,13 @@ async def init_db(db_session: AsyncSession, skip_institutions=False) -> None:
 
             # Create programme first
             programme = await crud.programme.get_programme_by_slug(
-                slug="undergraduate", db_session=db_session
+                slug="bachelors-or-undergraduate", db_session=db_session
             )
             if not programme:
                 programme = Programme(
-                    name=ProgrammeTypes.UNDERGRADUATE,
-                    slug="undergraduate",
-                    description="Undergraduate programmes",
+                    name=ProgrammeTypes.BACHELORS,
+                    slug="bachelors-or-undergraduate",
+                    description="A specific type of undergraduate program, typically lasting 3–4 years (e.g., Bachelor of Arts, Bachelor of Science)",
                     created_by_id=ADMIN_USER_ID,
                 )
                 db_session.add(programme)
@@ -563,28 +574,155 @@ async def init_db(db_session: AsyncSession, skip_institutions=False) -> None:
         await db_session.rollback()
         raise
 
+async def import_institutions_from_json(db_session: AsyncSession, json_path: str = "kuccps_institutions_2025-04-26-master-UPDATED.json"):
+    """
+    Import institutions from a JSON file into the database.
+    """
+    try:
+        with open(json_path, 'r') as f:
+            institutions_data = json.load(f)
+
+        current_admin = await crud.user.get_by_email(
+            email=settings.FIRST_SUPERUSER_EMAIL, db_session=db_session
+        )
+        ADMIN_USER_ID = current_admin.id
+
+        insitutions =institutions_data["institutions"]
+        print(f"Importing {len(insitutions)} institutions...")
+
+        for idx, inst_data in enumerate(insitutions, 1):
+            existing_institution = await db_session.execute(select(Institution).where(Institution.name == inst_data.get("name")))
+            if existing_institution.scalars().first():
+                print(f"Institution {inst_data.get('name')} already exists. Skipping import.....")
+                continue
+            # Process logo if available
+            # Create an S3Client instance
+            s3_client = S3Client(
+                aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+                aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+                region_name=settings.AWS_REGION,
+                bucket_name=settings.S3_BUCKET_NAME,
+            )
+            # Process and upload logo
+            image_id = None
+            if logo_url := inst_data.get("logo"):
+                try:
+                    # Download image from URL
+                    response = requests.get(logo_url, stream=True, verify=False)
+                    if response.status_code == 200:
+                        image_modified = modify_image(
+                            BytesIO(response.content)
+                        )
+                        # print(image_modified.file_format)
+                        # print(image_modified.file_data)
+                        # Prepare image data
+                        # file_data = BytesIO(response.content)
+
+                        file_name = f"{uuid4()}.png"
+                        content_type = response.headers.get('Content-Type', 'image/png')
+                        data_file = s3_client.put_object(
+                            file_name=file_name,
+                            file_data=image_modified.file_data,
+                            content_type=content_type,
+                        )
+                        media = Media(
+                            title=f"Logo for {inst_data.get('name', 'Institution')}",
+                            description=f"Official logo for {inst_data.get('name', 'Institution')}",
+                            path=data_file.url,
+                        )
+                        # print(media)
+                        db_session.add(media)
+                        await db_session.flush()
+                        # Create ImageMedia record with S3 URL
+                        image_media = ImageMedia(
+                            media_id=media.id,
+                            file_format=image_modified.file_format,
+                            width=image_modified.width,
+                            height=image_modified.height,
+                            # media=media
+                        )
+                        db_session.add(image_media)
+                        await db_session.flush()  
+                        image_id = image_media.id
+                except Exception as e:
+                    print(f"Error uploading logo for {inst_data.get('name')}: {e}")
+            # Create institution
+            # inst_data=json.loads(_data)
+            institution = Institution(
+                name=inst_data.get("name", "Unnamed Institution"),
+                key=inst_data.get("key", ""),
+                description=inst_data.get("short_description", ""),
+                category=InstitutionCategory(inst_data.get("category", "OTHER")),
+                location=inst_data.get("county", ""),
+                kuccps_institution_url=inst_data.get("kuccps_institution_url", ""),
+                full_profile=inst_data.get("profile", ""),
+                parent_ministry=inst_data.get("parent_ministry", ""),
+                tags=inst_data.get("tags", []),
+                institution_type=InstitutionType(
+                    inst_data.get("institution_type", "OTHER")
+                ),
+                created_by_id=ADMIN_USER_ID,  # Use admin user
+                image_id=image_id,  # Link to logo image
+            )
+
+            # Create address from other_info
+            other_info = inst_data.get("other_info", {})
+
+            address = Address(
+                address_line1=other_info.get("address", ""),
+                address_line2=other_info.get("location", ""),
+                county=inst_data.get("county", ""),
+                constituency=inst_data.get("constituency", ""),
+                zip_code=other_info.get("postal_code", ""),
+                telephone=other_info.get("telephone", ""),
+                telephone2=other_info.get("telephone2", ""),
+                email=other_info.get("email", ""),
+                website=inst_data.get("website", ""),
+                country="Kenya",  # Default to Kenya
+                institution=institution,
+            )
+
+            db_session.add(institution)
+            db_session.add(address)
+
+            if idx % 100 == 0:  # Commit in batches
+                await db_session.flush()
+                print(f"Processed {idx} institutions...")
+
+        await db_session.commit()
+        print("Successfully imported all institutions!")
+
+    except Exception as e:
+        await db_session.rollback()
+        print(f"Error importing institutions: {e}")
+        raise
+
+
 # This function helps run the init_db function in an async context
-def run_init_db():
-    """Run the init_db function in a proper async context."""
-    from app.db.session import async_engine, get_async_session
-    import contextlib
-    
-    async def init_db_wrapper():
-        # Create a new session
-        async with async_engine.begin() as conn:
-            # Drop and create tables
-            # await conn.run_sync(SQLModel.metadata.drop_all)
-            # await conn.run_sync(SQLModel.metadata.create_all)
-            pass
-        
-        # Create a session context manager
-        async_session_maker = get_async_session()
-        async with async_session_maker() as session:
-            await init_db(session)
-    
-    # Run the async function in the event loop
-    asyncio.run(init_db_wrapper())
+async def run_init_db(db_session: AsyncSession):
+    """Main async entry point for database initialization"""
+    try:
+        # Initialize core data
+        await init_db(db_session)
+
+        # Import institutions from JSON
+        # Get the project root directory
+        project_root = Path(__file__).resolve().parent.parent.parent
+        # print(project_root)
+        json_path = project_root/"kuccps_institutions_2025-04-26-master-UPDATED.json"
+        # json_path = Path(
+        #     "kuccps_institutions_2025-04-26-master-UPDATED.json"
+        # )
+        if json_path.exists():
+            await import_institutions_from_json(db_session, str(json_path))
+        else:
+            print(f"JSON file not found at {json_path}, skipping institution import")
+
+    except Exception as e:
+        print(f"Initialization failed: {e}")
+        raise
+
 
 # If this script is run directly, initialize the database
-if __name__ == "__main__":
-    run_init_db()
+# if __name__ == "__main__":
+#     run_init_db()

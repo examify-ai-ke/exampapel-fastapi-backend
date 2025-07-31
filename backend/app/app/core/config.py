@@ -16,7 +16,7 @@ class ModeEnum(str, Enum):
 
 class Settings(BaseSettings):
     # MODE: ModeEnum = ModeEnum.production
-    MODE: ModeEnum = os.getenv("ENVIRONMENT", "production")
+    MODE: ModeEnum = os.getenv("ENVIRONMENT", "development")
     API_VERSION: str = "v1"
     # API_V1_STR: str = f"/api/{API_VERSION}"
     API_V1_STR: str = "/admin/api"

@@ -56,6 +56,7 @@ import time
 from sqlmodel import SQLModel, Session, select
 from sqlalchemy.orm import selectinload
 # from fastapi_sqla import Base, Page, AsyncPagination, AsyncSession
+from sqlalchemy import or_, and_
 
 router = APIRouter()
 
@@ -65,6 +66,17 @@ async def get_institution_list(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1),
     db_session: AsyncSession = Depends(deps.get_db),
+    category: str = Query(default=None, description="Filter by institution category"),
+    institution_type: str = Query(
+        default=None, description="Filter by institution type"
+    ),
+    search_term: str = Query(
+        default=None, description="Search term for institution name and other fields"
+    ),
+    location: str = Query(default=None, description="Filter by location"),
+    tags: list[str] = Query(default=None, description="Filter by tags"),
+    order_by: str = Query(default="created_at"),
+    order: IOrderEnum = Query(default=IOrderEnum.descendent),
 ) -> IGetResponsePaginated[InstitutionRead]:
     """
     Gets a paginated list of institutions
@@ -88,11 +100,38 @@ async def get_institution_list(
             # Load address
             selectinload(Institution.address),
         )
-        .offset(skip)
-        .limit(limit)
     )
+    # Add text search if search parameter is provided
+    if search_term:
+        query = query.filter(
+            # Text fields
+            or_(
+                Institution.name.ilike(f"%{search_term}%"),
+                Institution.description.ilike(f"%{search_term}%"),
+                Institution.slug.ilike(f"%{search_term}%"),
+                Institution.location.ilike(f"%{search_term}%"),
+                Institution.full_profile.ilike(f"%{search_term}%"),
+            )
+        )
+        # print("query:", query)
+    # Filter by specific fields when provided
+    if category:
+        query = query.filter(Institution.category == category)
+
+    if institution_type:
+        query = query.filter(Institution.institution_type == institution_type)
+
+    if location:
+        query = query.filter(Institution.location.ilike(f"%{location}%"))
+
+    # Filter by tags (using PostgreSQL JSONB containment)
+    # More efficient tag filtering using or_
+    if tags:
+        # This creates a single condition checking if any tag is in the tags array
+        query = query.filter(or_(*[Institution.tags.contains([tag]) for tag in tags]))
     institutions = await crud.institution.get_multi_paginated_ordered(
-        db_session=db_session, skip=skip, limit=limit, query=query
+        db_session=db_session, skip=skip, limit=limit, query=query, order_by=order_by,
+        order=order,
     )
     return create_response(data=institutions)
 
@@ -370,7 +409,7 @@ async def upload_institution_logo(
             file_data=BytesIO(image_modified.file_data),
             content_type=institution_logo.content_type,
         )
-        print("data_file:", data_file)
+        # print("data_file:", data_file)
         media = IMediaCreate(
             title=title, description=description, path=data_file.url
         )

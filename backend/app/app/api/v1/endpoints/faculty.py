@@ -44,6 +44,7 @@ from app.schemas.role_schema import IRoleEnum
 from app.core.authz import is_authorized
 from sqlalchemy.orm import selectinload
 from sqlmodel import  select
+from sqlalchemy import or_, and_
 
 router = APIRouter()
 
@@ -55,6 +56,9 @@ async def get_faculty_list(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1),
     db_session: AsyncSession = Depends(deps.get_db),
+    search_term: str = Query(
+        default=None, description="Search term for institution name and other fields"
+    ),
 ) -> IGetResponsePaginated[FacultyRead]:
     """
     Gets a paginated list of faculties
@@ -67,9 +71,18 @@ async def get_faculty_list(
             selectinload(Faculty.image),
             selectinload(Faculty.created_by),
         )
-        # .offset(skip)
-        # .limit(limit)
+       
     )
+    if search_term:
+        query = query.filter(
+            # Text fields
+            or_(
+                Faculty.name.ilike(f"%{search_term}%"),
+                Faculty.description.ilike(f"%{search_term}%"),
+                Faculty.slug.ilike(f"%{search_term}%"),
+             
+            )
+        )
     faculties = await crud.faculty.get_multi_paginated_ordered(
         db_session=db_session, skip=skip, limit=limit, query=query
     )
@@ -139,38 +152,7 @@ async def create_faculty(
     - admin
     - manager
     """
-    # db_instituions= await crud.institution.get_multi_by_ids(
-    #     ids=faculty.institutions
-    # )
-    # if not db_instituions:
-    #     raise HTTPException(
-    #         status_code=404,
-    #         detail="Institutions not found",
-    #     )
-    # Check if slug already exists
-    # existing_faculty = await crud.faculty.get_faculty_by_slug(
-    #     slug=faculty.slug
-
-    # )
-    # if existing_faculty:
-    #     raise HTTPException(
-    #         status_code=400,
-    #         detail="Faculty with this slug already exists"
-    #     )
-    # db_instituions= await crud.institution.get_multi_by_ids(
-    #     ids=faculty.institutions
-    # )
-    # if not db_instituions:
-    #     raise HTTPException(
-    #         status_code=404,
-    #         detail="Institutions not found",
-    #     )
-    # new_faculty =Faculty(
-    #     name=faculty.name,
-    #     description=faculty.description,
-    #     institutions=db_instituions,
-    #     created_by_id=current_user.id,
-    # ) 
+     
 
     # Check if slug already exists
     _faculty = await crud.faculty.create(

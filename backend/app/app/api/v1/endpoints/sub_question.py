@@ -64,8 +64,6 @@ async def get_sub_question_list(
             selectinload(SubQuestion.created_by),  # Load creator details
             # selectinload(SubQuestion),  # Load sub-question image
         )
-        # .offset(skip)
-        # .limit(limit)
     )
     sub_questions = await crud.sub_question.get_multi_paginated_ordered(
         db_session=db_session, skip=skip, limit=limit, query=query

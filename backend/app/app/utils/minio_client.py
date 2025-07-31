@@ -163,7 +163,7 @@ class S3Client:
             data_file = IMinioResponse(
                 bucket_name=self.bucket_name, file_name=object_name, url=url
             )
-            print("pry object data_file:", data_file)
+            print("object data_file file_name successfully uploaded:", data_file.file_name)
             return data_file
         except Exception as e:
             raise e

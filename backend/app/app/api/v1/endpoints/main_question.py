@@ -65,8 +65,6 @@ async def get_main_question_list(
             selectinload(MainQuestion.answers),  # Load related sub-questions
             # selectinload(MainQuestion.),  # Load question image
         )
-        # .offset(skip)
-        # .limit(limit)
     )
     main_questions = await crud.main_question.get_multi_paginated_ordered(
         db_session=db_session, skip=skip, limit=limit, query=query

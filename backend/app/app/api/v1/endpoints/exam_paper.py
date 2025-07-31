@@ -80,8 +80,6 @@ async def get_exam_paper_list(
             selectinload(ExamPaper.modules),  # Load related modules
             selectinload(ExamPaper.title),  # Load related exam title
         )
-        .offset(skip)
-        .limit(limit)
     )
     exam_papers = await crud.exam_paper.get_multi_paginated_ordered(
         db_session=db_session, skip=skip, limit=limit, query=query

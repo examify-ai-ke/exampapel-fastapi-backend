@@ -66,8 +66,7 @@ async def get_department_list(
             selectinload(Department.image),  # Load department image
             selectinload(Department.created_by),  # Load creator details
         )
-        # .offset(skip)
-        # .limit(limit)
+
     )
     departments = await crud.department.get_multi_paginated_ordered(
         db_session=db_session, skip=skip, limit=limit, query=query

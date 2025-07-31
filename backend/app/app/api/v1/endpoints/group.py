@@ -53,8 +53,7 @@ async def get_groups(
             selectinload(Group.created_by),  # Load creator details
             
         )
-        .offset(skip)
-        .limit(limit)
+
     )
     groups = await crud.group.get_multi_paginated_ordered(
         db_session=db_session,

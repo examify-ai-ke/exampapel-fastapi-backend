@@ -71,8 +71,6 @@ async def get_campus_list(
             selectinload(Campus.address),
             selectinload(Campus.created_by),
         )
-        .offset(skip)
-        .limit(limit)
     )
     campuses = await crud.campus.get_multi_paginated_ordered(
         db_session=db_session, skip=skip, limit=limit, query=query

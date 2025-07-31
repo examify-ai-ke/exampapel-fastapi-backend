@@ -13,13 +13,13 @@ from app.utils.slugify_string import generate_slug
 class ProgrammeTypes(enum.Enum):
     CERTIFICATE = "Certificate"
     DIPLOMA = "Diploma"
-    UNDERGRADUATE = "Undergraduate"
-    MASTERS = "Masters"    
-    POSTGRADUATE_DIPLOMA = "Postgraduates Diploma"
+    BACHELORS = "Bachelors/Undergraduate"
+    MASTERS = "Masters"
+    DOCTORATE = "Doctorate"
+    POSTGRADUATE_DIPLOMA = "Postgraduate Diploma"
     PHD_PROGRAMMES = "PhD Programmes"
     ONLINE_MBA = "Online MBA"
     OTHERS = "Others"
-
 
 
 # Define the association table for the many-to-many relationship
@@ -37,10 +37,13 @@ class ProgrammeDepartmentLink(BaseUUIDModel, SQLModel, table=True):
 # Define the Programme model
 class ProgrammeBase(SQLModel):  
     # Use ENUM for the name field
-    name: ProgrammeTypes = Field(default=ProgrammeTypes.UNDERGRADUATE,
-        sa_column=Column(Enum(ProgrammeTypes), nullable=False, unique=True)
+    name: ProgrammeTypes = Field(
+        default=ProgrammeTypes.BACHELORS,
+        sa_column=Column(Enum(ProgrammeTypes), nullable=False, unique=True),
     )
-    description: Optional[str] = Field(default="Academic Programmes offered by the University/College")
+    description: Optional[str] = Field(
+        default="A specific type of undergraduate program, typically lasting 3–4 years (e.g., Bachelor of Arts, Bachelor of Science)"
+    )
 
 
 class Programme(BaseUUIDModel, ProgrammeBase, table=True):

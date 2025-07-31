@@ -27,7 +27,7 @@ class InstitutionCreate(BaseModel):
     full_profile: Optional[str] = None
     parent_ministry: Optional[str] = None
     image_id: Optional[UUID] = None
-    
+    tags: Optional[list[str]] = []
     # Address relationship
     address: Optional[AddressCreate] = None
 
@@ -37,7 +37,7 @@ class InstitutionUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     category: Optional[InstitutionCategory] = None
-    
+
     # Optional fields
     key: Optional[str] = None
     location: Optional[str] = None
@@ -46,7 +46,7 @@ class InstitutionUpdate(BaseModel):
     full_profile: Optional[str] = None
     parent_ministry: Optional[str] = None
     image_id: Optional[UUID] = None
-    
+    tags: Optional[list[str]] = None
     # Address relationship
     address: Optional[AddressUpdate] = None
 
@@ -110,6 +110,7 @@ class InstitutionRead(InstitutionBase):
     kuccps_institution_url: Optional[str] = None
     full_profile: Optional[str] = None
     parent_ministry: Optional[str] = None
+    tags: list[str] = []
     class Config:
         from_attributes = True  # This allows the schema to work with ORM objects
 

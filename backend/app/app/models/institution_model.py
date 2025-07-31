@@ -17,6 +17,7 @@ from uuid import UUID
 import enum
 from typing import List, Optional, TYPE_CHECKING
 from app.models.image_media_model import ImageMedia
+from sqlalchemy.dialects.postgresql import JSONB
 from pydantic import EmailStr, field_validator, validator
 from app.utils.slugify_string import generate_slug
 from fastapi_cache.decorator import cache
@@ -37,9 +38,9 @@ class InstitutionCategory(enum.Enum):
 
 # Define an enumeration for institution ownership types
 class InstitutionType(enum.Enum):
-    PUBLIC = "public"
-    PRIVATE = "private"
-
+    PUBLIC = "Public"
+    PRIVATE = "Private"
+    OTHER = "Other"
 
 # Address model for institutions and campuses
 class Address(BaseUUIDModel, SQLModel, table=True):
@@ -73,7 +74,6 @@ class InstitutionFacultyLink(BaseUUIDModel, SQLModel, table=True):
         foreign_key="Institution.id",
         primary_key=True,
         default=None,
-
     )
     faculty_id: UUID | None = Field(
         foreign_key="Faculty.id",
@@ -109,6 +109,11 @@ class InstitutionBase(SQLModel):
     )
     parent_ministry: Optional[str] = Field(default=None, nullable=True)
     # Slug with a validator to generate it from the name
+    tags: List[str] = Field(
+        default_factory=list,
+        sa_column=Column(JSONB, nullable=True),
+        description="List of tags for categorization",
+    )
 
 
 class Institution(BaseUUIDModel, InstitutionBase, table=True): 
@@ -165,12 +170,14 @@ class Institution(BaseUUIDModel, InstitutionBase, table=True):
         Index("idx_institution_type", "institution_type"),  # Added index for new institution_type
         Index("idx_institution_image_id", "image_id"),  # Already added
         Index("idx_institution_created_by_id", "created_by_id"),  # Already added
+        Index("idx_institution_tags", "tags", postgresql_using="gin"),
     )
 
-    @validator("slug")
-    def set_slug(cls, value, values):
-        name = values.get("name", "")
-        return generate_slug(name)
+    @field_validator("slug")
+    @classmethod
+    def set_slug(cls, v: str | None, info) -> str:
+        name = info.data.get("name", "")
+        return v or generate_slug(name)
 
     @property
     def exams_count(self):

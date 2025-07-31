@@ -123,14 +123,14 @@ app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.API_VERSION,
     # docs_url=None,
-    redoc_url=None,
+    # redoc_url=None,
     # openapi_url=None,
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
     docs_url=f"{settings.API_V1_STR}/docs",
     lifespan=lifespan,
     # root_path="",
 )
-# add_pagination(app)  # important! add pagination to your app
+
 
 app.add_middleware(
     SQLAlchemyMiddleware,
