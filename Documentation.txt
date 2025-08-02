@@ -1,9 +1,0 @@
-
-Steps:
-1) Add Instituion 
-2) Add All Faculties  from the instituions
-3) Create Departments  from each of the  Faculties above
-4) Add All Possible Programms that are nto yet available on the system
-5) Add all Courses from each Department  e.g "Bachelor of Arts in Economics and Business Studies"
-6) Add all Modules/Units 
-7) Add Modules to Respective Course by opening each course and clicking "Add Module" button

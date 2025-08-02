@@ -1,0 +1,395 @@
+name: 🛡️ Security & Dependency Monitoring
+
+on:
+  schedule:
+    # Run daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - 'backend/app/pyproject.toml'
+      - 'backend/app/poetry.lock'
+
+env:
+  PYTHON_VERSION: "3.11"
+  POETRY_VERSION: "1.6.1"
+
+jobs:
+  # ============================================================================
+  # DEPENDENCY AUDIT
+  # ============================================================================
+  dependency-audit:
+    name: 📦 Dependency Security Audit
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: 📦 Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: ${{ env.POETRY_VERSION }}
+
+      - name: 🔍 Poetry Audit
+        working-directory: ./backend/app
+        run: |
+          # Install safety for security checks
+          poetry add --group dev safety
+          
+          # Export requirements for safety check
+          poetry export -f requirements.txt --output requirements.txt --without-hashes
+          
+          # Run safety check
+          poetry run safety check --file requirements.txt --json --output safety-report.json || true
+          poetry run safety check --file requirements.txt || true
+
+      - name: 📊 Upload Safety Report
+        uses: actions/upload-artifact@v3
+        with:
+          name: safety-report
+          path: backend/app/safety-report.json
+
+      - name: 🔍 Check for Outdated Dependencies
+        working-directory: ./backend/app
+        run: |
+          echo "## Outdated Dependencies" > outdated-deps.md
+          poetry show --outdated --format json > outdated.json || true
+          
+          if [ -s outdated.json ]; then
+            echo "Found outdated dependencies:"
+            cat outdated.json
+          else
+            echo "All dependencies are up to date!"
+          fi
+
+      - name: 📊 Upload Outdated Dependencies Report
+        uses: actions/upload-artifact@v3
+        with:
+          name: outdated-dependencies
+          path: backend/app/outdated.json
+
+  # ============================================================================
+  # VULNERABILITY SCANNING
+  # ============================================================================
+  vulnerability-scan:
+    name: 🔍 Comprehensive Vulnerability Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🔍 Run Trivy filesystem scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-fs-results.sarif'
+
+      - name: 📊 Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'trivy-fs-results.sarif'
+
+      - name: 🛡️ Run Semgrep Security Scan
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: >-
+            p/security-audit
+            p/secrets
+            p/python
+            p/django
+            p/flask
+            p/owasp-top-ten
+          generateSarif: "1"
+
+      - name: 📊 Upload Semgrep results
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: semgrep.sarif
+
+  # ============================================================================
+  # SECRET SCANNING
+  # ============================================================================
+  secret-scan:
+    name: 🔐 Secret Scanning
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🔍 Run TruffleHog
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: main
+          head: HEAD
+          extra_args: --debug --only-verified
+
+      - name: 🔍 Run GitLeaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ============================================================================
+  # DOCKER IMAGE SECURITY
+  # ============================================================================
+  docker-security:
+    name: 🐳 Docker Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🔧 Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 🏗️ Build Docker Image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          load: true
+          tags: examify-api:security-scan
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: 🔍 Run Trivy container scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'examify-api:security-scan'
+          format: 'sarif'
+          output: 'trivy-container-results.sarif'
+
+      - name: 📊 Upload container scan results
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'trivy-container-results.sarif'
+
+      - name: 🔍 Run Snyk Container Test
+        continue-on-error: true
+        uses: snyk/actions/docker@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          image: examify-api:security-scan
+          args: --severity-threshold=high
+
+  # ============================================================================
+  # LICENSE COMPLIANCE
+  # ============================================================================
+  license-check:
+    name: ⚖️ License Compliance Check
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: 📦 Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: ${{ env.POETRY_VERSION }}
+
+      - name: ⚖️ Check Licenses
+        working-directory: ./backend/app
+        run: |
+          # Install license checker
+          poetry add --group dev pip-licenses
+          
+          # Generate license report
+          poetry run pip-licenses --format=json --output-file=licenses.json
+          poetry run pip-licenses --format=markdown --output-file=licenses.md
+          
+          # Check for problematic licenses
+          poetry run pip-licenses --fail-on="GPL v3;AGPL v3;LGPL v3" || {
+            echo "::warning::Found potentially problematic licenses. Please review."
+          }
+
+      - name: 📊 Upload License Report
+        uses: actions/upload-artifact@v3
+        with:
+          name: license-report
+          path: |
+            backend/app/licenses.json
+            backend/app/licenses.md
+
+  # ============================================================================
+  # DEPENDENCY UPDATE PR
+  # ============================================================================
+  dependency-update:
+    name: 🔄 Create Dependency Update PR
+    runs-on: ubuntu-latest
+    needs: [dependency-audit, vulnerability-scan]
+    if: github.event_name == 'schedule'
+    
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: 📦 Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: ${{ env.POETRY_VERSION }}
+
+      - name: 🔄 Update Dependencies
+        working-directory: ./backend/app
+        run: |
+          # Update dependencies
+          poetry update
+          
+          # Check if there are changes
+          if git diff --quiet pyproject.toml poetry.lock; then
+            echo "No dependency updates available"
+            echo "HAS_UPDATES=false" >> $GITHUB_ENV
+          else
+            echo "Dependencies updated"
+            echo "HAS_UPDATES=true" >> $GITHUB_ENV
+          fi
+
+      - name: 📝 Generate Update Summary
+        if: env.HAS_UPDATES == 'true'
+        working-directory: ./backend/app
+        run: |
+          echo "## 📦 Dependency Updates" > update-summary.md
+          echo "" >> update-summary.md
+          echo "This PR contains automated dependency updates:" >> update-summary.md
+          echo "" >> update-summary.md
+          
+          # Show what changed
+          git diff --name-only >> update-summary.md
+          echo "" >> update-summary.md
+          
+          # Show outdated packages that were updated
+          poetry show --outdated --format json > outdated.json 2>/dev/null || echo "[]" > outdated.json
+          
+          echo "### 🔄 Updated Packages" >> update-summary.md
+          echo "" >> update-summary.md
+          echo "Please review the changes and ensure all tests pass." >> update-summary.md
+
+      - name: 🔀 Create Pull Request
+        if: env.HAS_UPDATES == 'true'
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore: update dependencies"
+          title: "🔄 Automated Dependency Updates"
+          body-path: backend/app/update-summary.md
+          branch: automated-dependency-updates
+          delete-branch: true
+          labels: |
+            dependencies
+            automated
+            security
+
+  # ============================================================================
+  # SECURITY REPORT
+  # ============================================================================
+  security-report:
+    name: 📊 Generate Security Report
+    runs-on: ubuntu-latest
+    needs: [dependency-audit, vulnerability-scan, secret-scan, docker-security, license-check]
+    if: always()
+    
+    steps:
+      - name: 📥 Download All Artifacts
+        uses: actions/download-artifact@v3
+
+      - name: 📊 Generate Security Dashboard
+        run: |
+          mkdir -p security-dashboard
+          
+          cat > security-dashboard/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head>
+              <title>Examify API - Security Dashboard</title>
+              <style>
+                  body { font-family: Arial, sans-serif; margin: 40px; }
+                  .status-good { color: green; }
+                  .status-warning { color: orange; }
+                  .status-critical { color: red; }
+                  .card { border: 1px solid #ddd; padding: 20px; margin: 10px 0; border-radius: 5px; }
+              </style>
+          </head>
+          <body>
+              <h1>🛡️ Examify API Security Dashboard</h1>
+              <p>Generated: $(date)</p>
+              
+              <div class="card">
+                  <h2>📦 Dependency Status</h2>
+                  <p>Last scanned: $(date)</p>
+                  <!-- Add dependency status here -->
+              </div>
+              
+              <div class="card">
+                  <h2>🔍 Vulnerability Status</h2>
+                  <p>Last scanned: $(date)</p>
+                  <!-- Add vulnerability status here -->
+              </div>
+              
+              <div class="card">
+                  <h2>🐳 Container Security</h2>
+                  <p>Last scanned: $(date)</p>
+                  <!-- Add container security status here -->
+              </div>
+              
+              <div class="card">
+                  <h2>⚖️ License Compliance</h2>
+                  <p>Last checked: $(date)</p>
+                  <!-- Add license compliance status here -->
+              </div>
+          </body>
+          </html>
+          EOF
+
+      - name: 📊 Upload Security Dashboard
+        uses: actions/upload-artifact@v3
+        with:
+          name: security-dashboard
+          path: security-dashboard/
+
+  # ============================================================================
+  # NOTIFICATIONS
+  # ============================================================================
+  notify:
+    name: 📢 Security Notifications
+    runs-on: ubuntu-latest
+    needs: [dependency-audit, vulnerability-scan, secret-scan, docker-security]
+    if: failure()
+    
+    steps:
+      - name: 🚨 Send Security Alert
+        run: |
+          echo "🚨 Security scan failed! Please check the results."
+          # Add Slack/Discord/Email notifications here
+          # Example:
+          # curl -X POST -H 'Content-type: application/json' \
+          #   --data '{"text":"🚨 Examify API security scan failed!"}' \
+          #   ${{ secrets.SLACK_WEBHOOK_URL }}

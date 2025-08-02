@@ -1,7 +1,7 @@
 # Read more about setting it up
 # https://medium.com/@ljmocic/deploying-react-application-to-aws-s3-using-github-actions-85addacaeace
 
-name: exam_papel_api
+name: examify_api
 on:
   # Trigger the workflow on push or pull request,
   # but only for the master branch
