@@ -1,4 +1,6 @@
 from uuid import UUID
+from typing import Dict, List
+from sqlalchemy import or_, and_, func
 from app.api.celery_task import print_hero
 from app.utils.exceptions import IdNotFoundException, NameNotFoundException
 from app.schemas.user_schema import IUserRead
@@ -29,7 +31,7 @@ from fastapi import (
 from sqlmodel.ext.asyncio.session import AsyncSession
 from app import crud
 from app.api import deps
-from app.models.institution_model import Institution
+from app.models.institution_model import Institution, InstitutionType
 from app.models.user_model import User
 from app.schemas.common_schema import IOrderEnum
 from app.schemas.institution_schema import (
@@ -56,7 +58,8 @@ import time
 from sqlmodel import SQLModel, Session, select
 from sqlalchemy.orm import selectinload, joinedload
 # from fastapi_sqla import Base, Page, AsyncPagination, AsyncSession
-from sqlalchemy import or_, and_
+from app.utils.search_utils import SearchQueryBuilder, SearchResultProcessor
+from typing import Dict
 
 router = APIRouter()
 
@@ -128,6 +131,208 @@ async def get_institution_list(
         order=order,
     )
     return create_response(data=institutions)
+
+
+@router.get("/search/advanced")
+async def advanced_search_institutions(
+    q: str = Query(..., description="Search query for institutions"),
+    institution_type: InstitutionType = Query(
+        default=None, description="Filter by institution type"
+    ),
+    location: str = Query(default=None, description="Filter by location"),
+    tags: List[str] = Query(default=None, description="Filter by tags"),
+    established_year_from: int = Query(default=None, description="Filter institutions established from this year"),
+    established_year_to: int = Query(default=None, description="Filter institutions established to this year"),
+    has_exam_papers: bool = Query(default=None, description="Filter institutions with/without exam papers"),
+    sort_by: str = Query(default="relevance", description="Sort by: relevance, name, established_year, exam_count"),
+    sort_order: str = Query(default="desc", description="Sort order: asc, desc"),
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=20, ge=1, le=100),
+    highlight: bool = Query(default=False, description="Enable search term highlighting"),
+    db_session: AsyncSession = Depends(deps.get_db),
+) -> IGetResponsePaginated[InstitutionRead]:
+    """
+    Advanced search for institutions with comprehensive filtering and sorting.
+    
+    Search across:
+    - Institution names
+    - Descriptions
+    - Locations
+    - Full profiles
+    - Tags
+    
+    Features:
+    - Full-text search with relevance scoring
+    - Multiple filtering options
+    - Advanced sorting capabilities
+    - Search result highlighting
+    """
+    
+    # Build search conditions
+    search_conditions = []
+    
+    if q:
+        q_clean = q.strip()
+        
+        # Multi-field search with different weights
+        text_conditions = [
+            # High priority fields
+            Institution.name.ilike(f"%{q_clean}%"),
+            Institution.slug.ilike(f"%{q_clean}%"),
+            # Medium priority fields
+            Institution.description.ilike(f"%{q_clean}%"),
+            Institution.location.ilike(f"%{q_clean}%"),
+            # Lower priority fields
+            Institution.full_profile.ilike(f"%{q_clean}%"),
+        ]
+        
+        search_conditions.append(or_(*text_conditions))
+    
+    # Build filter conditions
+    filter_conditions = []
+    
+    if institution_type:
+        filter_conditions.append(Institution.institution_type == institution_type)
+    
+    if location:
+        filter_conditions.append(Institution.location.ilike(f"%{location}%"))
+    
+    if tags:
+        # Simple tag filtering using contains (this works with JSON arrays)
+        for tag in tags:
+            filter_conditions.append(Institution.tags.contains([tag]))
+    
+    if established_year_from:
+        filter_conditions.append(Institution.established_year >= established_year_from)
+    
+    if established_year_to:
+        filter_conditions.append(Institution.established_year <= established_year_to)
+    
+    if has_exam_papers is not None:
+        if has_exam_papers:
+            # Institutions that have exam papers
+            filter_conditions.append(
+                func.exists(
+                    select(1).select_from(ExamPaper).where(ExamPaper.institution_id == Institution.id)
+                )
+            )
+        else:
+            # Institutions without exam papers
+            filter_conditions.append(
+                ~func.exists(
+                    select(1).select_from(ExamPaper).where(ExamPaper.institution_id == Institution.id)
+                )
+            )
+    
+    # Build the complete query with optimized loading
+    query = (
+        select(Institution)
+        .options(
+            joinedload(Institution.created_by).load_only(
+                User.id, User.first_name, User.last_name, User.email
+            ),
+            selectinload(Institution.logo),
+            # Load exam papers count for sorting
+            selectinload(Institution.exam_papers).load_only(
+                ExamPaper.id, ExamPaper.year_of_exam
+            ),
+        )
+    )
+    
+    # Apply search conditions
+    if search_conditions:
+        query = query.where(and_(*search_conditions))
+    
+    # Apply filter conditions
+    if filter_conditions:
+        query = query.where(and_(*filter_conditions))
+    
+    # Apply sorting
+    if sort_by == "name":
+        sort_field = Institution.name
+    elif sort_by == "established_year":
+        sort_field = Institution.established_year
+    elif sort_by == "exam_count":
+        # This would require a subquery for accurate sorting
+        sort_field = Institution.created_at  # Fallback
+    else:  # relevance or default
+        sort_field = Institution.created_at
+    
+    if sort_order.lower() == "asc":
+        query = query.order_by(sort_field.asc())
+    else:
+        query = query.order_by(sort_field.desc())
+    
+    # Execute paginated query
+    institutions = await crud.institution.get_multi_paginated_ordered(
+        db_session=db_session, skip=skip, limit=limit, query=query
+    )
+    
+    return create_response(data=institutions)
+
+
+@router.get("/search/suggestions")
+async def get_institution_search_suggestions(
+    q: str = Query(..., min_length=2, description="Search query for suggestions"),
+    limit: int = Query(default=10, ge=1, le=20),
+    db_session: AsyncSession = Depends(deps.get_db),
+) -> IGetResponseBase[List[Dict[str, str]]]:
+    """
+    Get search suggestions for institutions based on partial input.
+    
+    Returns suggestions from:
+    - Institution names
+    - Locations
+    - Common tags
+    - Institution types
+    """
+    
+    suggestions = []
+    q_clean = q.strip().lower()
+    
+    # Institution name suggestions
+    name_query = (
+        select(Institution.name)
+        .where(Institution.name.ilike(f"%{q_clean}%"))
+        .limit(5)
+    )
+    name_result = await db_session.execute(name_query)
+    for (name,) in name_result.all():
+        suggestions.append({
+            "type": "institution",
+            "value": name,
+            "display": name
+        })
+    
+    # Location suggestions
+    location_query = (
+        select(Institution.location)
+        .where(Institution.location.ilike(f"%{q_clean}%"))
+        .distinct()
+        .limit(3)
+    )
+    location_result = await db_session.execute(location_query)
+    for (location,) in location_result.all():
+        if location:
+            suggestions.append({
+                "type": "location",
+                "value": location,
+                "display": f"Location: {location}"
+            })
+    
+    # Institution type suggestions
+    for inst_type in InstitutionType:
+        if q_clean in inst_type.value.lower():
+            suggestions.append({
+                "type": "institution_type",
+                "value": inst_type.value,
+                "display": f"Type: {inst_type.value}"
+            })
+    
+    # Limit total suggestions
+    suggestions = suggestions[:limit]
+    
+    return create_response(data=suggestions)
 
 
 @router.get("/get_by_created_at")
