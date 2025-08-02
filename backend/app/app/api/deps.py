@@ -126,6 +126,10 @@ def get_current_user(required_roles: list[str] = None) -> Callable[[], IUserRead
                             status_code=status.HTTP_403_FORBIDDEN,
                             detail="Token has been invalidated or logged out",
                         )
+                    
+                    # Extend session on activity (optional - uncomment if needed)
+                    # await extend_session_activity(redis_client, user_id_str, access_token)
+                    
             except Exception as redis_error:
                 # Log Redis errors but don't fail authentication if Redis check fails
                 logging.error(f"Redis token validation error: {str(redis_error)}")
@@ -195,6 +199,20 @@ def get_current_user(required_roles: list[str] = None) -> Callable[[], IUserRead
             )
 
     return current_user
+
+
+async def extend_session_activity(redis_client: Redis, user_id: str, access_token: str) -> None:
+    """
+    Extend session timeout on user activity
+    """
+    try:
+        access_key = f"user:{user_id}:tokens:access"
+        if await redis_client.exists(access_key):
+            # Extend the token expiration by the configured time
+            await redis_client.expire(access_key, settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60)
+            logging.debug(f"Extended session for user {user_id}")
+    except Exception as e:
+        logging.error(f"Failed to extend session for user {user_id}: {str(e)}")
 
 
 def minio_auth() -> S3Client:

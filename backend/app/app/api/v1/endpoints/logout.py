@@ -42,6 +42,9 @@ async def logout(
         
         print(f"Logging out user {current_user.id}: Found {len(access_tokens)} access tokens and {len(refresh_tokens)} refresh tokens")
         
+        # Log security event
+        logging.info(f"SECURITY_EVENT: LOGOUT | User: {current_user.email} ({current_user.id}) | Tokens: {len(access_tokens)} access, {len(refresh_tokens)} refresh")
+        
         # Delete access tokens
         access_deleted = await delete_tokens(redis_client, current_user, TokenType.ACCESS)
         

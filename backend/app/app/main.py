@@ -14,6 +14,11 @@ from fastapi import (
     WebSocketDisconnect,
     status,
 )
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.responses import JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import Response
 from fastapi_async_sqlalchemy import SQLAlchemyMiddleware, db
 from fastapi_cache import FastAPICache
 from fastapi_cache.backends.redis import RedisBackend
@@ -23,11 +28,44 @@ from jwt import DecodeError, ExpiredSignatureError, MissingRequiredClaimError
 from langchain.chat_models import ChatOpenAI
 from langchain.schema import HumanMessage
 from sqlalchemy.pool import NullPool, AsyncAdaptedQueuePool
-from starlette.middleware.cors import CORSMiddleware
 
 from app import crud
 from app.api.deps import get_redis_client
 from app.api.v1.api import api_router as api_router_v1
+
+
+# Security Headers Middleware
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    """
+    Add security headers to all responses
+    """
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        
+        # Security headers
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+        
+        # Content Security Policy (adjust based on your needs)
+        csp = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
+            "style-src 'self' 'unsafe-inline'; "
+            "img-src 'self' data: https:; "
+            "font-src 'self' https:; "
+            "connect-src 'self' https:; "
+            "frame-ancestors 'none';"
+        )
+        response.headers["Content-Security-Policy"] = csp
+        
+        # HSTS (only for HTTPS in production)
+        if request.url.scheme == "https":
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        
+        return response
 from app.core.config import ModeEnum, settings
 from app.core.security import decode_token
 from app.core.startup import startup_tasks, mark_initialized
@@ -170,6 +208,15 @@ app.add_middleware(
     },
 )
 app.add_middleware(GlobalsMiddleware)
+
+# Add security headers middleware
+app.add_middleware(SecurityHeadersMiddleware)
+
+# Add trusted host middleware (configure allowed hosts based on your deployment)
+if settings.MODE.value == "production":
+    # In production, specify your actual domains
+    allowed_hosts = ["*.yourdomain.com", "yourdomain.com"]
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
 
 
 # Set all CORS origins enabled
