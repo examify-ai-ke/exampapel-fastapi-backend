@@ -18,8 +18,8 @@ class Settings(BaseSettings):
     # MODE: ModeEnum = ModeEnum.production
     MODE: ModeEnum = os.getenv("ENVIRONMENT", "development")
     API_VERSION: str = "v1"
-    # API_V1_STR: str = f"/api/{API_VERSION}"
-    API_V1_STR: str = "/admin/api"
+    API_V1_STR: str = f"/api/{API_VERSION}"
+    # API_V1_STR: str = "/admin/api"
     PROJECT_NAME: str
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 1 # 1 hour
     REFRESH_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 100  # 100 days

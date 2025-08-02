@@ -16,7 +16,7 @@ from fastapi import (
 )
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.openapi.utils import get_openapi
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 from fastapi_async_sqlalchemy import SQLAlchemyMiddleware, db
@@ -49,13 +49,17 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
         
-        # Content Security Policy (adjust based on your needs)
+        # Content Security Policy (updated to allow Swagger UI CDN resources)
+        # Note: This CSP allows external resources needed for FastAPI documentation:
+        # - cdn.jsdelivr.net: For Swagger UI and ReDoc assets
+        # - unpkg.com: Alternative CDN for documentation assets
+        # - fonts.googleapis.com & fonts.gstatic.com: For web fonts used by documentation
         csp = (
             "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
-            "style-src 'self' 'unsafe-inline'; "
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com; "
+            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com https://fonts.googleapis.com; "
             "img-src 'self' data: https:; "
-            "font-src 'self' https:; "
+            "font-src 'self' https: https://fonts.gstatic.com; "
             "connect-src 'self' https:; "
             "frame-ancestors 'none';"
         )
@@ -184,13 +188,165 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.API_VERSION,
-    # docs_url=None,
-    # redoc_url=None,
-    # openapi_url=None,
-    openapi_url=f"{settings.API_V1_STR}/openapi.json",
+    description="""
+## Examify API - Comprehensive PastExam Papers Management System
+
+**Examify** is a modern, async FastAPI-based past exam papers management system designed to streamline the organization, storage, and access to historical examination materials for educational institutions.
+
+### 🎯 **Key Features**
+
+* **📚 Past Exam Papers Repository**: Comprehensive storage and management of historical exam papers
+* **🔍 Advanced Search & Filtering**: Find past papers by institution, course, year, semester, and more
+* **🏫 Multi-Institution Support**: Manage exam papers across multiple educational institutions
+* **👥 Role-Based Access Control**: Secure access with Admin, Manager, and User permissions
+* **📊 Analytics & Insights**: Track usage patterns and popular exam papers
+* **🔐 Secure Authentication**: JWT-based authentication with refresh token support
+* **⚡ High-Performance Operations**: Async database operations for optimal performance
+* **📈 Real-time Features**: WebSocket support for live updates and notifications
+* **🔄 Background Processing**: Automated tasks for paper processing and indexing
+
+### 🏗️ **System Architecture**
+
+* **Backend Framework**: FastAPI with Python 3.10+
+* **Database**: PostgreSQL with async SQLModel ORM
+* **Caching Layer**: Redis for high-performance data access
+* **Task Queue**: Celery with Redis broker for background jobs
+* **Authentication**: JWT tokens with role-based permissions
+* **Documentation**: Auto-generated OpenAPI 3.0 specification
+
+### 🚀 **Getting Started**
+
+1. **🔐 Authentication**: Use the `/login` endpoint to obtain your access tokens
+2. **📖 Explore**: Browse available endpoints in this interactive documentation
+3. **🧪 Test**: Use the "Try it out" feature to test API endpoints directly
+4. **📚 Access Papers**: Start exploring the vast collection of past exam papers
+
+### 📋 **Main Endpoint Categories**
+
+* **🔐 Authentication**: Login, logout, and token management
+* **👤 User Management**: User profiles, roles, and permissions
+* **🏫 Institution Management**: Educational institutions and their structure
+* **📚 Past Papers**: Exam paper storage, retrieval, and management
+* **🔍 Search & Discovery**: Advanced search and filtering capabilities
+* **📊 Analytics**: Usage statistics and performance metrics
+* **⚙️ System Health**: Monitoring and health check endpoints
+
+### 📖 **Use Cases**
+
+* **Students**: Access past exam papers for study and preparation
+* **Educators**: Upload and manage historical exam materials
+* **Administrators**: Oversee institutional exam paper repositories
+* **Researchers**: Analyze examination trends and patterns over time
+
+### 🔗 **External Resources**
+
+* [FastAPI Documentation](https://fastapi.tiangolo.com/)
+* [SQLModel Documentation](https://sqlmodel.tiangolo.com/)
+* [Pydantic V2 Documentation](https://docs.pydantic.dev/2.5/)
+
+---
+*Built with ❤️ using FastAPI, SQLModel, and modern Python async patterns for educational excellence*
+    """,
     docs_url=f"{settings.API_V1_STR}/docs",
+    redoc_url=f"{settings.API_V1_STR}/redoc",
+    openapi_url=f"{settings.API_V1_STR}/openapi.json",
     lifespan=lifespan,
-    # root_path="",
+    contact={
+        "name": "Examify Development Team",
+        "email": "support@examify.com",
+    },
+    license_info={
+        "name": "MIT License",
+        "url": "https://opensource.org/licenses/MIT",
+    },
+    servers=[
+        {
+            "url": "http://fastapi.localhost",
+            "description": "Development server"
+        },
+        {
+            "url": "https://api.examify.com",
+            "description": "Production server"
+        }
+    ],
+    tags_metadata=[
+        {
+            "name": "health",
+            "description": "System health and monitoring endpoints"
+        },
+        {
+            "name": "login",
+            "description": "User authentication and login operations"
+        },
+        {
+            "name": "logout",
+            "description": "User logout and token invalidation"
+        },
+        {
+            "name": "user",
+            "description": "User management and profile operations"
+        },
+        {
+            "name": "role",
+            "description": "Role and permission management"
+        },
+        {
+            "name": "group",
+            "description": "User group management"
+        },
+        {
+            "name": "institution",
+            "description": "Educational institution management"
+        },
+        {
+            "name": "faculty",
+            "description": "Faculty and department structure management"
+        },
+        {
+            "name": "department",
+            "description": "Academic department management"
+        },
+        {
+            "name": "programme",
+            "description": "Academic programme and degree management"
+        },
+        {
+            "name": "course",
+            "description": "Course and curriculum management"
+        },
+        {
+            "name": "modules/units",
+            "description": "Course modules and unit management"
+        },
+        {
+            "name": "exampaper",
+            "description": "Past exam paper storage and management"
+        },
+        {
+            "name": "exam-title",
+            "description": "Exam paper titles and metadata management"
+        },
+        {
+            "name": "exam-description",
+            "description": "Exam paper descriptions and details"
+        },
+        {
+            "name": "instruction",
+            "description": "Exam instruction and guideline management"
+        },
+        {
+            "name": "question-set",
+            "description": "Question set organization and grouping"
+        },
+        {
+            "name": "questions",
+            "description": "Question management and categorization"
+        },
+        {
+            "name": "detailed-statistics",
+            "description": "Analytics, usage reports, and statistical insights"
+        }
+    ]
 )
 
 
@@ -246,13 +402,125 @@ class CustomException(Exception):
         self.message = message
 
 
-@app.get("/")
+from fastapi.openapi.utils import get_openapi
+
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+    
+    openapi_schema = get_openapi(
+        title=settings.PROJECT_NAME,
+        version=settings.API_VERSION,
+        description=app.description,
+        routes=app.routes,
+        servers=app.servers,
+    )
+    
+    # Add custom info to the OpenAPI schema
+    openapi_schema["info"]["x-logo"] = {
+        "url": "https://fastapi.tiangolo.com/img/logo-margin/logo-teal.png"
+    }
+    
+    # Add security schemes
+    if "components" not in openapi_schema:
+        openapi_schema["components"] = {}
+    
+    openapi_schema["components"]["securitySchemes"] = {
+        "BearerAuth": {
+            "type": "http",
+            "scheme": "bearer",
+            "bearerFormat": "JWT",
+            "description": "Enter your JWT token in the format: Bearer <token>"
+        }
+    }
+    
+    # Add custom extensions for Examify
+    openapi_schema["info"]["x-api-id"] = "examify-api"
+    openapi_schema["info"]["x-audience"] = "Educational Institutions & Students"
+    openapi_schema["info"]["x-purpose"] = "Past Exam Papers Management"
+    
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+app.openapi = custom_openapi
+
+
+@app.get(
+    "/",
+    summary="API Welcome & Information",
+    description="""
+    Welcome to the Examify API! This endpoint provides essential information about the API 
+    and quick links to get you started with our comprehensive past exam papers management system.
+    
+    **Examify** is a powerful platform that helps educational institutions organize, store, 
+    and provide access to their historical examination materials efficiently.
+    
+    ### Quick Start:
+    1. 🔐 **Authenticate**: Use `/api/v1/login` to get your access token
+    2. 📚 **Explore Papers**: Browse our extensive past exam papers collection
+    3. 🧪 **Test API**: Try the endpoints using the Swagger UI interface
+    
+    ### Need Help?
+    - 📖 **Documentation**: [API Docs](/api/v1/docs)
+    - 📋 **ReDoc**: [Alternative Docs](/api/v1/redoc)
+    - 🔧 **OpenAPI Schema**: [JSON Schema](/api/v1/openapi.json)
+    """,
+    response_description="Welcome message with API information and quick access links",
+    tags=["welcome"]
+)
 async def root():
     """
-    Helloo, Welcome to ExamPapel API.
+    **Welcome to Examify API**
+    
+    This is the main entry point for the Examify past exam papers management system API.
+    The API provides comprehensive functionality for managing educational institutions,
+    organizing past exam papers, and facilitating access to historical examination materials.
+    
+    Returns basic API information and helpful links to get started.
     """
-    # if oso.is_allowed(user, "read", message):
-    return {"message": "Hello and Welcome to ExamPapel Backend"}
+    return {
+        "message": "📚 Welcome to Examify API - Comprehensive PastExam Papers Management System",
+        "version": settings.API_VERSION,
+        "status": "✅ Online and Ready",
+        "description": "Modern async FastAPI-based past exam papers management system",
+        "features": [
+            "📚 Past Exam Papers Repository",
+            "🔍 Advanced Search & Filtering",
+            "🏫 Multi-Institution Support", 
+            "👥 Role-based Access Control",
+            "📊 Analytics & Usage Insights",
+            "🔐 Secure JWT Authentication",
+            "⚡ High-Performance Async Operations"
+        ],
+        "documentation": {
+            "swagger_ui": f"http://fastapi.localhost{settings.API_V1_STR}/docs",
+            "redoc": f"http://fastapi.localhost{settings.API_V1_STR}/redoc",
+            "openapi_schema": f"http://fastapi.localhost{settings.API_V1_STR}/openapi.json"
+        },
+        "quick_start": {
+            "1_authenticate": f"POST http://fastapi.localhost{settings.API_V1_STR}/login",
+            "2_get_profile": f"GET http://fastapi.localhost{settings.API_V1_STR}/user/me",
+            "3_browse_papers": f"GET http://fastapi.localhost{settings.API_V1_STR}/exampaper",
+            "4_explore_docs": f"http://fastapi.localhost{settings.API_V1_STR}/docs"
+        },
+        "use_cases": [
+            "🎓 Students: Access past papers for exam preparation",
+            "👨‍🏫 Educators: Upload and manage historical exam materials",
+            "🏛️ Administrators: Oversee institutional paper repositories",
+            "🔬 Researchers: Analyze examination trends over time"
+        ],
+        "support": {
+            "email": "support@examify.com",
+            "documentation": f"http://fastapi.localhost{settings.API_V1_STR}/docs"
+        },
+        "system_info": {
+            "environment": settings.MODE.value,
+            "api_version": settings.API_VERSION,
+            "python_version": "3.10+",
+            "framework": "FastAPI with SQLModel",
+            "focus": "Past Exam Papers Management"
+        }
+    }
 
 
 @app.websocket("/chat/{user_id}")
