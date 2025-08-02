@@ -9,6 +9,16 @@ on:
     branches: [ main, develop ]
     types: [opened, synchronize, reopened]
 
+# Add comprehensive permissions to avoid integration issues
+permissions:
+  contents: read
+  packages: write
+  security-events: write
+  actions: read
+  checks: write
+  pull-requests: write
+  statuses: write
+
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
