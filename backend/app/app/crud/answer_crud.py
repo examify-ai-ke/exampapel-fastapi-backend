@@ -1,183 +1,269 @@
-from typing import Any
+from typing import Any, List
 from app.schemas.answer_schema import AnswerCreate, AnswerUpdate
 from datetime import datetime
 from app.crud.base_crud import CRUDBase
 from app.models.answer_model import Answer
-from app.schemas.media_schema import IMediaCreate
-from app.models.image_media_model import ImageMedia
-from app.models.media_model import Media
-from app.models.faculty_model import Faculty
+from app.models.question_model import Question
+from uuid import UUID
 
 from fastapi import HTTPException
 from sqlmodel import select, func, and_, col
 from sqlmodel.ext.asyncio.session import AsyncSession
+from sqlalchemy.orm import selectinload
 
 
 class CRUDAnswer(CRUDBase[Answer, AnswerCreate, AnswerUpdate]):
-    async def get_answer_by_slug(
-        self, *, slug: str, db_session: AsyncSession | None = None
+    
+    async def get_answers_by_question(
+        self, *, question_id: UUID, db_session: AsyncSession | None = None
+    ) -> List[Answer]:
+        """Get all answers for a specific question"""
+        db_session = db_session or super().get_db().session
+        query = (
+            select(Answer)
+            .where(Answer.question_id == question_id)
+            .options(
+                selectinload(Answer.created_by),
+                selectinload(Answer.question),
+                selectinload(Answer.parent),
+                selectinload(Answer.children).selectinload(Answer.created_by),
+                selectinload(Answer.children).selectinload(Answer.question),
+            )
+        )
+        result = await db_session.execute(query)
+        answers = result.unique().scalars().all()
+        
+        # Ensure all relationships are loaded
+        for answer in answers:
+            _ = answer.created_by
+            _ = answer.question
+            _ = answer.parent
+            _ = answer.children
+            for child in answer.children:
+                _ = child.created_by
+                _ = child.question
+        
+        return answers
+    
+    async def get_top_level_answers_by_question(
+        self, *, question_id: UUID, db_session: AsyncSession | None = None
+    ) -> List[Answer]:
+        """Get only top-level answers (no parent) for a specific question"""
+        db_session = db_session or super().get_db().session
+        query = (
+            select(Answer)
+            .where(
+                and_(
+                    Answer.question_id == question_id,
+                    Answer.parent_id.is_(None)
+                )
+            )
+            .options(
+                selectinload(Answer.created_by),
+                selectinload(Answer.question),
+                selectinload(Answer.children).selectinload(Answer.created_by),
+                selectinload(Answer.children).selectinload(Answer.question),
+            )
+        )
+        result = await db_session.execute(query)
+        answers = result.unique().scalars().all()
+        
+        # Ensure all relationships are loaded
+        for answer in answers:
+            _ = answer.created_by
+            _ = answer.question
+            _ = answer.children
+            for child in answer.children:
+                _ = child.created_by
+                _ = child.question
+        
+        return answers
+    
+    async def get_answer_with_children(
+        self, *, answer_id: UUID, db_session: AsyncSession | None = None
+    ) -> Answer | None:
+        """Get an answer with all its children (nested replies)"""
+        db_session = db_session or super().get_db().session
+        query = (
+            select(Answer)
+            .where(Answer.id == answer_id)
+            .options(
+                selectinload(Answer.created_by),
+                selectinload(Answer.question),
+                selectinload(Answer.children).selectinload(Answer.created_by),
+                selectinload(Answer.children).selectinload(Answer.question),
+                selectinload(Answer.children).selectinload(Answer.children).selectinload(Answer.created_by),
+                selectinload(Answer.children).selectinload(Answer.children).selectinload(Answer.question),
+            )
+        )
+        result = await db_session.execute(query)
+        answer = result.unique().scalar_one_or_none()
+        
+        if answer:
+            # Ensure all relationships are loaded
+            _ = answer.created_by
+            _ = answer.question
+            _ = answer.children
+            for child in answer.children:
+                _ = child.created_by
+                _ = child.question
+                _ = child.children
+                for grandchild in child.children:
+                    _ = grandchild.created_by
+                    _ = grandchild.question
+        
+        return answer
+    
+    async def create_answer_for_question(
+        self, 
+        *, 
+        answer_data: AnswerCreate, 
+        created_by_id: UUID,
+        db_session: AsyncSession | None = None
     ) -> Answer:
+        """Create a new answer for a question"""
         db_session = db_session or super().get_db().session
-        answer = await db_session.execute(
-            select(Answer).where(col(Answer.slug).ilike(f"%{slug}%"))
-        )
-        return answer.unique().scalars().all()
-    
-    
-    async def get_answer_by_main_question(self, *, main_question_id: str, db_session: AsyncSession | None = None) -> list[Answer]:
-        db_session = db_session or super().get_db().session
-        answer = await db_session.execute(
-            select(Answer).where(
-                Answer.main_question_id == main_question_id
+        
+        # Verify the question exists
+        question_query = select(Question).where(Question.id == answer_data.question_id)
+        question_result = await db_session.execute(question_query)
+        question = question_result.scalar_one_or_none()
+        
+        if not question:
+            raise HTTPException(
+                status_code=404, 
+                detail=f"Question with id {answer_data.question_id} not found"
             )
+        
+        # Create the answer
+        answer = Answer(
+            text=answer_data.text.model_dump() if answer_data.text else {},
+            question_id=answer_data.question_id,
+            created_by_id=created_by_id
         )
-        return answer.unique().scalars().all()
+        
+        db_session.add(answer)
+        await db_session.commit()
+        await db_session.refresh(answer)
+        
+        return answer
     
-    async def get_answer_by_sub_question(self, *, sub_question_id: str, db_session: AsyncSession | None = None) -> list[Answer]:
+    async def create_reply_to_answer(
+        self,
+        *,
+        parent_answer_id: UUID,
+        answer_data: AnswerCreate,
+        created_by_id: UUID,
+        db_session: AsyncSession | None = None
+    ) -> Answer:
+        """Create a reply to an existing answer"""
         db_session = db_session or super().get_db().session
-        answer = await db_session.execute(
-            select(Answer).where(
-                Answer.sub_question_id == sub_question_id
+        
+        # Verify the parent answer exists
+        parent_query = select(Answer).where(Answer.id == parent_answer_id)
+        parent_result = await db_session.execute(parent_query)
+        parent_answer = parent_result.scalar_one_or_none()
+        
+        if not parent_answer:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Parent answer with id {parent_answer_id} not found"
             )
+        
+        # Create the reply
+        reply = Answer(
+            text=answer_data.text.model_dump() if answer_data.text else {},
+            question_id=answer_data.question_id,
+            parent_id=parent_answer_id,
+            created_by_id=created_by_id
         )
-        return answer.unique().scalars().all()
-
-    # async def get_count_of_institutions(
-    #     self,
-    #     *,
-    #     # start_time: datetime,
-    #     # end_time: datetime,
-    #     db_session: AsyncSession | None = None,
-    # ) -> int:
-    #     db_session = db_session or super().get_db().session
-    #     subquery = (
-    #         select(Institution)
-    #         # .where(
-    #         #     and_(
-    #         #         Institution.created_at > start_time,
-    #         #         Institution.created_at < end_time,
-    #         #     )
-    #         # )
-    #         .subquery()
-    #     )
-    #     query = select(func.count()).select_from(subquery)
-    #     count = await db_session.execute(query)
-    #     value = count.unique().scalar_one_or_none()
-    #     return value
-
-    # async def update_institution_logo(
-    #     self,
-    #     *,
-    #     institution: Institution,
-    #     media: IMediaCreate,
-    #     heigth: int,
-    #     width: int,
-    #     file_format: str,
-    # ) -> Institution:
-    #     db_session = super().get_db().session
-    #     institution.logo = ImageMedia(
-    #         media=Media.model_validate(media),
-    #         height=heigth,
-    #         width=width,
-    #         file_format=file_format,
-    #     )
-    #     db_session.add(institution)
-    #     await db_session.commit()
-    #     await db_session.refresh(institution)
-    #     return institution
-
-    # async def check_existing_association(
-    #     self,
-    #     *,
-    #     institution: Institution,
-    #     faculty: Faculty,
-    #     db_session: AsyncSession | None = None,
-    # ) -> Any:
-    #     db_session = super().get_db().session
-    #     # Check if the relationship already exists in the join table
-    #     query = select(InstitutionFacultyLink).where(
-    #         InstitutionFacultyLink.institution_id == institution.id,
-    #         InstitutionFacultyLink.faculty_id == faculty.id,
-    #     )
-
-    #     result = await db_session.execute(query)
-    #     # Retrieve the first result or None if no result
-    #     existing_association = result.scalar_one_or_none()
-
-    #     if existing_association is None:
-    #         return None  # Handle the case where no record is found
-    #     else:
-    #         return existing_association  # Return the existing record
+        
+        db_session.add(reply)
+        await db_session.commit()
+        await db_session.refresh(reply)
+        
+        return reply
+    
+    async def update_answer_likes(
+        self,
+        *,
+        answer_id: UUID,
+        likes: int,
+        db_session: AsyncSession | None = None
+    ) -> Answer:
+        """Update the likes count for an answer"""
+        db_session = db_session or super().get_db().session
+        
+        answer = await self.get(id=answer_id, db_session=db_session)
+        if not answer:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Answer with id {answer_id} not found"
+            )
+        
+        answer.likes = likes
+        db_session.add(answer)
+        await db_session.commit()
+        await db_session.refresh(answer)
+        
+        return answer
+    
+    async def update_answer_dislikes(
+        self,
+        *,
+        answer_id: UUID,
+        dislikes: int,
+        db_session: AsyncSession | None = None
+    ) -> Answer:
+        """Update the dislikes count for an answer"""
+        db_session = db_session or super().get_db().session
+        
+        answer = await self.get(id=answer_id, db_session=db_session)
+        if not answer:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Answer with id {answer_id} not found"
+            )
+        
+        answer.dislikes = dislikes
+        db_session.add(answer)
+        await db_session.commit()
+        await db_session.refresh(answer)
+        
+        return answer
+    
+    async def mark_answer_as_reviewed(
+        self,
+        *,
+        answer_id: UUID,
+        reviewed: bool = True,
+        db_session: AsyncSession | None = None
+    ) -> Answer:
+        """Mark an answer as reviewed or unreviewed"""
+        db_session = db_session or super().get_db().session
+        
+        answer = await self.get(id=answer_id, db_session=db_session)
+        if not answer:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Answer with id {answer_id} not found"
+            )
+        
+        answer.reviewed = reviewed
+        db_session.add(answer)
+        await db_session.commit()
+        await db_session.refresh(answer)
+        
+        return answer
+    
+    async def get_answers_count_by_question(
+        self, *, question_id: UUID, db_session: AsyncSession | None = None
+    ) -> int:
+        """Get the count of answers for a specific question"""
+        db_session = db_session or super().get_db().session
+        query = select(func.count(Answer.id)).where(Answer.question_id == question_id)
+        result = await db_session.execute(query)
+        return result.scalar_one()
 
 
 answer = CRUDAnswer(Answer)
-
-
-# from fastapi import FastAPI, Depends, HTTPException
-# from sqlalchemy.ext.asyncio import AsyncSession
-# from sqlalchemy.future import select
-# from app.models import Institution, Faculty, InstitutionFaculty  # Import your models
-# from app.database import get_db  # Dependency for database session
-# from uuid import UUID
-# from typing import List
-
-# app = FastAPI()
-
-
-# # Schema for adding multiple faculties to an institution
-# class AddFacultiesToInstitutionRequest(BaseModel):
-#     faculty_ids: List[UUID]  # List of UUIDs representing faculties to add
-
-
-# @app.post("/institutions/{institution_id}/faculties")
-# async def add_faculties_to_institution(
-#     institution_id: UUID,
-#     request: AddFacultiesToInstitutionRequest,
-#     db: AsyncSession = Depends(get_db),
-# ):
-#     # Ensure the institution exists
-#     institution = await db.get(Institution, institution_id)
-#     if not institution:
-#         raise HTTPException(status_code=404, detail="Institution not found")
-
-#     # Retrieve the faculties from the given list of faculty IDs
-#     faculty_ids = request.faculty_ids
-#     faculties = await db.execute(select(Faculty).where(Faculty.id.in_(faculty_ids)))
-#     faculties_list = faculties.scalars().all()
-
-#     # Check if any of the faculty IDs do not exist
-#     existing_faculty_ids = {faculty.id for faculty in faculties_list}
-#     missing_faculty_ids = set(faculty_ids) - existing_faculty_ids
-#     if missing_faculty_ids:
-#         raise HTTPException(
-#             status_code=404,
-#             detail=f"Faculties with IDs {missing_faculty_ids} not found",
-#         )
-
-#     # Check for existing associations to avoid duplicates
-#     existing_associations = await db.execute(
-#         select(InstitutionFaculty).where(
-#             InstitutionFaculty.institution_id == institution_id,
-#             InstitutionFaculty.faculty_id.in_(faculty_ids),
-#         )
-#     )
-#     existing_associations_set = {
-#         assoc.faculty_id for assoc in existing_associations.scalars().all()
-#     }
-#     duplicate_faculty_ids = set(faculty_ids) & existing_associations_set
-
-#     if duplicate_faculty_ids:
-#         raise HTTPException(
-#             status_code=400,
-#             detail=f"Faculties with IDs {duplicate_faculty_ids} are already associated with Institution '{institution_id}'",
-#         )
-
-#     # If everything is valid, add the faculties to the institution
-#     for faculty in faculties_list:
-#         institution.faculties.append(faculty)
-
-#     await db.commit()
-
-#     return {
-#         "message": f"Successfully added faculties to Institution '{institution_id}'"
-#     }

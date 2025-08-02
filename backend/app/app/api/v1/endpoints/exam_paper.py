@@ -46,9 +46,11 @@ from app.schemas.response_schema import (
 from app.schemas.role_schema import IRoleEnum
 from app.core.authz import is_authorized
 from sqlmodel.ext.asyncio.session import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import selectinload, joinedload
 from sqlmodel import select
 from sqlalchemy import delete
+from app.models.course_model import Course
+from app.models.institution_model import Institution
 
 router = APIRouter()
 
@@ -60,24 +62,22 @@ async def get_exam_paper_list(
     db_session: AsyncSession = Depends(deps.get_db),
 ) -> IGetResponsePaginated[ExamPaperRead]:
     """
-    Gets a paginated list of exam papers
+    Gets a paginated list of exam papers with ultra-optimized loading
     """
+    # Ultra-optimized query - minimal data loading for maximum performance
     query = (
         select(ExamPaper).options(
-            selectinload(ExamPaper.course),  # Load related course
-            selectinload(ExamPaper.description),  # Load related exam description
-            selectinload(ExamPaper.institution),  # Load related institution
-            selectinload(ExamPaper.question_sets)
-            .selectinload(QuestionSet.questions.and_(Question.question_set_id.is_not(None)))
-            .selectinload(Question.children),  # Load question sets, main questions, and sub-questions
-            selectinload(ExamPaper.question_sets)
-            .selectinload(QuestionSet.questions.and_(Question.question_set_id.is_not(None)))
-            .selectinload(Question.answers),  # Load answers for main questions
-            selectinload(ExamPaper.questions.and_(Question.exam_paper_id.is_not(None))),  # Load related main questions
-            selectinload(ExamPaper.created_by),  # Load creator details
-            selectinload(ExamPaper.instructions),  # Load related instructions
-            selectinload(ExamPaper.modules),  # Load related modules
-            selectinload(ExamPaper.title),  # Load related exam title
+            # Use joinedload for many-to-one relationships (more efficient)
+            joinedload(ExamPaper.course).load_only(
+                Course.id, Course.name, Course.course_acronym
+            ),
+            joinedload(ExamPaper.institution).load_only(
+                Institution.id, Institution.name, Institution.slug
+            ),
+            joinedload(ExamPaper.created_by).load_only(
+                User.id, User.first_name, User.last_name, User.email
+            ),
+            # Don't load question_sets, modules, instructions - use count properties
         )
     )
     exam_papers = await crud.exam_paper.get_multi_paginated_ordered(

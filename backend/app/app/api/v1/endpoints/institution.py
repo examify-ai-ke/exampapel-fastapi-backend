@@ -54,7 +54,7 @@ from app.schemas.role_schema import IRoleEnum
 from app.core.authz import is_authorized
 import time
 from sqlmodel import SQLModel, Session, select
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import selectinload, joinedload
 # from fastapi_sqla import Base, Page, AsyncPagination, AsyncSession
 from sqlalchemy import or_, and_
 
@@ -79,26 +79,20 @@ async def get_institution_list(
     order: IOrderEnum = Query(default=IOrderEnum.descendent),
 ) -> IGetResponsePaginated[InstitutionRead]:
     """
-    Gets a paginated list of institutions
+    Gets a paginated list of institutions with ultra-optimized loading
     """
+    # Ultra-optimized query - minimal data loading for maximum performance
     query = (
         select(Institution)
         .options(
-            # Load faculties and their departments
-            selectinload(Institution.faculties).selectinload(Faculty.departments),
-            # Load exam papers and their related entities
-            selectinload(Institution.exam_papers)
-            .selectinload(ExamPaper.question_sets)
-            .selectinload(QuestionSet.questions.and_(Question.question_set_id.is_not(None)))
-            .selectinload(Question.children),
-            # Load campuses
-            selectinload(Institution.campuses).selectinload(Campus.address),
-            # Load institution logo
-            selectinload(Institution.logo),
-            # Load creator details
-            selectinload(Institution.created_by),
-            # Load address
-            selectinload(Institution.address),
+            # Only load absolutely essential relationships
+            selectinload(Institution.logo),  # Small image data
+            selectinload(Institution.address),  # Basic address info
+            # Use joinedload for many-to-one relationships (more efficient)
+            joinedload(Institution.created_by).load_only(
+                User.id, User.first_name, User.last_name, User.email
+            ),
+            # Don't load faculties, campuses, exam_papers - use count properties instead
         )
     )
     # Add text search if search parameter is provided

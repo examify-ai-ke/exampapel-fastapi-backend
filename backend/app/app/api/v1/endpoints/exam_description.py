@@ -22,7 +22,7 @@ from fastapi import (
 )
 from app import crud
 from app.api import deps
-from app.models.exam_paper_model import ExamDescription
+from app.models.exam_paper_model import ExamDescription, ExamPaper
 from app.models.user_model import User
 from app.schemas.common_schema import IOrderEnum
 from app.schemas.exam_paper_schema import (
@@ -60,6 +60,10 @@ async def get_exam_description_list(
         select(ExamDescription)
         .options(
             selectinload(ExamDescription.created_by),  # Load creator details
+            selectinload(ExamDescription.exam_papers).load_only(
+                # Only load minimal exam paper data to avoid deep nesting
+                ExamPaper.id, ExamPaper.year_of_exam, ExamPaper.exam_date
+            ),
         )
     )
     descriptions = await crud.exam_description.get_multi_paginated_ordered(

@@ -1,28 +1,13 @@
 from uuid import UUID
-from app.api.celery_task import print_hero
-from app.utils.exceptions import IdNotFoundException, NameNotFoundException
-from app.schemas.user_schema import IUserRead
-from app.utils.resize_image import modify_image
-from io import BytesIO
-from app.deps import user_deps
-from app.schemas.media_schema import IMediaCreate
-from app.utils.slugify_string import generate_slug
-from fastapi import APIRouter, Depends, HTTPException, Query
-from app.utils.minio_client import MinioClient
-from fastapi_pagination import Params
-from fastapi import (
-    APIRouter,
-    Body,
-    Depends,
-    File,
-    Query,
-    Response,
-    UploadFile,
-    status,
-)
+from typing import List
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlmodel.ext.asyncio.session import AsyncSession
+from sqlalchemy.orm import selectinload
+
 from app import crud
 from app.api import deps
 from app.models.answer_model import Answer
+from app.models.question_model import Question
 from app.models.user_model import User
 from app.schemas.common_schema import IOrderEnum
 from app.schemas.answer_schema import (
@@ -39,160 +24,269 @@ from app.schemas.response_schema import (
     create_response,
 )
 from app.schemas.role_schema import IRoleEnum
+from app.utils.exceptions import IdNotFoundException
 from app.core.authz import is_authorized
-from sqlmodel.ext.asyncio.session import AsyncSession
+from sqlmodel import select
 
 router = APIRouter()
 
 
 @router.get("", response_model=IGetResponsePaginated[AnswerRead])
 async def get_answer_list(
-    # params: Params = Depends(),
-    # current_user: User = Depends(deps.get_current_user()),
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1),
     db_session: AsyncSession = Depends(deps.get_db),
 ) -> IGetResponsePaginated[AnswerRead]:
     """
-    Gets a paginated list of Answers
+    Gets a paginated list of answers with optimized loading
     """
-    answers = await crud.answer.get_multi_paginated_ordered_answers_with_children(
-        db_session=db_session, skip=skip, limit=limit
+    # Optimized query for answer list with proper eager loading
+    query = (
+        select(Answer)
+        .options(
+            selectinload(Answer.created_by).load_only(
+                User.id, User.first_name, User.last_name, User.email
+            ),
+            selectinload(Answer.question).load_only(
+                Question.id, Question.question_number, Question.text
+            ),
+            selectinload(Answer.children).selectinload(Answer.created_by).load_only(
+                User.id, User.first_name, User.last_name, User.email
+            ),
+            selectinload(Answer.children).selectinload(Answer.question).load_only(
+                Question.id, Question.question_number, Question.text
+            ),
+        )
+        .where(Answer.parent_id.is_(None))  # Only top-level answers
     )
-    return create_response(data=answers)
-
-
-@router.get("/get_by_created_at", response_model=IGetResponsePaginated[AnswerRead])
-async def get_answers_list_order_by_created_at(
-    order: IOrderEnum | None = Query(
-        default=IOrderEnum.ascendent, description="It is optional. Default is ascendent"
-    ),
-    params: Params = Depends(),
-    # current_user: User = Depends(deps.get_current_user()),
-) -> IGetResponsePaginated[AnswerRead]:
-    """
-    Gets a paginated list of answers ordered by created at datetime
-    """
-    answers = await crud.answer.get_multi_paginated_ordered(
-        params=params, order=order
+    
+    answers_page = await crud.answer.get_multi_paginated_ordered(
+        db_session=db_session, skip=skip, limit=limit, query=query
     )
-    return create_response(data=answers)
+    
+    # Convert to safe schema format
+    safe_answers = []
+    for answer in answers_page.items:
+        safe_answer = AnswerRead.from_orm_safe(answer)
+        safe_answers.append(safe_answer)
+    
+    # Create new page with safe answers
+    from fastapi_pagination import Page
+    safe_page = Page(
+        items=safe_answers,
+        total=answers_page.total,
+        page=answers_page.page,
+        size=answers_page.size,
+        pages=answers_page.pages
+    )
+    
+    return create_response(data=safe_page)
 
 
-@router.get("/get_by_id/{answer_id}", response_model=IGetResponseBase[AnswerRead])
+@router.get("/question/{question_id}", response_model=IGetResponseBase[List[AnswerRead]])
+async def get_answers_by_question(
+    question_id: UUID,
+    include_replies: bool = Query(default=True, description="Include reply threads"),
+    db_session: AsyncSession = Depends(deps.get_db),
+) -> IGetResponseBase[List[AnswerRead]]:
+    """
+    Gets all answers for a specific question
+    """
+    if include_replies:
+        answers = await crud.answer.get_answers_by_question(
+            question_id=question_id, db_session=db_session
+        )
+    else:
+        answers = await crud.answer.get_top_level_answers_by_question(
+            question_id=question_id, db_session=db_session
+        )
+    
+    # Convert to safe schema format
+    safe_answers = [AnswerRead.from_orm_safe(answer) for answer in answers]
+    
+    return create_response(data=safe_answers)
+
+
+@router.get("/{answer_id}", response_model=IGetResponseBase[AnswerRead])
 async def get_answer_by_id(
     answer_id: UUID,
-    # current_user: User = Depends(deps.get_current_user()),
+    db_session: AsyncSession = Depends(deps.get_db),
 ) -> IGetResponseBase[AnswerRead]:
     """
-    Gets a answer by its id
+    Gets an answer by its id with all nested replies
     """
-    answer = await crud.answer.get(id=answer_id)
+    answer = await crud.answer.get_answer_with_children(
+        answer_id=answer_id, db_session=db_session
+    )
     if not answer:
         raise IdNotFoundException(Answer, answer_id)
-    return create_response(data=answer)
-
-
-@router.get(
-    "/by_main_question/{main_question_id}", response_model=IGetResponseBase[AnswerRead]
-)
-async def get_answer_by_main_question(
-    main_question_id: UUID,
-    # current_user: User = Depends(deps.get_current_user()),
-) -> IGetResponseBase[AnswerRead]:
-    """
-    Gets a answer by main question id
-    """
-    answer = await crud.answer.get_answer_by_main_question(
-        main_question_id=main_question_id
-    )
-    if not answer:
-        raise IdNotFoundException(Answer, main_question_id)
-    return create_response(data=answer)
-
-
-@router.get(
-    "/by_sub_question/{sub_question_id}", response_model=IGetResponseBase[AnswerRead]
-)
-async def get_answer_by_sub_question(
-    sub_question_id: UUID,
-    # current_user: User = Depends(deps.get_current_user()),
-) -> IGetResponseBase[AnswerRead]:
-    """
-    Gets a answer by main question id
-    """
-    answer = await crud.answer.get_answer_by_sub_question(
-        sub_question_id=sub_question_id
-    )
-    if not answer:
-        raise IdNotFoundException(Answer, sub_question_id)
-    return create_response(data=answer)
+    
+    # Convert to safe schema format
+    safe_answer = AnswerRead.from_orm_safe(answer)
+    
+    return create_response(data=safe_answer)
 
 
 @router.post("", response_model=IPostResponseBase[AnswerRead])
 async def create_answer(
-    answer: AnswerCreate,
-    current_user: User = Depends(
-        deps.get_current_user(required_roles=[IRoleEnum.admin, IRoleEnum.manager])
-    ),
+    answer_data: AnswerCreate,
+    current_user: User = Depends(deps.get_current_user()),
+    db_session: AsyncSession = Depends(deps.get_db),
 ) -> IPostResponseBase[AnswerRead]:
     """
-    Creates a new Answer
-
-    Required roles:
-    - admin
-    - manager
+    Creates a new answer for a question
+    
+    Any authenticated user can create answers
     """
+    answer = await crud.answer.create_answer_for_question(
+        answer_data=answer_data,
+        created_by_id=current_user.id,
+        db_session=db_session
+    )
+    return create_response(data=answer)
 
-    _answer = await crud.answer.create(obj_in=answer, created_by_id=current_user.id)
-    return create_response(data=_answer)
+
+@router.post("/{answer_id}/reply", response_model=IPostResponseBase[AnswerRead])
+async def create_reply_to_answer(
+    answer_id: UUID,
+    reply_data: AnswerCreate,
+    current_user: User = Depends(deps.get_current_user()),
+    db_session: AsyncSession = Depends(deps.get_db),
+) -> IPostResponseBase[AnswerRead]:
+    """
+    Creates a reply to an existing answer
+    
+    Any authenticated user can reply to answers
+    """
+    reply = await crud.answer.create_reply_to_answer(
+        parent_answer_id=answer_id,
+        answer_data=reply_data,
+        created_by_id=current_user.id,
+        db_session=db_session
+    )
+    return create_response(data=reply)
 
 
 @router.put("/{answer_id}", response_model=IPutResponseBase[AnswerRead])
 async def update_answer(
     answer_id: UUID,
-    answer: AnswerUpdate,
-    current_user: User = Depends(
-        deps.get_current_user(required_roles=[IRoleEnum.admin, IRoleEnum.manager])
-    ),
+    answer_update: AnswerUpdate,
+    current_user: User = Depends(deps.get_current_user()),
+    db_session: AsyncSession = Depends(deps.get_db),
 ) -> IPutResponseBase[AnswerRead]:
     """
-    Updates a Answer by its id
-
-    Required roles:
-    - admin
-    - manager
+    Updates an answer by its id
+    
+    Only the answer creator or admin/manager can update
     """
-    current_answer= await crud.answer.get(id=answer_id)
+    current_answer = await crud.answer.get(id=answer_id, db_session=db_session)
     if not current_answer:
         raise IdNotFoundException(Answer, answer_id)
-    if not is_authorized(current_user, "read", current_answer):
+    
+    # Check authorization - only creator or admin/manager can update
+    if (current_answer.created_by_id != current_user.id and 
+        current_user.role.name not in [IRoleEnum.admin, IRoleEnum.manager]):
         raise HTTPException(
-            status_code=403,
-            detail="You are not Authorized to update this Answer because you did not created it",
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only update your own answers"
         )
 
     answer_updated = await crud.answer.update(
-        obj_new=answer, obj_current=current_answer
+        obj_new=answer_update, obj_current=current_answer, db_session=db_session
     )
     return create_response(data=answer_updated)
 
 
-@router.delete("/{answer_id}", response_model=IPutResponseBase[AnswerRead])
-async def remove_answer(
+@router.put("/{answer_id}/likes", response_model=IPutResponseBase[AnswerRead])
+async def update_answer_likes(
     answer_id: UUID,
+    likes: int = Query(ge=0, description="Number of likes"),
+    current_user: User = Depends(deps.get_current_user()),
+    db_session: AsyncSession = Depends(deps.get_db),
+) -> IPutResponseBase[AnswerRead]:
+    """
+    Updates the likes count for an answer
+    """
+    answer = await crud.answer.update_answer_likes(
+        answer_id=answer_id, likes=likes, db_session=db_session
+    )
+    return create_response(data=answer)
+
+
+@router.put("/{answer_id}/dislikes", response_model=IPutResponseBase[AnswerRead])
+async def update_answer_dislikes(
+    answer_id: UUID,
+    dislikes: int = Query(ge=0, description="Number of dislikes"),
+    current_user: User = Depends(deps.get_current_user()),
+    db_session: AsyncSession = Depends(deps.get_db),
+) -> IPutResponseBase[AnswerRead]:
+    """
+    Updates the dislikes count for an answer
+    """
+    answer = await crud.answer.update_answer_dislikes(
+        answer_id=answer_id, dislikes=dislikes, db_session=db_session
+    )
+    return create_response(data=answer)
+
+
+@router.put("/{answer_id}/review", response_model=IPutResponseBase[AnswerRead])
+async def mark_answer_as_reviewed(
+    answer_id: UUID,
+    reviewed: bool = Query(default=True, description="Mark as reviewed or unreviewed"),
     current_user: User = Depends(
         deps.get_current_user(required_roles=[IRoleEnum.admin, IRoleEnum.manager])
     ),
-) -> IDeleteResponseBase[AnswerRead]:
+    db_session: AsyncSession = Depends(deps.get_db),
+) -> IPutResponseBase[AnswerRead]:
     """
-    Deletes a Answer by its id.
+    Marks an answer as reviewed or unreviewed
+    
     Required roles:
     - admin
     - manager
     """
-    current_answer = await crud.answer.get(id=answer_id)
+    answer = await crud.answer.mark_answer_as_reviewed(
+        answer_id=answer_id, reviewed=reviewed, db_session=db_session
+    )
+    return create_response(data=answer)
+
+
+@router.delete("/{answer_id}", response_model=IDeleteResponseBase[AnswerRead])
+async def delete_answer(
+    answer_id: UUID,
+    current_user: User = Depends(deps.get_current_user()),
+    db_session: AsyncSession = Depends(deps.get_db),
+) -> IDeleteResponseBase[AnswerRead]:
+    """
+    Deletes an answer by its id
+    
+    Only the answer creator or admin/manager can delete
+    """
+    current_answer = await crud.answer.get(id=answer_id, db_session=db_session)
     if not current_answer:
         raise IdNotFoundException(Answer, answer_id)
-    answer = await crud.answer.remove(id=answer_id)
+    
+    # Check authorization - only creator or admin/manager can delete
+    if (current_answer.created_by_id != current_user.id and 
+        current_user.role.name not in [IRoleEnum.admin, IRoleEnum.manager]):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You can only delete your own answers"
+        )
+
+    answer = await crud.answer.remove(id=answer_id, db_session=db_session)
     return create_response(data=answer)
+
+
+@router.get("/question/{question_id}/count", response_model=IGetResponseBase[int])
+async def get_answers_count_by_question(
+    question_id: UUID,
+    db_session: AsyncSession = Depends(deps.get_db),
+) -> IGetResponseBase[int]:
+    """
+    Gets the count of answers for a specific question
+    """
+    count = await crud.answer.get_answers_count_by_question(
+        question_id=question_id, db_session=db_session
+    )
+    return create_response(data=count)

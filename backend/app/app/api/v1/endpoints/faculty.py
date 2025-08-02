@@ -42,7 +42,7 @@ from app.schemas.response_schema import (
 )
 from app.schemas.role_schema import IRoleEnum
 from app.core.authz import is_authorized
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import selectinload, joinedload
 from sqlmodel import  select
 from sqlalchemy import or_, and_
 
@@ -63,13 +63,16 @@ async def get_faculty_list(
     """
     Gets a paginated list of faculties
     """
+    # Ultra-optimized query - minimal data loading for maximum performance
     query = (
         select(Faculty)
         .options(
-            selectinload(Faculty.institutions),
-            selectinload(Faculty.departments).selectinload(Department.programmes),
-            selectinload(Faculty.image),
-            selectinload(Faculty.created_by),
+            # Use joinedload for many-to-one relationships (more efficient than selectinload)
+            joinedload(Faculty.created_by).load_only(
+                User.id, User.first_name, User.last_name, User.email
+            ),
+            selectinload(Faculty.image),  # Load faculty image
+            # Don't load institutions or departments - use count properties instead
         )
        
     )

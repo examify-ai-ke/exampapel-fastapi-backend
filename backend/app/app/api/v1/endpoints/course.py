@@ -25,6 +25,7 @@ from fastapi import (
 from app import crud
 from app.api import deps
 from app.models.course_model import Course
+from app.models.module_model import Module
 from app.models.user_model import User
 from app.schemas.common_schema import IOrderEnum
 from app.schemas.course_schema import (
@@ -58,13 +59,20 @@ async def get_course_list(
     """
     Gets a paginated list of courses
     """
+    # Optimized query - load only essential data for list view
     query = (
         select(Course)
         .options(
-            selectinload(Course.programme),  # Load related programme
-            selectinload(Course.modules),  # Load related modules
+            selectinload(Course.programme).load_only(
+                Programme.id, Programme.name, Programme.slug
+            ),  # Only essential programme fields
+            selectinload(Course.modules).load_only(
+                Module.id, Module.name, Module.unit_code
+            ),  # Only essential module fields
             selectinload(Course.image),  # Load course image
-            selectinload(Course.created_by),  # Load creator details
+            selectinload(Course.created_by).load_only(
+                User.id, User.first_name, User.last_name, User.email
+            ),  # Only essential user fields
         )
 
     )

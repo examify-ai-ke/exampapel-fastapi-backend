@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Optional
 from app.utils.partial import optional
 from uuid import UUID
 from app.models.question_model import QuestionSetBase, NumberingStyleEnum
-from app.schemas.answer_schema import AnswerRead
+from app.schemas.answer_schema import AnswerReadForQuestion
 from pydantic import field_validator, BaseModel, Field
 
 
@@ -89,7 +89,7 @@ class QuestionRead(QuestionBase):
     
     # Relationships
     children: Optional[List["QuestionRead"]] = []  # Sub-questions
-    answers: Optional[List[AnswerRead]] = []
+    answers: Optional[List[AnswerReadForQuestion]] = []
     
     # Helper properties (computed from model)
     is_main_question: Optional[bool]=False
@@ -123,7 +123,7 @@ class QuestionReadForQuestionSet(QuestionBase):
     id: UUID
     slug: Optional[str] = None
     marks: int | None
-    answers: Optional[List[AnswerRead]] = []
+    answers: Optional[List[AnswerReadForQuestion]] = []
     children: Optional[List[QuestionRead]] = []  # Sub-questions
 
     class Config:

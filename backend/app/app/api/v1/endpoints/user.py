@@ -91,19 +91,22 @@ async def read_users_list(
     db_session: AsyncSession = Depends(deps.get_db),
 ) -> IGetResponsePaginated[IUserReadWithoutGroups]:
     """
-    Retrieve users. Requires admin or manager role
+    Retrieve users with optimized loading. Requires admin or manager role
 
     Required roles:
     - admin
     - manager
     """
+    # Optimized query - only load essential user data for list view
     query = (
         select(User)
         .options(
-            selectinload(User.role),  # Load related role
-            selectinload(User.image),  # Load creator details
-            selectinload(User.groups),  # Load followers
-            # selectinload(User.),  # Load following
+            selectinload(User.role).load_only(
+                Role.id, Role.name, Role.description
+            ),  # Only essential role fields
+            selectinload(User.image),  # Load user image (usually small)
+            # Don't load groups in list view - too heavy
+            # selectinload(User.groups),  # Removed for performance
         )
     )
     users = await crud.user.get_multi_paginated_ordered(

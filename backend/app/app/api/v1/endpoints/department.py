@@ -26,6 +26,7 @@ from fastapi import (
 from app import crud
 from app.api import deps
 from app.models.department_model import Department
+from app.models.faculty_model import Faculty
 from app.schemas.common_schema import IOrderEnum
 from app.schemas.department_schema import (
     DepartmentRead,
@@ -58,13 +59,20 @@ async def get_department_list(
     """
     Gets a paginated list of departments
     """
+    # Optimized query - load only essential data for list view
     query = (
         select(Department)
         .options(
-            selectinload(Department.faculty),  # Load related faculty
-            selectinload(Department.programmes),  # Load related programmes
+            selectinload(Department.faculty).load_only(
+                Faculty.id, Faculty.name, Faculty.slug
+            ),  # Only essential faculty fields
+            selectinload(Department.programmes).load_only(
+                Programme.id, Programme.name, Programme.slug
+            ),  # Only essential programme fields
             selectinload(Department.image),  # Load department image
-            selectinload(Department.created_by),  # Load creator details
+            selectinload(Department.created_by).load_only(
+                User.id, User.first_name, User.last_name, User.email
+            ),  # Only essential user fields
         )
 
     )
