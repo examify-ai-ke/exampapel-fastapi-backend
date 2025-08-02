@@ -1,157 +1,247 @@
-#!/usr/bin/make
+# Examify API - Development & CI/CD Makefile
+# ============================================================================
 
-include .env
+.PHONY: help install test lint format security build deploy clean
 
-define SERVERS_JSON
-{
-	"Servers": {
-		"1": {
-			"Name": "exampapel-api",
-			"Group": "Servers",
-			"Host": "$(DATABASE_HOST)",
-			"Port": 5432,
-			"MaintenanceDB": "postgres",
-			"Username": "$(DATABASE_USER)",
-			"SSLMode": "prefer",
-			"PassFile": "/tmp/pgpassfile"
-		}
-	}
-}
-endef
-export SERVERS_JSON
+# Default target
+help: ## Show this help message
+	@echo "🚀 Examify API - Development Commands"
+	@echo "======================================"
+	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
 
-help:
-	@echo "make"
-	@echo "    install"
-	@echo "        Install all packages of poetry project locally."
-	@echo "    run-dev-build"
-	@echo "        Run development docker compose and force build containers."
-	@echo "    run-dev"
-	@echo "        Run development docker compose."
-	@echo "    stop-dev"
-	@echo "        Stop development docker compose."
-	@echo "    run-prod"
-	@echo "        Run production docker compose."
-	@echo "    stop-prod"
-	@echo "        Run production docker compose."
-	@echo "    init-db"
-	@echo "        Init database with sample data."	
-	@echo "    init-db-manual"
-	@echo "        Manually initialize database with sample data (alternative method)."	
-	@echo "    clear-dummy-db"
-	@echo "        Clear all database tables with sample data. Take coution."	
-	@echo "    add-dev-migration"
-	@echo "        Add new database migration using alembic."
-	@echo "    upgrade-migration"
-	@echo "        This helps to upgrade pending migrations."	
-	@echo "    run-pgadmin"
-	@echo "        Run pgadmin4."	
-	@echo "    load-server-pgadmin"
-	@echo "        Load server on pgadmin4."
-	@echo "    clean-pgadmin"
-	@echo "        Clean pgadmin4 data."
-	@echo "    formatter"
-	@echo "        Apply black formatting to code."
-	@echo "    lint"
-	@echo "        Lint code with ruff, and check if black formatter should be applied."
-	@echo "    lint-watch"
-	@echo "        Lint code with ruff in watch mode."
-	@echo "    lint-fix"
-	@echo "        Lint code with ruff and try to fix."	
-	@echo "    run-sonarqube"
-	@echo "        Starts Sonarqube container."
-	@echo "    run-sonar-scanner"
-	@echo "        Starts Sonarqube container."	
-	@echo "    stop-sonarqube"
-	@echo "        Stops Sonarqube container."
+##@ Development
 
-install:
-	cd backend/app && \
-	poetry shell && \
-	poetry install
+install: ## Install dependencies using Poetry
+	@echo "📦 Installing dependencies..."
+	cd backend/app && poetry install --with dev
 
-run-dev-build:
-	docker compose -f docker-compose-dev.yml up --build
+install-prod: ## Install production dependencies only
+	@echo "📦 Installing production dependencies..."
+	cd backend/app && poetry install --only main
 
-run-dev:
+update: ## Update dependencies
+	@echo "🔄 Updating dependencies..."
+	cd backend/app && poetry update
+
+##@ Code Quality
+
+format: ## Format code with Black and sort imports
+	@echo "🎨 Formatting code..."
+	cd backend/app && poetry run black .
+	cd backend/app && poetry run ruff --fix .
+
+lint: ## Run linting checks
+	@echo "🔍 Running linting checks..."
+	cd backend/app && poetry run ruff check .
+	cd backend/app && poetry run black --check .
+
+type-check: ## Run type checking with MyPy
+	@echo "🏷️ Running type checks..."
+	cd backend/app && poetry run mypy .
+
+quality: lint type-check ## Run all code quality checks
+
+##@ Testing
+
+test: ## Run unit tests
+	@echo "🧪 Running unit tests..."
+	cd backend/app && poetry run pytest -v
+
+test-cov: ## Run tests with coverage
+	@echo "🧪 Running tests with coverage..."
+	cd backend/app && poetry run pytest --cov=app --cov-report=html --cov-report=term-missing -v
+
+test-fast: ## Run tests in parallel (fast)
+	@echo "⚡ Running fast tests..."
+	cd backend/app && poetry run pytest -n auto -v
+
+test-integration: ## Run integration tests
+	@echo "🔗 Running integration tests..."
+	docker compose -f docker-compose-test.yml up -d
+	sleep 30
+	cd backend/app && poetry run pytest test/integration/ -v
+	docker compose -f docker-compose-test.yml down
+
+##@ Security
+
+security: ## Run security scans
+	@echo "🔒 Running security scans..."
+	cd backend/app && poetry add --group dev bandit[toml] safety
+	cd backend/app && poetry run bandit -r . -f json -o bandit-report.json
+	cd backend/app && poetry run safety check
+
+security-fix: ## Fix security issues automatically where possible
+	@echo "🔧 Fixing security issues..."
+	cd backend/app && poetry update
+
+##@ Docker
+
+build: ## Build Docker images
+	@echo "🐳 Building Docker images..."
+	docker compose build
+
+build-prod: ## Build production Docker images
+	@echo "🐳 Building production Docker images..."
+	docker compose -f docker-compose.yml build
+
+run-dev: ## Run development environment
+	@echo "🚀 Starting development environment..."
 	docker compose -f docker-compose-dev.yml up
 
-stop-dev:
-	docker compose -f docker-compose-dev.yml down
+run-dev-build: ## Build and run development environment
+	@echo "🚀 Building and starting development environment..."
+	docker compose -f docker-compose-dev.yml up --build
 
-run-prod:
+run-prod: ## Run production environment
+	@echo "🌟 Starting production environment..."
 	docker compose up
 
-stop-prod:
+run-test: ## Run test environment
+	@echo "🧪 Starting test environment..."
+	docker compose -f docker-compose-test.yml up
+
+stop: ## Stop all containers
+	@echo "🛑 Stopping all containers..."
+	docker compose -f docker-compose-dev.yml down
+	docker compose -f docker-compose-test.yml down
 	docker compose down
 
-create-celery-db:
-	if ! docker compose -f docker-compose-dev.yml exec database psql -U ${DATABASE_USER} -h localhost -lqt | cut -d \| -f 1 | grep -qw ${DATABASE_CELERY_NAME}; then \
-		docker compose -f docker-compose-dev.yml exec database createdb -U ${DATABASE_USER} -W ${DATABASE_PASSWORD} -h localhost -O ${DATABASE_USER} ${DATABASE_CELERY_NAME}; \
-	fi
-	
+##@ Database
 
-init-db:
-	docker compose -f docker-compose-dev.yml exec fastapi_server python app/initial_data.py && \
-	echo "Initial data created." 
+init-db: ## Initialize database with sample data
+	@echo "🗄️ Initializing database..."
+	docker compose -f docker-compose-dev.yml exec fastapi_server python app/initial_data.py
 
-init-db-manual:
-	docker compose -f docker-compose-dev.yml exec fastapi_server python -c "import asyncio; from app.core.startup import startup_tasks; asyncio.run(startup_tasks())" && \
-	echo "Manual database initialization completed."
+migrate: ## Run database migrations
+	@echo "🔄 Running database migrations..."
+	docker compose -f docker-compose-dev.yml exec fastapi_server alembic upgrade head
 
-clear-dummy-db:
-	docker compose -f docker-compose-dev.yml exec fastapi_server python app/clear_all_dummy.py && \
-	echo "All dummy data in all Tables are being Cleared ::-:." 
+migration: ## Create new migration
+	@echo "📝 Creating new migration..."
+	docker compose -f docker-compose-dev.yml exec fastapi_server alembic revision --autogenerate
 
+clear-db: ## Clear database (development only)
+	@echo "🧹 Clearing database..."
+	docker compose -f docker-compose-dev.yml exec fastapi_server python app/clear_all_dummy.py
 
-formatter:
-	cd backend/app && \
-	poetry run black app
+##@ Monitoring
 
-lint:
-	cd backend/app && \
-	poetry run ruff app && poetry run black --check app
+logs: ## Show application logs
+	@echo "📋 Showing application logs..."
+	docker compose -f docker-compose-dev.yml logs -f fastapi_server
 
-mypy:
-	cd backend/app && \
-	poetry run mypy .
+logs-all: ## Show all container logs
+	@echo "📋 Showing all container logs..."
+	docker compose -f docker-compose-dev.yml logs -f
 
-lint-watch:
-	cd backend/app && \
-	poetry run ruff app --watch
+health: ## Check application health
+	@echo "🏥 Checking application health..."
+	curl -f http://localhost/ || echo "❌ Application not responding"
+	curl -f http://localhost/api/v1/openapi.json || echo "❌ API not responding"
 
-lint-fix:
-	cd backend/app && \
-	poetry run ruff app --fix
+##@ Performance
 
-run-sonarqube:
-	docker compose -f docker-compose-sonarqube.yml up
+perf-test: ## Run performance tests
+	@echo "⚡ Running performance tests..."
+	cd performance-tests && locust -f locustfile.py --host=http://localhost --users=10 --spawn-rate=2 --run-time=60s --headless
 
-stop-sonarqube:
-	docker compose -f docker-compose-sonarqube.yml down
+load-test: ## Run load tests with custom parameters
+	@echo "🚀 Running load tests..."
+	@read -p "Enter host (default: http://localhost): " host; \
+	read -p "Enter users (default: 50): " users; \
+	read -p "Enter duration in seconds (default: 300): " duration; \
+	cd performance-tests && locust -f locustfile.py \
+		--host=$${host:-http://localhost} \
+		--users=$${users:-50} \
+		--spawn-rate=10 \
+		--run-time=$${duration:-300}s \
+		--html=load-test-report.html \
+		--headless
 
-run-sonar-scanner:
-	docker run --rm -v "${PWD}/backend:/usr/src" sonarsource/sonar-scanner-cli -X
+##@ Deployment
 
-add-dev-migration:
-	docker compose -f docker-compose-dev.yml exec fastapi_server alembic revision --autogenerate && \
-	docker compose -f docker-compose-dev.yml exec fastapi_server alembic upgrade head && \
-	echo "Migration added and applied."
+deploy-staging: ## Deploy to staging environment
+	@echo "🚀 Deploying to staging..."
+	@echo "This will trigger the GitHub Actions deployment workflow"
+	git push origin develop
 
-upgrade-migration:	
-	docker compose -f docker-compose-dev.yml exec fastapi_server alembic upgrade head && \
-	echo "Migration upgraded."
+deploy-prod: ## Deploy to production (requires tag)
+	@echo "🌟 Deploying to production..."
+	@read -p "Enter version tag (e.g., v1.0.0): " tag; \
+	git tag $$tag && git push origin $$tag
 
-run-pgadmin:
-	echo "$$SERVERS_JSON" > ./pgadmin/servers.json && \
-	docker volume create pgadmin_data && \
-	docker compose -f pgadmin.yml up --force-recreate
+##@ Utilities
 
-clean-pgadmin:
-	docker volume rm pgadmin_data
+clean: ## Clean up temporary files and containers
+	@echo "🧹 Cleaning up..."
+	docker system prune -f
+	docker volume prune -f
+	find . -type f -name "*.pyc" -delete
+	find . -type d -name "__pycache__" -delete
+	find . -type d -name ".pytest_cache" -delete
+	find . -type f -name ".coverage" -delete
+	find . -type d -name "htmlcov" -delete
 
-run-test:
-	docker compose -f docker-compose-test.yml up --build
+backup-db: ## Backup database (development)
+	@echo "💾 Backing up database..."
+	docker compose -f docker-compose-dev.yml exec database pg_dump -U postgres testdb > backup_$(shell date +%Y%m%d_%H%M%S).sql
 
-pytest:
-	docker compose -f docker-compose-test.yml exec fastapi_server pytest
+restore-db: ## Restore database from backup
+	@echo "📥 Restoring database..."
+	@read -p "Enter backup file path: " backup; \
+	docker compose -f docker-compose-dev.yml exec -T database psql -U postgres testdb < $$backup
+
+docs: ## Generate and serve documentation
+	@echo "📚 Generating documentation..."
+	@echo "API Documentation available at: http://localhost/api/v1/docs"
+	@echo "ReDoc available at: http://localhost/api/v1/redoc"
+
+env-check: ## Check environment setup
+	@echo "🔍 Checking environment setup..."
+	@command -v docker >/dev/null 2>&1 || { echo "❌ Docker is not installed"; exit 1; }
+	@command -v docker-compose >/dev/null 2>&1 || { echo "❌ Docker Compose is not installed"; exit 1; }
+	@command -v poetry >/dev/null 2>&1 || { echo "❌ Poetry is not installed"; exit 1; }
+	@test -f .env || { echo "❌ .env file not found"; exit 1; }
+	@echo "✅ Environment setup looks good!"
+
+##@ CI/CD
+
+ci-test: ## Run CI tests locally
+	@echo "🔄 Running CI tests locally..."
+	$(MAKE) quality
+	$(MAKE) security
+	$(MAKE) test-cov
+
+ci-build: ## Build for CI/CD
+	@echo "🏗️ Building for CI/CD..."
+	docker build -t examify-api:ci ./backend
+
+pre-commit: ## Run pre-commit checks
+	@echo "🔍 Running pre-commit checks..."
+	$(MAKE) format
+	$(MAKE) quality
+	$(MAKE) test-fast
+	@echo "✅ Pre-commit checks passed!"
+
+##@ Information
+
+status: ## Show project status
+	@echo "📊 Examify API Status"
+	@echo "===================="
+	@echo "🐳 Docker containers:"
+	@docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep -E "(fastapi|database|redis|celery|minio|caddy)" || echo "No containers running"
+	@echo ""
+	@echo "🌐 Available endpoints:"
+	@echo "  • API Root: http://localhost/"
+	@echo "  • Swagger UI: http://localhost/api/v1/docs"
+	@echo "  • ReDoc: http://localhost/api/v1/redoc"
+	@echo "  • OpenAPI JSON: http://localhost/api/v1/openapi.json"
+
+version: ## Show version information
+	@echo "📋 Version Information"
+	@echo "====================="
+	@echo "Python: $(shell python --version 2>/dev/null || echo 'Not installed')"
+	@echo "Poetry: $(shell poetry --version 2>/dev/null || echo 'Not installed')"
+	@echo "Docker: $(shell docker --version 2>/dev/null || echo 'Not installed')"
+	@echo "Docker Compose: $(shell docker compose version 2>/dev/null || echo 'Not installed')"
+	@echo "Git: $(shell git --version 2>/dev/null || echo 'Not installed')"
