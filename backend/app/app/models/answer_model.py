@@ -50,16 +50,10 @@ class Answer(BaseUUIDModel,AnswerBase, table=True):
         },
     )
 
-    main_question_id: UUID | None = Field(default=None, foreign_key="MainQuestion.id")
-    main_question: Optional["MainQuestion"] = Relationship(
-        back_populates="answers"
-    )
-
-    sub_question_id: UUID | None = Field(default=None, foreign_key="SubQuestion.id")
-    sub_question: Optional["SubQuestion"] = Relationship(
+    question_id: UUID | None = Field(default=None, foreign_key="Question.id")
+    question: Optional["Question"] = Relationship(
         back_populates="answers",
         sa_relationship_kwargs={"lazy": "selectin"},
-        
     )
 
     comments: List["Comment"] = Relationship(

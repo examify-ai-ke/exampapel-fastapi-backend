@@ -36,6 +36,8 @@ help:
 	@echo "        Run production docker compose."
 	@echo "    init-db"
 	@echo "        Init database with sample data."	
+	@echo "    init-db-manual"
+	@echo "        Manually initialize database with sample data (alternative method)."	
 	@echo "    clear-dummy-db"
 	@echo "        Clear all database tables with sample data. Take coution."	
 	@echo "    add-dev-migration"
@@ -92,6 +94,10 @@ create-celery-db:
 init-db:
 	docker compose -f docker-compose-dev.yml exec fastapi_server python app/initial_data.py && \
 	echo "Initial data created." 
+
+init-db-manual:
+	docker compose -f docker-compose-dev.yml exec fastapi_server python -c "import asyncio; from app.core.startup import startup_tasks; asyncio.run(startup_tasks())" && \
+	echo "Manual database initialization completed."
 
 clear-dummy-db:
 	docker compose -f docker-compose-dev.yml exec fastapi_server python app/clear_all_dummy.py && \

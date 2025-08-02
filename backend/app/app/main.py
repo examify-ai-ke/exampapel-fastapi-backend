@@ -30,6 +30,7 @@ from app.api.deps import get_redis_client
 from app.api.v1.api import api_router as api_router_v1
 from app.core.config import ModeEnum, settings
 from app.core.security import decode_token
+from app.core.startup import startup_tasks, mark_initialized
 from app.schemas.common_schema import IChatResponse, IUserMessage
 from app.utils.fastapi_globals import GlobalsMiddleware, g
 from app.utils.uuid6 import uuid7
@@ -37,6 +38,10 @@ from app.utils.uuid6 import uuid7
 from app.health import router as health_router
 # from transformers import pipeline
 from fastapi_pagination import add_pagination, pagination_ctx
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Add these settings at the top of the file
 # Configure Hugging Face to use a persistent cache directory
@@ -96,6 +101,9 @@ async def user_id_identifier(request: Request):
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
+    logger.info("Starting FastAPI application...")
+    
+    # Initialize Redis and caching
     redis_client = await get_redis_client()
     FastAPICache.init(RedisBackend(redis_client), prefix="fastapi-cache")
     await FastAPILimiter.init(redis_client, identifier=user_id_identifier)
@@ -108,14 +116,30 @@ async def lifespan(app: FastAPI):
     #     ),
     # }
     # g.set_default("sentiment_model", models["sentiment_model"])
-    print("startup fastapi...")
+    
+    # Initialize database and run startup tasks
+    try:
+        await startup_tasks()
+        mark_initialized()
+        logger.info("FastAPI startup completed successfully!")
+    except Exception as e:
+        logger.error(f"FastAPI startup failed: {e}")
+        # In production, you might want to prevent startup on failure
+        if settings.MODE.value == "production":
+            raise
+        else:
+            logger.warning("Continuing startup despite initialization failure (development mode)")
+    
     yield
-    # shutdown
+    
+    # Shutdown
+    logger.info("Shutting down FastAPI application...")
     await FastAPICache.clear()
     await FastAPILimiter.close()
     # models.clear()
     g.cleanup()
     gc.collect()
+    logger.info("FastAPI shutdown completed!")
 
 
 # Core Application Instance

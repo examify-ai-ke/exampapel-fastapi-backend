@@ -120,7 +120,7 @@ class ExamPaper(BaseUUIDModel,ExamPaperBase, table=True):
         table (bool, optional): _description_. Defaults to True.
 
     Returns:
-        Unique ExamPaper with Questions and SubQuestions And All Its Description.
+        Unique ExamPaper with Questions and Sub-Questions And All Its Description.
     """
     tags: Optional[List] = Field(sa_column=Column(JSON, nullable=True, default=None))
     # tags: Optional[List] = Field(nullable=True, sa_type=JSONB, default_factory=dict)
@@ -186,8 +186,8 @@ class ExamPaper(BaseUUIDModel,ExamPaperBase, table=True):
         },
     )
 
-    # One-to-many relationship with MainQuestion
-    main_questions: List["MainQuestion"] = Relationship(
+    # One-to-many relationship with Question
+    questions: List["Question"] = Relationship(
         back_populates="exam_paper",
         sa_relationship_kwargs={
             "lazy": "selectin",

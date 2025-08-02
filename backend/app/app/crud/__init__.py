@@ -19,7 +19,6 @@ from .instruction_crud import instruction
 from .exam_title_crud import exam_title
 from .exam_description_crud import exam_description
 from .question_set_crud import question_set
-from .main_question_crud import main_question
-from .sub_question_crud import sub_question
+from .question_crud import question  # Unified question CRUD
 from .answer_crud import answer
 from .comment_crud import comment

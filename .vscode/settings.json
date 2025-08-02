@@ -1,4 +1,7 @@
 {
     "python.formatting.provider": "black",
-    "python.analysis.extraPaths": ["${workspaceFolder}/fastapi-alembic-sqlmodel-async"]
+    "python.analysis.extraPaths": [
+        "${workspaceFolder}/fastapi-alembic-sqlmodel-async"
+    ],
+    "intellicodeCompletions.runAlongsideCopilot": true
 }

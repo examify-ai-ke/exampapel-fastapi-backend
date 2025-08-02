@@ -45,7 +45,7 @@ class QuestionSet(BaseUUIDModel,QuestionSetBase, table=True):
         This is the Main Question Section of the question Paper. e.g "QUESTION ONE" section
     """
     slug: Optional[str] = Field(default=None, unique=True)
-    main_questions: List["MainQuestion"] = Relationship(
+    questions: List["Question"] = Relationship(
         back_populates="question_set",
         sa_relationship_kwargs={"lazy": "joined"}
     )
@@ -64,15 +64,24 @@ class QuestionSet(BaseUUIDModel,QuestionSetBase, table=True):
     )
     @property
     def count_questions(self):
-        total = len(self.main_questions)
+        total = len(self.questions)
         return total
     
-    main_questions_count = count_questions
+    questions_count = count_questions
 
     @validator("slug", pre=True, always=True)
     def set_slug(cls, value, values):
-        text = values.get("title", "")
-        return generate_slug(text.value)
+        # If slug is already provided and not None, use it
+        if value:
+            return value
+            
+        title = values.get("title")
+        if title:
+            return generate_slug(title.value)
+        
+        # Fallback if no title
+        import uuid
+        return generate_slug(f"question-set-{str(uuid.uuid4())[:8]}")
 
 
 # Define the Question model
@@ -97,67 +106,107 @@ class QuestionBase(SQLModel):
     question_number: str
 
 
-class MainQuestion(BaseUUIDModel, QuestionBase, table=True): 
+class Question(BaseUUIDModel, QuestionBase, table=True):
     """
-    Args:
-        BaseUUIDModel (_type_): _description_
-        QuestionBase (_type_): _description_
-        table (bool, optional): _description_. Defaults to True.
-      This is the parent Questions under the "QuestionSet" e.g (1), (I) e.t.c
+    Unified Question model that can represent both main questions and sub-questions.
+    Main questions have question_set_id and exam_paper_id.
+    Sub-questions have parent_id pointing to their main question.
     """
-    # order_within_question_set: Optional[str] = Field(nullable=False, default=None)
-    # Changed to String for alphabetical ordering
     slug: Optional[str] = Field(default=None, unique=False)
-    question_set_id: UUID | None = Field(default=None, foreign_key="QuestionSet.id")    
-    question_set: QuestionSet = Relationship(
-        back_populates="main_questions",
+    
+    # For main questions - link to question set and exam paper
+    question_set_id: UUID | None = Field(default=None, foreign_key="QuestionSet.id")
+    exam_paper_id: UUID | None = Field(default=None, foreign_key="ExamPaper.id")
+    
+    # For sub-questions - link to parent question
+    parent_id: UUID | None = Field(default=None, foreign_key="Question.id")
+    
+    # Relationships
+    question_set: Optional["QuestionSet"] = Relationship(
+        back_populates="questions",
         sa_relationship_kwargs={
             "lazy": "selectin",
-            "primaryjoin": "MainQuestion.question_set_id==QuestionSet.id",
+            "primaryjoin": "Question.question_set_id==QuestionSet.id",
         },
     )
-
-    # This is added for integrity checks and Constraints for Numbering purposes
-    exam_paper_id: UUID = Field(foreign_key="ExamPaper.id", nullable=False)
-    exam_paper: "ExamPaper" = Relationship(
-        back_populates="main_questions",
+    
+    exam_paper: Optional["ExamPaper"] = Relationship(
+        back_populates="questions",
         sa_relationship_kwargs={
             "lazy": "selectin",
-            "primaryjoin": "MainQuestion.exam_paper_id==ExamPaper.id",
+            "primaryjoin": "Question.exam_paper_id==ExamPaper.id",
         },
     )
-
-    subquestions: List["SubQuestion"] = Relationship(
-        back_populates="main_question",
+    
+    # Self-referential relationship
+    parent: Optional["Question"] = Relationship(
+        back_populates="children",
+        sa_relationship_kwargs={
+            "remote_side": "Question.id", 
+            "lazy": "selectin",
+            "join_depth": 3  # Limit join depth to prevent infinite recursion
+        },
+    )
+    
+    children: List["Question"] = Relationship(
+        back_populates="parent",
         sa_relationship_kwargs={
             "lazy": "selectin",
             "cascade": "all, delete-orphan",
-            "single_parent": True,  # Ensures orphan removal
+            "join_depth": 3  # Limit join depth to prevent infinite recursion
         },
     )
-
+    
+    created_by_id: UUID | None = Field(default=None, foreign_key="User.id")
+    created_by: "User" = Relationship(
+        sa_relationship_kwargs={
+            "lazy": "selectin",
+            "primaryjoin": "Question.created_by_id==User.id",
+        }
+    )
+    
+    answers: List["Answer"] | None = Relationship(
+        back_populates="question",
+        sa_relationship_kwargs={"lazy": "selectin"}
+    )
+    
     @validator("slug", pre=True, always=True)
     def set_slug(cls, value, values):
+        # If slug is already provided and not None, use it
+        if value:
+            return value
+            
         text = values.get("text", {})
         string_to_slugify = ""
         if isinstance(text, dict):
             for block in text.get("blocks", []):
                 if "text" in block.get("data", {}):
                     string_to_slugify = block["data"]["text"]
-        return generate_slug_for_question_text(string_to_slugify)
-
-    created_by_id: UUID | None = Field(default=None, foreign_key="User.id")
-    created_by: "User" = Relationship(  # noqa: F821
-        sa_relationship_kwargs={
-            "lazy": "selectin",
-            "primaryjoin": " MainQuestion.created_by_id==User.id",
-        }
-    )
-    answers: List["Answer"] | None = Relationship(
-        back_populates="main_question",
-        sa_relationship_kwargs={"lazy": "selectin"}
-    )
-    # Define unique constraint
+                    break
+        
+        # If we have text to slugify, use it
+        if string_to_slugify:
+            return generate_slug_for_question_text(string_to_slugify)
+        
+        # Fallback to question number if no text available
+        question_number = values.get("question_number", "")
+        if question_number:
+            return generate_slug(f"question-{question_number}")
+        
+        # Final fallback - generate a random slug
+        import uuid
+        return generate_slug(f"question-{str(uuid.uuid4())[:8]}")
+    
+    @property
+    def is_main_question(self) -> bool:
+        """Check if this is a main question (has question_set_id)"""
+        return self.question_set_id is not None
+    
+    @property
+    def is_sub_question(self) -> bool:
+        """Check if this is a sub-question (has parent_id)"""
+        return self.parent_id is not None
+    
     __table_args__ = (
         UniqueConstraint(
             "exam_paper_id",
@@ -166,48 +215,3 @@ class MainQuestion(BaseUUIDModel, QuestionBase, table=True):
             name="_questions_order_per_question_set_uc",
         ),
     )
-
-
-class SubQuestion(BaseUUIDModel,SQLModel, table=True):
-    """_summary_
-
-    Args:
-        BaseUUIDModel (_type_): _description_
-        SQLModel (_type_): _description_
-        table (bool, optional): _description_. Defaults to True.
-        
-        This is the smallest/child question under the MainQuestion above. e.g (a), (b), (i) e.t.c
-    """
-    text: Optional[Dict[str, Any]] = Field(
-        default_factory={}, sa_column=Column(JSONB, nullable=True)
-    )
-    marks: Optional[int] = None
-    numbering_style: NumberingStyleEnum = Field(
-        sa_column=Column(Enum(NumberingStyleEnum, native_enum=False), nullable=True)
-    )
-    question_number: str =  Field(nullable=True, unique=False)
-    main_question_id: UUID | None = Field(default=None, foreign_key="MainQuestion.id")
-    main_question: "MainQuestion" = Relationship(
-        back_populates="subquestions",
-        sa_relationship_kwargs={
-            "lazy": "joined",
-            "primaryjoin": "SubQuestion.main_question_id==MainQuestion.id",
-        },
-    )
-    created_by_id: UUID | None = Field(default=None, foreign_key="User.id")
-    created_by: "User" = Relationship(  # noqa: F821
-        sa_relationship_kwargs={
-            "lazy": "joined",
-            "primaryjoin": "SubQuestion.created_by_id==User.id",
-        }
-    )
-    answers: List["Answer"] | None = Relationship(
-        back_populates="sub_question", 
-        sa_relationship_kwargs={"lazy": "selectin"}
-    )
-
-
-# Define event listener to call the method before insertion
-# @event.listens_for(MainQuestion, "before_insert")
-# def before_insert_listener(mapper, connection, target):
-#     target.assign_alphabetical_ordering()

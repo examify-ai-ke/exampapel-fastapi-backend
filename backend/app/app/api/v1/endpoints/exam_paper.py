@@ -7,7 +7,7 @@ from io import BytesIO
 from app.deps import user_deps
 from app.schemas.media_schema import IMediaCreate
 from app.utils.slugify_string import generate_slug
-from app.models.question_model import QuestionSet, MainQuestion
+from app.models.question_model import QuestionSet, Question
 from fastapi import APIRouter, Depends, HTTPException, Query
 from app.utils.minio_client import MinioClient
 from fastapi_pagination import Params
@@ -26,7 +26,6 @@ from app.api import deps
 from app.models.exam_paper_model import ExamPaper, ExamInstruction, ExamPaperQuestionLink
 from app.models.user_model import User
 from app.schemas.common_schema import IOrderEnum
-from app.models.question_model import SubQuestion
 from app.models.answer_model import Answer
 from app.schemas.exam_paper_schema import (
     ExamPaperCreate,
@@ -69,12 +68,12 @@ async def get_exam_paper_list(
             selectinload(ExamPaper.description),  # Load related exam description
             selectinload(ExamPaper.institution),  # Load related institution
             selectinload(ExamPaper.question_sets)
-            .selectinload(QuestionSet.main_questions)
-            .selectinload(MainQuestion.subquestions),  # Load question sets, main questions, and subquestions
+            .selectinload(QuestionSet.questions.and_(Question.question_set_id.is_not(None)))
+            .selectinload(Question.children),  # Load question sets, main questions, and sub-questions
             selectinload(ExamPaper.question_sets)
-            .selectinload(QuestionSet.main_questions)
-            .selectinload(MainQuestion.answers),  # Load answers for main questions
-            selectinload(ExamPaper.main_questions),  # Load related main questions
+            .selectinload(QuestionSet.questions.and_(Question.question_set_id.is_not(None)))
+            .selectinload(Question.answers),  # Load answers for main questions
+            selectinload(ExamPaper.questions.and_(Question.exam_paper_id.is_not(None))),  # Load related main questions
             selectinload(ExamPaper.created_by),  # Load creator details
             selectinload(ExamPaper.instructions),  # Load related instructions
             selectinload(ExamPaper.modules),  # Load related modules
@@ -128,13 +127,13 @@ async def get_exam_paper_by_id(
         selectinload(ExamPaper.description),  # Load related exam description
         selectinload(ExamPaper.institution),  # Load related institution
         selectinload(ExamPaper.question_sets)
-        .selectinload(QuestionSet.main_questions)
+        .selectinload(QuestionSet.questions.and_(Question.question_set_id.is_not(None)))
         .selectinload(
-            MainQuestion.subquestions
-        ),  # Load question sets, main questions, and subquestions
+            Question.children  # Load main questions and their sub-questions
+        ),
         selectinload(ExamPaper.question_sets)
-        .selectinload(QuestionSet.main_questions)
-        .selectinload(MainQuestion.answers),  # Load answers for main questions
+        .selectinload(QuestionSet.questions.and_(Question.question_set_id.is_not(None)))
+        .selectinload(Question.answers),  # Load answers for main questions
         selectinload(ExamPaper.created_by),  # Load creator details
         selectinload(ExamPaper.instructions),  # Load related instructions
         selectinload(ExamPaper.modules),  # Load related modules

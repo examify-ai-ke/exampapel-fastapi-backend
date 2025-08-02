@@ -9,7 +9,7 @@ from app.schemas.media_schema import IMediaCreate
 from app.utils.slugify_string import generate_slug
 from app.models.faculty_model import Faculty
 from app.models.exam_paper_model import ExamPaper
-from app.models.question_model import QuestionSet, MainQuestion
+from app.models.question_model import QuestionSet, Question
 from app.models.institution_model import Address
 
 from app.models.campus_model import Campus
@@ -89,8 +89,8 @@ async def get_institution_list(
             # Load exam papers and their related entities
             selectinload(Institution.exam_papers)
             .selectinload(ExamPaper.question_sets)
-            .selectinload(QuestionSet.main_questions)
-            .selectinload(MainQuestion.subquestions),
+            .selectinload(QuestionSet.questions.and_(Question.question_set_id.is_not(None)))
+            .selectinload(Question.children),
             # Load campuses
             selectinload(Institution.campuses).selectinload(Campus.address),
             # Load institution logo

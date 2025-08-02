@@ -30,8 +30,7 @@ from .exam_paper_model import (
 
 from .question_model import (
     QuestionSet,
-    MainQuestion,
-    SubQuestion,
+    Question,
     QuestionBase
 )
 from .answer_model import AnswerBase, Answer

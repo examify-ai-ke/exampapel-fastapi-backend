@@ -24,14 +24,18 @@ from app.api.v1.endpoints import (
     exam_description,
     exam_title,
     question_set,
-    main_question,
-    sub_question,
+    questions,  # Unified questions endpoint
     answer,
     comment,
     detailed_statistics,
+    health,  # Add health endpoints
 )
 
 api_router = APIRouter()
+
+# Health check endpoints (no authentication required)
+api_router.include_router(health.router, tags=["health"])
+
 api_router.include_router(login.router, prefix="/login", tags=["login"])
 api_router.include_router(logout.router, prefix="/logout", tags=["logout"])
 api_router.include_router(role.router, prefix="/role", tags=["role"])
@@ -71,11 +75,10 @@ api_router.include_router(
 api_router.include_router(instruction.router, prefix="/instruction", tags=["instruction"])
 api_router.include_router(exam_paper.router, prefix="/exampaper", tags=["exampaper"])
 api_router.include_router(question_set.router, prefix="/question-set", tags=["question-set"])
+
+# Unified questions endpoint
 api_router.include_router(
-    main_question.router, prefix="/main-question", tags=["main-question"]
-)
-api_router.include_router(
-    sub_question.router, prefix="/sub-question", tags=["sub-question"]
+    questions.router, prefix="/questions", tags=["questions"]
 )
 
 api_router.include_router(

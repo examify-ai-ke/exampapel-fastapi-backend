@@ -88,6 +88,24 @@ def create_response(
     | IDeleteResponseBase[DataType]
     | IPostResponseBase[DataType]
 ):
+    # Handle fastapi-pagination Page objects
+    if isinstance(data, Page):
+        # Convert Page to IGetResponsePaginated format
+        paginated_response = IGetResponsePaginated[Any](
+            message="Data paginated correctly" if message is None else message,
+            meta=meta,
+            data=PageBase[Any](
+                items=data.items,
+                total=data.total,
+                page=data.page,
+                size=data.size,
+                pages=data.pages,
+                previous_page=data.page - 1 if data.page > 1 else None,
+                next_page=data.page + 1 if data.page < data.pages else None,
+            )
+        )
+        return paginated_response
+    
     if isinstance(data, IGetResponsePaginated):
         data.message = "Data paginated correctly" if message is None else message
         data.meta = meta

@@ -1,8 +1,8 @@
 """empty message
 
-Revision ID: 1bd14aff86f7
+Revision ID: 6335cab6819a
 Revises: 
-Create Date: 2025-05-01 09:26:49.429490
+Create Date: 2025-08-01 15:42:13.972035
 
 """
 from alembic import op
@@ -12,7 +12,7 @@ import sqlmodel # added
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision = '1bd14aff86f7'
+revision = '6335cab6819a'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -438,25 +438,6 @@ def upgrade():
     sa.PrimaryKeyConstraint('id', 'instruction_id', 'exam_id')
     )
     op.create_index(op.f('ix_InstructionExamsLink_id'), 'InstructionExamsLink', ['id'], unique=False)
-    op.create_table('MainQuestion',
-    sa.Column('text', postgresql.JSONB(astext_type=sa.Text()), nullable=False),
-    sa.Column('marks', sa.Integer(), nullable=True),
-    sa.Column('numbering_style', sa.Enum('ROMAN', 'ALPHA', name='numberingstyleenum', native_enum=False), nullable=False),
-    sa.Column('question_number', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
-    sa.Column('id', sa.Uuid(), nullable=False),
-    sa.Column('updated_at', sa.DateTime(), nullable=True),
-    sa.Column('created_at', sa.DateTime(), nullable=True),
-    sa.Column('slug', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
-    sa.Column('question_set_id', sa.Uuid(), nullable=True),
-    sa.Column('exam_paper_id', sa.Uuid(), nullable=False),
-    sa.Column('created_by_id', sa.Uuid(), nullable=True),
-    sa.ForeignKeyConstraint(['created_by_id'], ['User.id'], ),
-    sa.ForeignKeyConstraint(['exam_paper_id'], ['ExamPaper.id'], ),
-    sa.ForeignKeyConstraint(['question_set_id'], ['QuestionSet.id'], ),
-    sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('exam_paper_id', 'question_number', 'question_set_id', name='_questions_order_per_question_set_uc')
-    )
-    op.create_index(op.f('ix_MainQuestion_id'), 'MainQuestion', ['id'], unique=False)
     op.create_table('ModuleExamsLink',
     sa.Column('id', sa.Uuid(), nullable=False),
     sa.Column('updated_at', sa.DateTime(), nullable=True),
@@ -468,21 +449,27 @@ def upgrade():
     sa.PrimaryKeyConstraint('id', 'module_id', 'exam_id')
     )
     op.create_index(op.f('ix_ModuleExamsLink_id'), 'ModuleExamsLink', ['id'], unique=False)
-    op.create_table('SubQuestion',
+    op.create_table('Question',
+    sa.Column('text', postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+    sa.Column('marks', sa.Integer(), nullable=True),
+    sa.Column('numbering_style', sa.Enum('ROMAN', 'ALPHA', name='numberingstyleenum', native_enum=False), nullable=False),
+    sa.Column('question_number', sqlmodel.sql.sqltypes.AutoString(), nullable=False),
     sa.Column('id', sa.Uuid(), nullable=False),
     sa.Column('updated_at', sa.DateTime(), nullable=True),
     sa.Column('created_at', sa.DateTime(), nullable=True),
-    sa.Column('text', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
-    sa.Column('marks', sa.Integer(), nullable=True),
-    sa.Column('numbering_style', sa.Enum('ROMAN', 'ALPHA', name='numberingstyleenum', native_enum=False), nullable=True),
-    sa.Column('question_number', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
-    sa.Column('main_question_id', sa.Uuid(), nullable=True),
+    sa.Column('slug', sqlmodel.sql.sqltypes.AutoString(), nullable=True),
+    sa.Column('question_set_id', sa.Uuid(), nullable=True),
+    sa.Column('exam_paper_id', sa.Uuid(), nullable=True),
+    sa.Column('parent_id', sa.Uuid(), nullable=True),
     sa.Column('created_by_id', sa.Uuid(), nullable=True),
     sa.ForeignKeyConstraint(['created_by_id'], ['User.id'], ),
-    sa.ForeignKeyConstraint(['main_question_id'], ['MainQuestion.id'], ),
-    sa.PrimaryKeyConstraint('id')
+    sa.ForeignKeyConstraint(['exam_paper_id'], ['ExamPaper.id'], ),
+    sa.ForeignKeyConstraint(['parent_id'], ['Question.id'], ),
+    sa.ForeignKeyConstraint(['question_set_id'], ['QuestionSet.id'], ),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('exam_paper_id', 'question_number', 'question_set_id', name='_questions_order_per_question_set_uc')
     )
-    op.create_index(op.f('ix_SubQuestion_id'), 'SubQuestion', ['id'], unique=False)
+    op.create_index(op.f('ix_Question_id'), 'Question', ['id'], unique=False)
     op.create_table('Answer',
     sa.Column('text', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
     sa.Column('id', sa.Uuid(), nullable=False),
@@ -494,12 +481,10 @@ def upgrade():
     sa.Column('auto_answer', sa.Boolean(), nullable=False),
     sa.Column('created_by_id', sa.Uuid(), nullable=True),
     sa.Column('parent_id', sa.Uuid(), nullable=True),
-    sa.Column('main_question_id', sa.Uuid(), nullable=True),
-    sa.Column('sub_question_id', sa.Uuid(), nullable=True),
+    sa.Column('question_id', sa.Uuid(), nullable=True),
     sa.ForeignKeyConstraint(['created_by_id'], ['User.id'], ),
-    sa.ForeignKeyConstraint(['main_question_id'], ['MainQuestion.id'], ),
     sa.ForeignKeyConstraint(['parent_id'], ['Answer.id'], ),
-    sa.ForeignKeyConstraint(['sub_question_id'], ['SubQuestion.id'], ),
+    sa.ForeignKeyConstraint(['question_id'], ['Question.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_Answer_id'), 'Answer', ['id'], unique=False)
@@ -528,12 +513,10 @@ def downgrade():
     op.drop_table('Comment')
     op.drop_index(op.f('ix_Answer_id'), table_name='Answer')
     op.drop_table('Answer')
-    op.drop_index(op.f('ix_SubQuestion_id'), table_name='SubQuestion')
-    op.drop_table('SubQuestion')
+    op.drop_index(op.f('ix_Question_id'), table_name='Question')
+    op.drop_table('Question')
     op.drop_index(op.f('ix_ModuleExamsLink_id'), table_name='ModuleExamsLink')
     op.drop_table('ModuleExamsLink')
-    op.drop_index(op.f('ix_MainQuestion_id'), table_name='MainQuestion')
-    op.drop_table('MainQuestion')
     op.drop_index(op.f('ix_InstructionExamsLink_id'), table_name='InstructionExamsLink')
     op.drop_table('InstructionExamsLink')
     op.drop_index(op.f('ix_ExamPaperQuestionLink_id'), table_name='ExamPaperQuestionLink')

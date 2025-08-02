@@ -71,7 +71,8 @@ async def get_detailed_statistics(
     total_faculties = await crud.faculty.get_count(
         db_session=db_session
     )
-    total_main_questions = await crud.main_question.get_count(
+    total_main_questions = await crud.question.count_questions_by_type(
+        question_type="main",
         db_session=db_session
     )
     total_users = await crud.user.get_count(

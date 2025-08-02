@@ -3,7 +3,7 @@ from typing import Any, Dict, List, Optional
 
 from app.utils.partial import optional
 from uuid import UUID
-from app.models.question_model import QuestionSetBase
+from app.models.question_model import QuestionSetBase, NumberingStyleEnum
 from app.schemas.answer_schema import AnswerRead
 from pydantic import field_validator, BaseModel, Field
 
@@ -36,36 +36,11 @@ class QuestionTextSchema(BaseModel):
             }
         }
 
-class SubQuestionBase(BaseModel):
+# Unified Question schemas
+class QuestionBase(BaseModel):
     text: Optional[QuestionTextSchema]
     marks: Optional[int] = None
-    numbering_style: str
-    question_number: str
-
-
-class SubQuestionCreate(SubQuestionBase):
-    main_question_id: UUID
-    pass
-
-@optional()
-class SubQuestionUpdate(SubQuestionBase):
-    main_question_id: UUID
-    pass
-
-
-class SubQuestionRead(SubQuestionBase):
-    id: UUID
-    main_question_id: UUID
-    answers: Optional[list[AnswerRead]] = []
-
-    class Config:
-        from_attributes = True
-
-# ------------------------------Main Question-----------
-class MainQuestionBase(BaseModel):
-    text: Optional[QuestionTextSchema]
-    marks: Optional[int] = None
-    numbering_style: str
+    numbering_style: NumberingStyleEnum
     question_number: str
 
     @field_validator("text", mode="before")
@@ -79,64 +54,96 @@ class MainQuestionBase(BaseModel):
             return v.model_dump()
         return v
 
-class MainQuestionCreate(MainQuestionBase):
+# For creating main questions
+class MainQuestionCreate(QuestionBase):
     question_set_id: UUID 
     exam_paper_id: UUID
 
+# For creating sub-questions
+class SubQuestionCreate(QuestionBase):
+    parent_id: UUID  # References the main question
+
+# For updating questions
+@optional()
+class MainQuestionUpdate(QuestionBase):
+    question_set_id: Optional[UUID] = None
+    exam_paper_id: Optional[UUID] = None
 
 @optional()
-class MainQuestionUpdate(MainQuestionBase):
-    question_set_id: UUID
-    exam_paper_id: UUID
+class SubQuestionUpdate(QuestionBase):
+    parent_id: Optional[UUID] = None
 
-
-class QuestionSetReadForMain(BaseModel):
-    title:str
-    id:UUID
-
-
-class MainQuestionRead(MainQuestionBase):
+# Main Question Read schema
+class QuestionRead(QuestionBase):
     id: UUID
-    slug:str
-    marks:int | None
-    subquestions: Optional[List[SubQuestionRead]] = []
-    answers:Optional[list[AnswerRead]]= []
-    question_set_id: UUID
-    exam_paper_id: UUID
+    slug: Optional[str] = None
+    marks: int | None
     created_at: datetime
-    # order_within_question_set: Optional[str]
+    
+    # For main questions
+    question_set_id: Optional[UUID] = None
+    exam_paper_id: Optional[UUID] = None
+    
+    # For sub-questions
+    parent_id: Optional[UUID] = None
+    
+    # Relationships
+    children: Optional[List["QuestionRead"]] = []  # Sub-questions
+    answers: Optional[List[AnswerRead]] = []
+    
+    # Helper properties (computed from model)
+    is_main_question: Optional[bool]=False
+    is_sub_question:  Optional[bool]=False
 
     class Config:
         from_attributes = True
 
+# Update the forward reference
+QuestionRead.model_rebuild()
 
-class MainQuestionReadForQuestionSet(MainQuestionBase):
+# Specific read schemas for different contexts
+class MainQuestionRead(QuestionRead):
+    """Schema for main questions with required fields"""
+    question_set_id: UUID  # Required for main questions
+    exam_paper_id: UUID    # Required for main questions
+    children: Optional[List[QuestionRead]] = []  # Sub-questions
+    
+    class Config:
+        from_attributes = True
+
+class SubQuestionRead(QuestionRead):
+    """Schema for sub-questions with required fields"""
+    parent_id: UUID  # Required for sub-questions
+    
+    class Config:
+        from_attributes = True
+
+# For use in QuestionSet responses
+class QuestionReadForQuestionSet(QuestionBase):
     id: UUID
-    slug: str
+    slug: Optional[str] = None
     marks: int | None
     answers: Optional[List[AnswerRead]] = []
-    subquestions: Optional[List[SubQuestionRead]] = []
+    children: Optional[List[QuestionRead]] = []  # Sub-questions
 
     class Config:
         from_attributes = True
-
 
 # ---------------------------QuestionSet ------------------------
 
 class QuestionSetCreate(QuestionSetBase):
     pass
 
-
 @optional()
 class QuestionSetUpdate(QuestionSetBase):
     pass
 
-
 class QuestionSetRead(QuestionSetBase):
     id: UUID
-    slug:str
-    main_questions: Optional[list[MainQuestionRead]] = []
-    main_questions_count: Optional[int] = 0
+    slug: Optional[str] = None
+    questions: Optional[List[QuestionReadForQuestionSet]] = []  # Main questions only
+    questions_count: Optional[int] = 0
     # created_at: datetime
+    
     class Config:
         from_attributes = True

@@ -23,7 +23,12 @@ from app.models.exam_paper_model import (
     ExamPaperQuestionLink,
     InstructionExamsLink,
 )
-from app.models.question_model import MainQuestion, QuestionSet, QuestionSetTitleEnum, SubQuestion
+from app.models.question_model import Question, QuestionSet, QuestionSetTitleEnum, NumberingStyleEnum
+from app.models.role_model import Role
+from app.models.user_model import User
+from app.models.group_model import Group
+from app.models.team_model import Team
+from app.models.hero_model import Hero
 
 from app.schemas.media_schema import IMediaCreate
 from app.utils.resize_image import modify_image
@@ -40,7 +45,7 @@ import asyncio
 from sqlalchemy import select
 import json
 from pathlib import Path
-from uuid import uuid4
+from uuid import uuid4, UUID
 
 from io import BytesIO
 from app.utils.minio_client import MinioClient, S3Client
@@ -107,53 +112,459 @@ heroes: list[dict[str, str | IHeroCreate]] = [
 ]
 
 
+async def create_sample_questions(db_session: AsyncSession, question_set: QuestionSet, exam_paper, admin_user_id: UUID):
+    """
+    Create comprehensive sample questions with main questions and sub-questions
+    """
+    try:
+        print("❓ Creating sample questions...")
+        
+        # Main Question 1: Python Variables and Data Types
+        print("   📝 Creating Main Question 1: Python Variables and Data Types...")
+        main_question_1 = Question(
+            text={
+                "time": 1742156891249,
+                "blocks": [
+                    {
+                        "id": "dCcbQeoht6",
+                        "type": "paragraph",
+                        "data": {
+                            "text": "Explain the concept of variables in Python and provide examples of different data types.",
+                        },
+                    }
+                ],
+            },
+            marks=20,
+            numbering_style=NumberingStyleEnum.ROMAN,
+            question_number="i",
+            question_set_id=question_set.id,
+            exam_paper_id=exam_paper.id,
+            created_by_id=admin_user_id,
+        )
+        db_session.add(main_question_1)
+        await db_session.flush()
+        print("      ✅ Created main question 1")
+
+        # Sub-questions for Main Question 1
+        print("      📋 Creating sub-questions for Main Question 1...")
+        sub_questions_1 = [
+            Question(
+                text={
+                    "time": 1742156891250,
+                    "blocks": [
+                        {
+                            "id": "sub1a",
+                            "type": "paragraph",
+                            "data": {
+                                "text": "Define what a variable is in Python programming.",
+                            },
+                        }
+                    ],
+                },
+                marks=5,
+                numbering_style=NumberingStyleEnum.ALPHA,
+                question_number="a",
+                parent_id=main_question_1.id,
+                created_by_id=admin_user_id,
+            ),
+            Question(
+                text={
+                    "time": 1742156891251,
+                    "blocks": [
+                        {
+                            "id": "sub1b",
+                            "type": "paragraph",
+                            "data": {
+                                "text": "Provide examples of at least 4 different data types in Python with sample code.",
+                            },
+                        }
+                    ],
+                },
+                marks=10,
+                numbering_style=NumberingStyleEnum.ALPHA,
+                question_number="b",
+                parent_id=main_question_1.id,
+                created_by_id=admin_user_id,
+            ),
+            Question(
+                text={
+                    "time": 1742156891252,
+                    "blocks": [
+                        {
+                            "id": "sub1c",
+                            "type": "paragraph",
+                            "data": {
+                                "text": "Explain the difference between mutable and immutable data types in Python.",
+                            },
+                        }
+                    ],
+                },
+                marks=5,
+                numbering_style=NumberingStyleEnum.ALPHA,
+                question_number="c",
+                parent_id=main_question_1.id,
+                created_by_id=admin_user_id,
+            ),
+        ]
+
+        for i, sub_question in enumerate(sub_questions_1, 1):
+            db_session.add(sub_question)
+        print(f"         ✅ Created {len(sub_questions_1)} sub-questions for Main Question 1")
+
+        # Main Question 2: Python Functions
+        print("   📝 Creating Main Question 2: Python Functions...")
+        main_question_2 = Question(
+            text={
+                "time": 1742156891260,
+                "blocks": [
+                    {
+                        "id": "dCcbQeoht12",
+                        "type": "paragraph",
+                        "data": {
+                            "text": "Write Python functions to demonstrate various programming concepts.",
+                        },
+                    }
+                ],
+            },
+            marks=25,
+            numbering_style=NumberingStyleEnum.ROMAN,
+            question_number="ii",
+            question_set_id=question_set.id,
+            exam_paper_id=exam_paper.id,
+            created_by_id=admin_user_id,
+        )
+        db_session.add(main_question_2)
+        await db_session.flush()
+        print("      ✅ Created main question 2")
+
+        # Sub-questions for Main Question 2
+        print("      📋 Creating sub-questions for Main Question 2...")
+        sub_questions_2 = [
+            Question(
+                text={
+                    "time": 1742156891261,
+                    "blocks": [
+                        {
+                            "id": "sub2a",
+                            "type": "paragraph",
+                            "data": {
+                                "text": "Write a Python function that calculates the factorial of a given number using recursion. Include proper error handling.",
+                            },
+                        }
+                    ],
+                },
+                marks=10,
+                numbering_style=NumberingStyleEnum.ALPHA,
+                question_number="a",
+                parent_id=main_question_2.id,
+                created_by_id=admin_user_id,
+            ),
+            Question(
+                text={
+                    "time": 1742156891262,
+                    "blocks": [
+                        {
+                            "id": "sub2b",
+                            "type": "paragraph",
+                            "data": {
+                                "text": "Create a function that takes a list of numbers and returns a dictionary with 'sum', 'average', 'min', and 'max' values.",
+                            },
+                        }
+                    ],
+                },
+                marks=10,
+                numbering_style=NumberingStyleEnum.ALPHA,
+                question_number="b",
+                parent_id=main_question_2.id,
+                created_by_id=admin_user_id,
+            ),
+            Question(
+                text={
+                    "time": 1742156891263,
+                    "blocks": [
+                        {
+                            "id": "sub2c",
+                            "type": "paragraph",
+                            "data": {
+                                "text": "Explain the difference between *args and **kwargs in Python functions with examples.",
+                            },
+                        }
+                    ],
+                },
+                marks=5,
+                numbering_style=NumberingStyleEnum.ALPHA,
+                question_number="c",
+                parent_id=main_question_2.id,
+                created_by_id=admin_user_id,
+            ),
+        ]
+
+        for sub_question in sub_questions_2:
+            db_session.add(sub_question)
+        print(f"         ✅ Created {len(sub_questions_2)} sub-questions for Main Question 2")
+
+        # Main Question 3: Object-Oriented Programming
+        print("   📝 Creating Main Question 3: Object-Oriented Programming...")
+        main_question_3 = Question(
+            text={
+                "time": 1742156891270,
+                "blocks": [
+                    {
+                        "id": "main3",
+                        "type": "paragraph",
+                        "data": {
+                            "text": "Demonstrate your understanding of Object-Oriented Programming in Python.",
+                        },
+                    }
+                ],
+            },
+            marks=30,
+            numbering_style=NumberingStyleEnum.ROMAN,
+            question_number="iii",
+            question_set_id=question_set.id,
+            exam_paper_id=exam_paper.id,
+            created_by_id=admin_user_id,
+        )
+        db_session.add(main_question_3)
+        await db_session.flush()
+        print("      ✅ Created main question 3")
+
+        # Sub-questions for Main Question 3
+        print("      📋 Creating sub-questions for Main Question 3...")
+        sub_questions_3 = [
+            Question(
+                text={
+                    "time": 1742156891271,
+                    "blocks": [
+                        {
+                            "id": "sub3a",
+                            "type": "paragraph",
+                            "data": {
+                                "text": "Create a Python class 'Student' with attributes for name, age, and grades. Include methods to add grades and calculate average.",
+                            },
+                        }
+                    ],
+                },
+                marks=15,
+                numbering_style=NumberingStyleEnum.ALPHA,
+                question_number="a",
+                parent_id=main_question_3.id,
+                created_by_id=admin_user_id,
+            ),
+            Question(
+                text={
+                    "time": 1742156891272,
+                    "blocks": [
+                        {
+                            "id": "sub3b",
+                            "type": "paragraph",
+                            "data": {
+                                "text": "Explain the concepts of inheritance and polymorphism in Python with practical examples.",
+                            },
+                        }
+                    ],
+                },
+                marks=10,
+                numbering_style=NumberingStyleEnum.ALPHA,
+                question_number="b",
+                parent_id=main_question_3.id,
+                created_by_id=admin_user_id,
+            ),
+            Question(
+                text={
+                    "time": 1742156891273,
+                    "blocks": [
+                        {
+                            "id": "sub3c",
+                            "type": "paragraph",
+                            "data": {
+                                "text": "What are magic methods (dunder methods) in Python? Provide examples of at least 3 commonly used magic methods.",
+                            },
+                        }
+                    ],
+                },
+                marks=5,
+                numbering_style=NumberingStyleEnum.ALPHA,
+                question_number="c",
+                parent_id=main_question_3.id,
+                created_by_id=admin_user_id,
+            ),
+        ]
+
+        for sub_question in sub_questions_3:
+            db_session.add(sub_question)
+        print(f"         ✅ Created {len(sub_questions_3)} sub-questions for Main Question 3")
+
+        # Main Question 4: Data Structures and Algorithms
+        print("   📝 Creating Main Question 4: Data Structures and Algorithms...")
+        main_question_4 = Question(
+            text={
+                "time": 1742156891280,
+                "blocks": [
+                    {
+                        "id": "main4",
+                        "type": "paragraph",
+                        "data": {
+                            "text": "Solve the following problems related to data structures and algorithms in Python.",
+                        },
+                    }
+                ],
+            },
+            marks=25,
+            numbering_style=NumberingStyleEnum.ROMAN,
+            question_number="iv",
+            question_set_id=question_set.id,
+            exam_paper_id=exam_paper.id,
+            created_by_id=admin_user_id,
+        )
+        db_session.add(main_question_4)
+        await db_session.flush()
+        print("      ✅ Created main question 4")
+
+        # Sub-questions for Main Question 4
+        print("      📋 Creating sub-questions for Main Question 4...")
+        sub_questions_4 = [
+            Question(
+                text={
+                    "time": 1742156891281,
+                    "blocks": [
+                        {
+                            "id": "sub4a",
+                            "type": "paragraph",
+                            "data": {
+                                "text": "Implement a binary search algorithm in Python. Explain its time complexity.",
+                            },
+                        }
+                    ],
+                },
+                marks=12,
+                numbering_style=NumberingStyleEnum.ALPHA,
+                question_number="a",
+                parent_id=main_question_4.id,
+                created_by_id=admin_user_id,
+            ),
+            Question(
+                text={
+                    "time": 1742156891282,
+                    "blocks": [
+                        {
+                            "id": "sub4b",
+                            "type": "paragraph",
+                            "data": {
+                                "text": "Write a Python program to find the second largest number in a list without using built-in sorting functions.",
+                            },
+                        }
+                    ],
+                },
+                marks=8,
+                numbering_style=NumberingStyleEnum.ALPHA,
+                question_number="b",
+                parent_id=main_question_4.id,
+                created_by_id=admin_user_id,
+            ),
+            Question(
+                text={
+                    "time": 1742156891283,
+                    "blocks": [
+                        {
+                            "id": "sub4c",
+                            "type": "paragraph",
+                            "data": {
+                                "text": "Explain the difference between a list and a tuple in Python. When would you use each?",
+                            },
+                        }
+                    ],
+                },
+                marks=5,
+                numbering_style=NumberingStyleEnum.ALPHA,
+                question_number="c",
+                parent_id=main_question_4.id,
+                created_by_id=admin_user_id,
+            ),
+        ]
+
+        for sub_question in sub_questions_4:
+            db_session.add(sub_question)
+        print(f"         ✅ Created {len(sub_questions_4)} sub-questions for Main Question 4")
+
+        await db_session.flush()
+        
+        # Summary
+        total_main_questions = 4
+        total_sub_questions = len(sub_questions_1) + len(sub_questions_2) + len(sub_questions_3) + len(sub_questions_4)
+        total_marks = 20 + 25 + 30 + 25
+        
+        print(f"   ✅ Sample questions created successfully!")
+        print(f"      📊 Summary:")
+        print(f"         - Main questions: {total_main_questions}")
+        print(f"         - Sub-questions: {total_sub_questions}")
+        print(f"         - Total marks: {total_marks}")
+
+    except Exception as e:
+        print(f"   ❌ Error creating sample questions: {e}")
+        await db_session.rollback()
+        raise
+
+
 async def init_db(db_session: AsyncSession) -> None:
     """
     Initialize database with core data and optionally institutions.
+    Only creates data if tables are empty to prevent duplicates.
     
     Args:
         db_session: The database session
-        skip_institutions: If True, skip institution initialization
     """
     try:
-        # Create roles first
-        for role in roles:
-            role_current = await crud.role.get_role_by_name(
-                name=role.name, db_session=db_session
-            )
-            if not role_current:
+        print("🚀 Starting database initialization...")
+        
+        # Step 1: Create roles first (no dependencies)
+        print("📝 Creating roles...")
+        existing_roles = await db_session.execute(select(Role))
+        if existing_roles.scalars().first():
+            print("   ⏭️  Roles already exist. Skipping role creation...")
+        else:
+            for role in roles:
                 await crud.role.create(obj_in=role, db_session=db_session)
+                print(f"   ✅ Created role: {role.name}")
 
-        # Then create users (including admin)
-        for user in users:
-            current_user = await crud.user.get_by_email(
-                email=user["data"].email, db_session=db_session
-            )
-            if not current_user:
+        # Step 2: Create users (depends on roles)
+        print("👥 Creating users...")
+        existing_users = await db_session.execute(select(User))
+        if existing_users.scalars().first():
+            print("   ⏭️  Users already exist. Skipping user creation...")
+        else:
+            for user in users:
                 role = await crud.role.get_role_by_name(
                     name=user["role"], db_session=db_session
                 )
                 user["data"].role_id = role.id
                 await crud.user.create_with_role(obj_in=user["data"], db_session=db_session)
+                print(f"   ✅ Created user: {user['data'].email} with role: {user['role']}")
 
-        # Get admin user ID for creating other entities
+        # Step 3: Get admin user ID for creating other entities
+        print("🔑 Getting admin user for entity creation...")
         current_admin = await crud.user.get_by_email(
             email=settings.FIRST_SUPERUSER_EMAIL, db_session=db_session
         )
+        if not current_admin:
+            raise Exception("Admin user not found! Cannot proceed with initialization.")
+        
         ADMIN_USER_ID = current_admin.id
+        print(f"   ✅ Admin user ID: {ADMIN_USER_ID}")
 
-        # Create groups, teams, heroes
-        for group in groups:
-            current_group = await crud.group.get_group_by_name(
-                name=group.name, db_session=db_session
-            )
-            if not current_group:
-                current_user = await crud.user.get_by_email(
-                    email=users[0]["data"].email, db_session=db_session
-                )
+        # Step 4: Create groups, teams, heroes (depends on users)
+        print("👥 Creating groups...")
+        existing_groups = await db_session.execute(select(Group))
+        if existing_groups.scalars().first():
+            print("   ⏭️  Groups already exist. Skipping group creation...")
+        else:
+            for group in groups:
                 new_group = await crud.group.create(
-                    obj_in=group, created_by_id=current_user.id, db_session=db_session
+                    obj_in=group, created_by_id=ADMIN_USER_ID, db_session=db_session
                 )
+                print(f"   ✅ Created group: {group.name}")
+                
+                # Add users to group
                 current_users = []
                 for user in users:
                     current_users.append(
@@ -164,49 +575,47 @@ async def init_db(db_session: AsyncSession) -> None:
                 await crud.group.add_users_to_group(
                     users=current_users, group_id=new_group.id, db_session=db_session
                 )
+                print(f"   ✅ Added {len(current_users)} users to group: {group.name}")
 
-        for team in teams:
-            current_team = await crud.team.get_team_by_name(
-                name=team.name, db_session=db_session
-            )
-            if not current_team:
-                current_user = await crud.user.get_by_email(
-                    email=users[0]["data"].email, db_session=db_session
-                )
+        print("🏆 Creating teams...")
+        existing_teams = await db_session.execute(select(Team))
+        if existing_teams.scalars().first():
+            print("   ⏭️  Teams already exist. Skipping team creation...")
+        else:
+            for team in teams:
                 await crud.team.create(
-                    obj_in=team, created_by_id=current_user.id, db_session=db_session
+                    obj_in=team, created_by_id=ADMIN_USER_ID, db_session=db_session
                 )
+                print(f"   ✅ Created team: {team.name}")
 
-        for heroe in heroes:
-            current_heroe = await crud.hero.get_heroe_by_name(
-                name=heroe["data"].name, db_session=db_session
-            )
-            team = await crud.team.get_team_by_name(
-                name=heroe["team"], db_session=db_session
-            )
-            if not current_heroe:
-                current_user = await crud.user.get_by_email(
-                    email=users[0]["data"].email, db_session=db_session
+        print("🦸 Creating heroes...")
+        existing_heroes = await db_session.execute(select(Hero))
+        if existing_heroes.scalars().first():
+            print("   ⏭️  Heroes already exist. Skipping hero creation...")
+        else:
+            for heroe in heroes:
+                team = await crud.team.get_team_by_name(
+                    name=heroe["team"], db_session=db_session
                 )
                 new_heroe = heroe["data"]
                 new_heroe.team_id = team.id
                 await crud.hero.create(
-                    obj_in=new_heroe, created_by_id=current_user.id, db_session=db_session
+                    obj_in=new_heroe, created_by_id=ADMIN_USER_ID, db_session=db_session
                 )
+                print(f"   ✅ Created hero: {heroe['data'].name} for team: {heroe['team']}")
 
-        # Check if we should skip institution initialization
-        # if skip_institutions:
-        #     return
-
-        # Check if institutions already exist
+        # Step 5: Check if institutions already exist (skip if they do)
+        print("🏫 Checking for existing institutions...")
         existing_institutions = await db_session.execute(select(Institution))
         if existing_institutions.scalars().first():
-            print("Institutions already exist. Skipping institution initialization....")
+            print("   ⏭️  Institutions already exist. Skipping institution initialization...")
             return
 
-        # Initialize institutions and related entities
+        # Step 6: Initialize institutions and related entities
+        print("🏗️  Creating institutional structure...")
         try:
             # Create exam title
+            print("📋 Creating exam title...")
             exam_title = ExamTitle(
                 name="Introduction to Programming",
                 slug="introduction-to-programming",
@@ -214,8 +623,10 @@ async def init_db(db_session: AsyncSession) -> None:
             )
             db_session.add(exam_title)
             await db_session.flush()
+            print("   ✅ Created exam title: Introduction to Programming")
 
             # Create an exam description
+            print("📄 Creating exam description...")
             exam_description = ExamDescription(
                 name="Final Examination",
                 slug="final-examination",
@@ -223,14 +634,15 @@ async def init_db(db_session: AsyncSession) -> None:
             )
             db_session.add(exam_description)
             await db_session.flush()
+            print("   ✅ Created exam description: Final Examination")
 
             # Create institution with new fields
+            print("🏫 Creating main institution...")
             institution = Institution(
                 name="University of Technology",
                 description="A leading institution in technology education",
                 category=InstitutionCategory.UNIVERSITY,
                 institution_type=InstitutionType.PUBLIC,
-
                 created_by_id=ADMIN_USER_ID,
                 slug="university-of-technology",
                 key="UOT001",
@@ -241,8 +653,10 @@ async def init_db(db_session: AsyncSession) -> None:
             )
             db_session.add(institution)
             await db_session.flush()
+            print("   ✅ Created institution: University of Technology")
 
             # Create an address for the institution
+            print("📍 Creating institution address...")
             institution_address = Address(
                 address_line1="123 Education Avenue",
                 address_line2="Technology Park",
@@ -258,8 +672,10 @@ async def init_db(db_session: AsyncSession) -> None:
             )
             db_session.add(institution_address)
             await db_session.flush()
+            print("   ✅ Created address for University of Technology")
 
             # Create a second institution with different category and type
+            print("🏫 Creating second institution...")
             institution2 = Institution(
                 name="Nairobi Technical College",
                 description="A technical college focusing on practical skills",
@@ -275,6 +691,7 @@ async def init_db(db_session: AsyncSession) -> None:
             )
             db_session.add(institution2)
             await db_session.flush()
+            print("   ✅ Created institution: Nairobi Technical College")
 
             # Create an address for the second institution
             institution2_address = Address(
@@ -360,7 +777,7 @@ async def init_db(db_session: AsyncSession) -> None:
             db_session.add(module)
             await db_session.flush()
 
-            # Create an exam paper (this must exist before creating MainQuestions)
+            # Create an exam paper (this must exist before creating main questions)
             hash_object = hashlib.sha256(
                 f"{exam_title.name}+{exam_description.name}".encode()
             ).hexdigest()
@@ -420,56 +837,8 @@ async def init_db(db_session: AsyncSession) -> None:
                 db_session.add(exam_paper_question_link)
                 await db_session.flush()
 
-                # Create main questions linked to QUESTION_ONE and the ExamPaper
-                main_questions = [
-                    MainQuestion(
-                        text={
-                            "time": 1742156891249,
-                            "blocks": [
-                                {
-                                    "id": "dCcbQeoht6",
-                                    "type": "paragraph",
-                                    "data": {
-                                        "text": "Explain the concept of variables in Python and provide examples of different data types.",
-                                    },
-                                }
-                            ],
-                        },
-                        marks=5,
-                        numbering_style="ROMAN",
-                        question_number="i",
-                        slug="python-variables-and-data-types",
-                        question_set_id=question_one_set.id,  # Link to QUESTION_ONE
-                        exam_paper_id=exam_paper.id,  # Link to the ExamPaper
-                        created_by_id=ADMIN_USER_ID,
-                    ),
-                    MainQuestion(
-                        text={
-                            "time": 1742156891260,
-                            "blocks": [
-                                {
-                                    "id": "dCcbQeoht12",
-                                    "type": "paragraph",
-                                    "data": {
-                                        "text": "Write a Python function that calculates the factorial of a given number. Explain your code.",
-                                    },
-                                }
-                            ],
-                        },
-                        marks=15,
-                        numbering_style="ROMAN",
-                        question_number="ii",
-                        slug="python-factorial-function",
-                        question_set_id=question_one_set.id,  # Link to QUESTION_ONE
-                        exam_paper_id=exam_paper.id,  # Link to the ExamPaper
-                        created_by_id=ADMIN_USER_ID,
-                    ),
-                ]
-
-                # Add the main questions to the session
-                for question in main_questions:
-                    db_session.add(question)
-                await db_session.flush()
+                # Create comprehensive sample questions for QUESTION_ONE
+                await create_sample_questions(db_session, question_one_set, exam_paper, ADMIN_USER_ID)
 
             # Link exam instruction to exam paper
             instruction_link = InstructionExamsLink(
@@ -563,14 +932,25 @@ async def init_db(db_session: AsyncSession) -> None:
             db_session.add(course_module_link)
 
             await db_session.commit()
-            print("Database initialized with dummy data and relationships.")
+            print("✅ Database initialized with dummy data and relationships.")
+            print("📊 Initialization Summary:")
+            print("   - ✅ Roles and Users created")
+            print("   - ✅ Groups, Teams, and Heroes created")
+            print("   - ✅ Institutions and Addresses created")
+            print("   - ✅ Campuses created")
+            print("   - ✅ Faculties and Departments created")
+            print("   - ✅ Programmes and Courses created")
+            print("   - ✅ Modules and Exam Papers created")
+            print("   - ✅ Question Sets and Sample Questions created")
+            print("🎉 Database initialization completed successfully!")
+            
         except Exception as e:
-            print(f"An error occurred during institution initialization: {e}")
+            print(f"❌ An error occurred during institution initialization: {e}")
             await db_session.rollback()
             raise
 
     except Exception as e:
-        print(f"Error during database initialization: {e}")
+        print(f"❌ Error during database initialization: {e}")
         await db_session.rollback()
         raise
 
@@ -702,24 +1082,30 @@ async def import_institutions_from_json(db_session: AsyncSession, json_path: str
 async def run_init_db(db_session: AsyncSession):
     """Main async entry point for database initialization"""
     try:
+        print("🚀 Starting complete database initialization...")
+        
         # Initialize core data
         await init_db(db_session)
 
         # Import institutions from JSON
+        print("📂 Checking for institutions JSON file...")
         # Get the project root directory
         project_root = Path(__file__).resolve().parent.parent.parent
-        # print(project_root)
         json_path = project_root/"kuccps_institutions_2025-04-26-master-UPDATED.json"
-        # json_path = Path(
-        #     "kuccps_institutions_2025-04-26-master-UPDATED.json"
-        # )
+        
         if json_path.exists():
+            print(f"📁 Found institutions file at: {json_path}")
             await import_institutions_from_json(db_session, str(json_path))
         else:
-            print(f"JSON file not found at {json_path}, skipping institution import")
+            print(f"⚠️  JSON file not found at {json_path}, skipping institution import")
+            print("   (This is normal if you don't have the institutions data file)")
+
+        print("🎉 Complete database initialization finished successfully!")
 
     except Exception as e:
-        print(f"Initialization failed: {e}")
+        print(f"❌ Initialization failed: {e}")
+        import traceback
+        traceback.print_exc()
         raise
 
 
