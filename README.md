@@ -127,7 +127,7 @@ docker compose -f docker-compose-dev.yml up
 
 *Using Makefile command*
 ```sh
-make run-dev
+make run
 ```
 
 ## Setup database with initial data
