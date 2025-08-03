@@ -1,8 +1,8 @@
 version: '3.8'
 
 services:
-  fastapi_server:
-    container_name: fastapi_server
+  examify_api:
+    container_name: examify_api_test
     build: 
       context: ./backend      
       args:
@@ -17,18 +17,18 @@ services:
     environment:                
       MODE: "testing"      
     depends_on:
-      - database
+      - examify_database_test
     links:
-      - caddy_reverse_proxy:storage.localhost
+      - examify_reverse_proxy_test:storage.localhost
 
-  database:
+  examify_database_test:
     image: bitnami/postgresql
     restart: always
-    container_name: database
+    container_name: examify_database_test
     env_file: ".env"
     user: root
     volumes:
-      - db_docker:/bitnami/postgresql
+      - examify_test_db_data:/bitnami/postgresql
       - ./create-dbs.sql:/docker-entrypoint-initdb.d/create-dbs.sql
     ports:
       - 5454:5432 # Remove this on production
@@ -39,16 +39,16 @@ services:
       - POSTGRESQL_PASSWORD=${DATABASE_PASSWORD}
       - POSTGRESQL_DATABASE=${DATABASE_NAME}
 
-  redis_server:
+  examify_redis_test:
     image: redis:alpine
-    container_name: redis_server    
+    container_name: examify_redis_test    
     restart: always
     expose:
       - 6379
     env_file: .env
 
-  celery_worker:
-    container_name: celery_worker
+  examify_celery_worker_test:
+    container_name: examify_celery_worker_test
     restart: always
     # platform: linux/arm64/v8
     build: ./backend
@@ -57,12 +57,12 @@ services:
       - ./backend/app:/code
       # - "${EB_LOG_BASE_DIR}/php-app:/var/log/celery"
     depends_on:
-      - database
-      - redis_server
+      - examify_database_test
+      - examify_redis_test
     env_file: .env
   
-  celery_beat:  #Good for crontab and schedule tasks
-    container_name: celery_beat
+  examify_celery_beat_test:  #Good for crontab and schedule tasks
+    container_name: examify_celery_beat_test
     restart: always
     # platform: linux/arm64/v8
     build:
@@ -74,14 +74,14 @@ services:
       - ./backend/app:/code
       # - "${EB_LOG_BASE_DIR}/php-app:/var/log/celery-beat"
     depends_on:
-      - database
-      - redis_server
+      - examify_database_test
+      - examify_redis_test
     env_file: .env
 
-  minio_server:
+  examify_minio_test:
     image: minio/minio:latest
     restart: always
-    container_name: minio_server
+    container_name: examify_minio_test
     volumes:
       - ./minio/data:/data
     expose:
@@ -93,8 +93,8 @@ services:
       MINIO_BROWSER_REDIRECT_URL: http://stash.localhost
     command: "server /data --console-address ':9090'"    
 
-  caddy_reverse_proxy:
-    container_name: caddy_reverse_proxy
+  examify_reverse_proxy_test:
+    container_name: examify_reverse_proxy_test
     image: caddy:alpine
     restart: always
     ports:
@@ -107,10 +107,10 @@ services:
     volumes:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile
       - ./static:/code/static
-      - caddy_data:/data
-      - caddy_config:/config
+      - examify_test_caddy_data:/data
+      - examify_test_caddy_config:/config
 
 volumes:
-  db_docker:
-  caddy_data:
-  caddy_config:
+  examify_test_db_data:
+  examify_test_caddy_data:
+  examify_test_caddy_config:

@@ -1,8 +1,8 @@
 # version: '3.8'
 
 services:
-  fastapi_server:
-    container_name: fastapi_server
+  examify_api:
+    container_name: examify_api
     build: ./backend
     restart: always
     command: "sh -c 'alembic upgrade head && uvicorn app.main:app --reload --workers 3 --host 0.0.0.0 --port 8000'"
@@ -13,18 +13,18 @@ services:
       - 8000
     env_file: ".env"
     depends_on:
-      - database
+      - examify_database
     links:
-      - caddy_reverse_proxy:storage.localhost
+      - examify_reverse_proxy:storage.localhost
 
-  database:
+  examify_database:
     image: bitnami/postgresql
     restart: always
-    container_name: database
+    container_name: examify_database
     env_file: ".env"
     user: root
     volumes:
-      - db_docker:/bitnami/postgresql
+      - examify_db_data:/bitnami/postgresql
       - ./create-dbs.sql:/docker-entrypoint-initdb.d/create-dbs.sql
     ports:
       - 5454:5432 # Remove this on production
@@ -35,9 +35,9 @@ services:
       - POSTGRESQL_PASSWORD=${DATABASE_PASSWORD}
       - POSTGRESQL_DATABASE=${DATABASE_NAME}
 
-  redis_server:
+  examify_redis:
     image: redis:alpine
-    container_name: redis_server    
+    container_name: examify_redis    
     restart: always
     expose:
       - 6379
@@ -47,11 +47,11 @@ services:
     environment:
       - ALLOW_EMPTY_PASSWORD=yes
     volumes:
-      - redis_data:/data
+      - examify_redis_data:/data
     command: redis-server --appendonly yes
 
-  celery_worker:
-    container_name: celery_worker
+  examify_celery_worker:
+    container_name: examify_celery_worker
     restart: always
     # platform: linux/arm64/v8
     build: ./backend
@@ -60,12 +60,12 @@ services:
       - ./backend/app:/code
       # - "${EB_LOG_BASE_DIR}/php-app:/var/log/celery"
     depends_on:
-      - database
-      - redis_server
+      - examify_database
+      - examify_redis
     env_file: .env
   
-  celery_beat:  #Good for crontab and schedule tasks
-    container_name: celery_beat
+  examify_celery_beat:  #Good for crontab and schedule tasks
+    container_name: examify_celery_beat
     restart: always
     # platform: linux/arm64/v8
     build:
@@ -77,14 +77,14 @@ services:
       - ./backend/app:/code
       # - "${EB_LOG_BASE_DIR}/php-app:/var/log/celery-beat"
     depends_on:
-      - database
-      - redis_server
+      - examify_database
+      - examify_redis
     env_file: .env
 
-  minio_server:
+  examify_minio:
     image: minio/minio
     restart: always
-    container_name: minio_server
+    container_name: examify_minio
     volumes:
       - ./minio/data:/data
     
@@ -106,8 +106,8 @@ services:
       - "9000:9000"
       - "9002:9002"
 
-  caddy_reverse_proxy:
-    container_name: caddy_reverse_proxy
+  examify_reverse_proxy:
+    container_name: examify_reverse_proxy
     image: caddy:latest
     restart: always
     ports:
@@ -119,11 +119,11 @@ services:
     volumes:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile
       - ./static:/code/static
-      - caddy_data:/data
-      - caddy_config:/config
+      - examify_caddy_data:/data
+      - examify_caddy_config:/config
 
 volumes:
-  db_docker:
-  caddy_data:
-  caddy_config:
-  redis_data:
+  examify_db_data:
+  examify_caddy_data:
+  examify_caddy_config:
+  examify_redis_data:

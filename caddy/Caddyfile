@@ -3,19 +3,19 @@
 }
 
 fastapi.{$EXT_ENDPOINT1}:80, fastapi.{$LOCAL_1}:80, fastapi.{$LOCAL_2}:80, :80 {
-  reverse_proxy fastapi_server:8000
+  reverse_proxy examify_api:8000
 }
 
 storage.{$EXT_ENDPOINT1}:80, storage.{$LOCAL_1}:80, storage.{$LOCAL_2}:80 {
-  reverse_proxy minio_server:9000 
+  reverse_proxy examify_minio:9000 
 }
 
 stash.{$EXT_ENDPOINT1}:80, stash.{$LOCAL_1}:80, stash.{$LOCAL_2}:80 {
-  reverse_proxy minio_server:9090 
+  reverse_proxy examify_minio:9002 
 }
 
 examdatabse.{$LOCAL_1} {
-    reverse_proxy database:5432
+    reverse_proxy examify_database:5432
 }
 
 static.{$EXT_ENDPOINT1}:80, static.{$LOCAL_1}:80, static.{$LOCAL_2}:80 {
