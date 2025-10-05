@@ -36,6 +36,7 @@ from app.schemas.exam_paper_schema import (
     InstructionRead,
     InstructionUpdate
 )
+# from app.schemas.exam_paper_simple_schema import ExamPaperSimpleRead
 from app.schemas.response_schema import (
     IDeleteResponseBase,
     IGetResponseBase,
@@ -50,7 +51,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy.orm import selectinload, joinedload
 from sqlmodel import select
 from app.utils.search_utils import SearchQueryBuilder, SearchResultProcessor
-from sqlalchemy import or_, and_, func
+from sqlalchemy import or_, and_, func, delete
 from datetime import date
 from app.models.course_model import Course
 from app.models.institution_model import Institution
@@ -73,7 +74,7 @@ async def get_exam_paper_list(
         select(ExamPaper).options(
             # Use joinedload for many-to-one relationships (more efficient)
             joinedload(ExamPaper.course).load_only(
-                Course.id, Course.name, Course.course_acronym
+                Course.id, Course.name, Course.course_acronym, Course.slug
             ),
             joinedload(ExamPaper.institution).load_only(
                 Institution.id, Institution.name, Institution.slug
@@ -87,9 +88,10 @@ async def get_exam_paper_list(
     exam_papers = await crud.exam_paper.get_multi_paginated_ordered(
         db_session=db_session, skip=skip, limit=limit, query=query
     )
+    return create_response(data=exam_papers)
 @router.get("/search")
 async def search_exam_papers(
-    q: str = Query(..., description="Search query for exam papers"),
+    q: str = Query(default=None, description="Search query for exam papers"),
     year: str = Query(default=None, description="Filter by exam year"),
     course_id: UUID = Query(default=None, description="Filter by course ID"),
     institution_id: UUID = Query(default=None, description="Filter by institution ID"),
@@ -210,16 +212,36 @@ async def search_exam_papers(
             selectinload(ExamPaper.description).load_only(
                 ExamDescription.id, ExamDescription.name, ExamDescription.slug
             ),
+            # Eagerly load nested question relationships to prevent MissingGreenlet
+            selectinload(ExamPaper.question_sets)
+            .selectinload(QuestionSet.questions.and_(Question.question_set_id.is_not(None)))
+            .selectinload(Question.children),
+            selectinload(ExamPaper.question_sets)
+            .selectinload(QuestionSet.questions.and_(Question.question_set_id.is_not(None)))
+            .selectinload(Question.answers),
+            selectinload(ExamPaper.instructions),
+            selectinload(ExamPaper.modules),
         )
     )
     
-    # Apply search conditions
-    if search_conditions:
-        query = query.where(or_(*search_conditions))
+    # Combine search conditions and filters properly
+    all_conditions = []
     
-    # Apply filters
+    # Add search conditions (if any)
+    if search_conditions:
+        all_conditions.append(or_(*search_conditions))
+    
+    # Add filter conditions (if any)
     if filters:
-        query = query.where(and_(*filters))
+        all_conditions.extend(filters)
+    
+    # Apply all conditions
+    if all_conditions:
+        if len(all_conditions) == 1:
+            query = query.where(all_conditions[0])
+        else:
+            # If we have both search and filters, combine them with AND
+            query = query.where(and_(*all_conditions))
     
     # Apply sorting
     if sort_by == "date":
@@ -380,9 +402,8 @@ async def get_exam_paper_by_id(
     ]
 
     exampaper = await crud.exam_paper.get(
-        id=exampaper_id, db_session=db_session
+        id=exampaper_id, db_session=db_session, options=options
     )
-    # exampaper = await crud.exam_paper.get(id=exampaper_id)
     if not exampaper:
         raise IdNotFoundException(ExamPaper, exampaper_id)
 
@@ -394,7 +415,7 @@ async def get_exam_paper_by_id(
 async def get_exam_paper_by_slug(
     exampaper_slug: str,
     # current_user: User = Depends(deps.get_current_user()),
-) -> IGetResponseBase[list[ExamPaperRead]]:
+) -> IGetResponseBase[ExamPaperRead]:
     """
     Gets a ExamPaper by slug
     """
@@ -453,6 +474,7 @@ async def update_exam_paper(
     current_user: User = Depends(
         deps.get_current_user(required_roles=[IRoleEnum.admin, IRoleEnum.manager])
     ),
+    db_session: AsyncSession = Depends(deps.get_db),
 ) -> IPutResponseBase[ExamPaperRead]:
     """
     Updates a ExamPaper by its id
@@ -461,19 +483,11 @@ async def update_exam_paper(
     - admin
     - manager
     """
-    # current_exam = await crud.exam_paper.get(id=exampaper_id)
-
-    # if not current_exam:
-    #     raise IdNotFoundException(ExamPaper, exampaper_id)
-    # if not is_authorized(current_user, "read", exampaper):
-    #     raise HTTPException(
-    #         status_code=403,
-    #         detail="You are not Authorized to update this institution because you did not created it",
-    #     )
-
     exam_updated = await crud.exam_paper.update_examPaper(
-        exam_paper_id=exampaper_id, obj_new=exampaper_new
+        exam_paper_id=exampaper_id, obj_new=exampaper_new, db_session=db_session
     )
+
+  
 
     return create_response(data=exam_updated)
 

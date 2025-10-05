@@ -146,9 +146,9 @@ class ExamPaperReadForExamTitle(BaseModel):
         # Allows ORM-based data to be converted to Pydantic
 
 class ExamTitleReadForExamPaperRead(BaseModel):
-    id: UUID
-    name: str
-    slug: str
+    # id: UUID
+    name: Optional[str]
+    slug: Optional[str]
     class Config:
         from_attributes = True
 

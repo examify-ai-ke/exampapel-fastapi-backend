@@ -29,7 +29,7 @@ class CRUDExamPaper(CRUDBase[ExamPaper, ExamPaperCreate, ExamPaperUpdate]):
         exampaper = await db_session.execute(
             select(ExamPaper).where(col(ExamPaper.slug).ilike(f"%{slug}%"))
         )
-        return exampaper.unique().scalars().all()
+        return exampaper.unique().scalars().first()
 
     async def get_all_exam_properties(self, *, db_session: AsyncSession | None = None) -> dict:
         """
@@ -145,7 +145,7 @@ class CRUDExamPaper(CRUDBase[ExamPaper, ExamPaperCreate, ExamPaperUpdate]):
         db_session: AsyncSession | None = None,
     ) -> ExamPaper:
         try:          
-            db_session = super().get_db().session
+            db_session =super().get_db().session
             # Retrieve the exam paper
             result = await db_session.execute(
                 select(ExamPaper).where(ExamPaper.id == exam_paper_id)
@@ -199,7 +199,9 @@ class CRUDExamPaper(CRUDBase[ExamPaper, ExamPaperCreate, ExamPaperUpdate]):
 
             # Commit the changes
             await db_session.commit()
-            # print("Exam Paper updated successfully......")
+            
+            # Refresh the exam paper to get the updated state
+            # await db_session.refresh(exam_paper)
             return exam_paper
 
         except SQLAlchemyError as e:

@@ -95,7 +95,8 @@ async def get_institution_list(
             joinedload(Institution.created_by).load_only(
                 User.id, User.first_name, User.last_name, User.email
             ),
-            # Don't load faculties, campuses, exam_papers - use count properties instead
+            # Don't load exam papers with nested questions for list view - too heavy
+            # Use count properties instead
         )
     )
     # Add text search if search parameter is provided
