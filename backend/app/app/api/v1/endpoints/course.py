@@ -47,11 +47,13 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlmodel import select
 from sqlalchemy import or_
+from fastapi_cache.decorator import cache
 
 router = APIRouter()
 
 
 @router.get("")
+@cache(expire=300)
 async def get_course_list(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1),
@@ -82,6 +84,7 @@ async def get_course_list(
 
 
 @router.get("/search")
+@cache(expire=180)
 async def search_courses(
     q: str = Query(default=None, description="Search query for courses"),
     programme_id: UUID = Query(default=None, description="Filter by programme ID"),
@@ -174,6 +177,7 @@ async def get_course_list_order_by_created_at(
 
 
 @router.get("/get_by_id/{course_id}")
+@cache(expire=600)
 async def get_course_by_id(
     course_id: UUID,
     # current_user: User = Depends(deps.get_current_user()),
@@ -190,6 +194,7 @@ async def get_course_by_id(
 
 
 @router.get("/get_by_slug/{course_slug}")
+@cache(expire=600)
 async def get_course_by_slug(
     course_slug: str,
     # current_user: User = Depends(deps.get_current_user()),

@@ -11,6 +11,7 @@ from app.models.department_model import Department
 from fastapi import APIRouter, Depends, HTTPException, Query
 from app.utils.minio_client import MinioClient, S3Client
 from fastapi_pagination import Params
+from fastapi_cache.decorator import cache
 from fastapi import (
     APIRouter,
     Body,
@@ -50,6 +51,7 @@ router = APIRouter()
 
 
 @router.get("")
+# @cache(expire=300)
 async def get_faculty_list(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1),
@@ -74,6 +76,7 @@ async def get_faculty_list(
 
 
 @router.get("/search")
+# @cache(expire=180)
 async def search_faculties(
     q: str = Query(default=None, description="Search query for faculties"),
     institution_id: UUID = Query(default=None, description="Filter by institution ID"),
@@ -140,6 +143,7 @@ async def get_faculty_list_order_by_created_at(
 
 
 @router.get("/get_by_id/{faculty_id}")
+# @cache(expire=600)
 async def get_faculty_by_id(
     faculty_id: UUID,
     # current_user: User = Depends(deps.get_current_user()),
@@ -156,6 +160,7 @@ async def get_faculty_by_id(
 
 
 @router.get("/get_by_slug/{faculty_slug}")
+# @cache(expire=600)
 async def get_faculty_by_slug(
     faculty_slug: str,
     # current_user: User = Depends(deps.get_current_user()),

@@ -1,6 +1,7 @@
 from uuid import UUID
 from typing import Dict, List
 from sqlalchemy import or_, and_, func
+from fastapi_cache.decorator import cache
 from app.api.celery_task import print_hero
 from app.utils.exceptions import IdNotFoundException, NameNotFoundException
 from app.schemas.user_schema import IUserRead
@@ -65,6 +66,7 @@ router = APIRouter()
 
 
 @router.get("")
+@cache(expire=300)
 async def get_institution_list(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1),
@@ -135,6 +137,7 @@ async def get_institution_list(
 
 
 @router.get("/search/advanced")
+@cache(expire=180)
 async def advanced_search_institutions(
     q: str = Query(..., description="Search query for institutions"),
     institution_type: InstitutionType = Query(
@@ -273,6 +276,7 @@ async def advanced_search_institutions(
 
 
 @router.get("/search/suggestions")
+@cache(expire=120)
 async def get_institution_search_suggestions(
     q: str = Query(..., min_length=2, description="Search query for suggestions"),
     limit: int = Query(default=10, ge=1, le=20),
@@ -356,6 +360,7 @@ async def get_institution_list_order_by_created_at(
 
 
 @router.get("/get_by_id/{institution_id}")
+@cache(expire=600)
 async def get_institution_by_id(
     institution_id: UUID,
     db_session: AsyncSession = Depends(deps.get_db),
@@ -386,6 +391,7 @@ async def get_institution_by_id(
 
 
 @router.get("/get_by_slug/{institution_slug}")
+@cache(expire=600)
 async def get_institution_by_slug(
     institution_slug: str,
     db_session: AsyncSession = Depends(deps.get_db),
