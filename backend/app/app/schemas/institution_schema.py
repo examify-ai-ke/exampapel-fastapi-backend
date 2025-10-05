@@ -92,8 +92,8 @@ class ExamPaperReadForInstitution(ExamPaperBase):
     id: UUID
     tags: Optional[list[str]] = []
     instructions: Optional[list[InstructionRead]] = []  # To represent the relationship
-    title: ExamTitleReadForExamPaperRead
-    description: ExamDescriptionReadForExamPaper
+    title: Optional[ExamTitleReadForExamPaperRead] = None  # To represent the relationship
+    description: Optional[ExamDescriptionReadForExamPaper] = None  # To represent the relationship
     modules: Optional[list[ModuleReadForExamPaper]] = []
     created_by_id: UUID
     # institution: InstitutionReadForExamPaper

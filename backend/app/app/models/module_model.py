@@ -104,6 +104,8 @@ class Module(BaseUUIDModel, SQLModel, table=True):
 
     @property
     def exam_papers_count(self):
-        count = len(self.exam_papers)
-        return count
-    exam_papers_count = exam_papers_count
+        return len(self.exam_papers)
+
+    @property
+    def courses_count(self):
+        return len(self.courses)

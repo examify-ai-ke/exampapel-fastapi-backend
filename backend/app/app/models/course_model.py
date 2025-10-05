@@ -64,3 +64,11 @@ class Course(BaseUUIDModel, CourseBase, table=True):
     def set_slug(cls, value, values):
         name = values.get("name", "")
         return generate_slug(name)
+
+    @property
+    def modules_count(self):
+        return len(self.modules)
+
+    @property
+    def exam_papers_count(self):
+        return len(self.exam_papers)

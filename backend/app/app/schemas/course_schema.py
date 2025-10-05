@@ -58,7 +58,7 @@ class ExamDescriptionReadForExamPaper(BaseModel):
 
 class ExamPapersReadForCourse(BaseModel):
     id:UUID
-    title: List[ExamTitleRead]
+    title:  ExamTitleRead
     description: ExamDescriptionReadForExamPaper
     class Config:
         from_attributes = True 
@@ -78,6 +78,8 @@ class CourseRead(CourseBase):
     modules: Optional[list[ModuleReadForCourse]]
     exam_papers: Optional[List[ExamPapersReadForCourse]]
     image: IImageMediaRead | None
+    modules_count: int | None = 0
+    exam_papers_count: int | None = 0
 
     class Config:
         from_attributes = True  # Allows the schema to work with ORM objects

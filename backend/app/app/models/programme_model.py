@@ -86,3 +86,11 @@ class Programme(BaseUUIDModel, ProgrammeBase, table=True):
         name = values.get("name", "")
         convert_to_str = name.value
         return generate_slug(convert_to_str)
+
+    @property
+    def departments_count(self):
+        return len(self.departments)
+
+    @property
+    def courses_count(self):
+        return len(self.courses)

@@ -177,7 +177,7 @@ async def get_course_list_order_by_created_at(
 
 
 @router.get("/get_by_id/{course_id}")
-@cache(expire=600)
+# @cache(expire=600)
 async def get_course_by_id(
     course_id: UUID,
     db_session: AsyncSession = Depends(deps.get_db),

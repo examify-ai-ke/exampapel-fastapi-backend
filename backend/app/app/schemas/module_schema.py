@@ -12,7 +12,7 @@ from pydantic import  BaseModel
 class ModuleBase(BaseModel):
     name: str
     description: Optional[str] = "An academic module/unit that forms part of the course"
-    unit_code: str
+    unit_code:  str 
 
 
 @optional()
@@ -48,7 +48,7 @@ class CourseReadForModule(BaseModel):
 class ExamPaperReadForModule(ExamPaperBase):
     id: UUID
     tags: Optional[List]
-    title: "ExamTitleReadForExamPaperRead" = []
+    title: Optional[ExamTitleReadForExamPaperRead] # Nested relationship
     class Config:
         from_attributes = True  # Allows ORM-based data to be converted to Pydantic
 
@@ -59,6 +59,7 @@ class ModuleRead(ModuleBase):
     # slug:Optional[str]
     courses:Optional[list[CourseReadForModule]] = []  # To represent the relationship
     exam_papers: Optional[list[ExamPaperReadForModule]] = []
-    exam_papers_count: int  | None=0 #TODO
+    courses_count: int | None = 0
+    exam_papers_count: int | None = 0
     class Config:
         from_attributes = True  # Allows ORM-based data to be converted to Pydantic
