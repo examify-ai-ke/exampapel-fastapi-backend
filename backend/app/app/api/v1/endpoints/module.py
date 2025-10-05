@@ -47,18 +47,16 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlmodel import select
 from sqlalchemy import or_
+from fastapi_cache.decorator import cache
 
 router = APIRouter()
 
 
 @router.get("")
+@cache(expire=300)
 async def get_module_list(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1),
-    search: Optional[str] = Query(
-        default=None,
-        description="Search term for module name, unit code, or description",
-    ),  # Add search parameter
     db_session: AsyncSession = Depends(deps.get_db),
 ) -> IGetResponsePaginated[ModuleRead]:
     """
@@ -67,23 +65,72 @@ async def get_module_list(
     query = (
         select(Module)
         .options(
-            selectinload(Module.courses),  # Load related courses
-            selectinload(Module.exam_papers),  # Load related exam papers
-            selectinload(Module.image),  # Load module image
-            selectinload(Module.created_by),  # Load creator details
+            selectinload(Module.courses),
+            selectinload(Module.exam_papers),
+            selectinload(Module.image),
+            selectinload(Module.created_by),
         )
     )
-    # Add search filter if provided
-    if search:
-        search_term = f"%{search}%"  # Prepare search term for LIKE/ILIKE
-        query = query.where(
+    modules = await crud.module.get_multi_paginated_ordered(
+        db_session=db_session, skip=skip, limit=limit, query=query
+    )
+    return create_response(data=modules)
+
+
+@router.get("/search")
+@cache(expire=180)
+async def search_modules(
+    q: str = Query(default=None, description="Search query for modules"),
+    course_id: UUID = Query(default=None, description="Filter by course ID"),
+    unit_code: str = Query(default=None, description="Filter by unit code"),
+    sort_by: str = Query(default="name", description="Sort by: name, unit_code, created_at"),
+    sort_order: str = Query(default="asc", description="Sort order: asc, desc"),
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=20, ge=1, le=100),
+    db_session: AsyncSession = Depends(deps.get_db),
+) -> IGetResponsePaginated[ModuleRead]:
+    """
+    Search modules with filtering and sorting
+    """
+    from app.models.module_model import CourseModuleLink
+    
+    query = (
+        select(Module)
+        .options(
+            selectinload(Module.courses),
+            selectinload(Module.exam_papers),
+            selectinload(Module.image),
+            selectinload(Module.created_by),
+        )
+    )
+    
+    if q:
+        query = query.filter(
             or_(
-                Module.name.ilike(search_term),
-                Module.unit_code.ilike(search_term),
-                Module.description.ilike(search_term),
-                # Add other searchable fields here if needed
+                Module.name.ilike(f"%{q}%"),
+                Module.unit_code.ilike(f"%{q}%"),
+                Module.description.ilike(f"%{q}%"),
+                Module.slug.ilike(f"%{q}%"),
             )
         )
+    
+    if course_id:
+        query = query.join(CourseModuleLink).filter(
+            CourseModuleLink.course_id == course_id
+        )
+    
+    if unit_code:
+        query = query.filter(Module.unit_code.ilike(f"%{unit_code}%"))
+    
+    if sort_by == "unit_code":
+        sort_field = Module.unit_code
+    elif sort_by == "created_at":
+        sort_field = Module.created_at
+    else:
+        sort_field = Module.name
+    
+    query = query.order_by(sort_field.asc() if sort_order == "asc" else sort_field.desc())
+    
     modules = await crud.module.get_multi_paginated_ordered(
         db_session=db_session, skip=skip, limit=limit, query=query
     )
@@ -108,13 +155,24 @@ async def get_module_list_order_by_created_at(
 
 
 @router.get("/get_by_id/{module_id}")
+@cache(expire=600)
 async def get_module_by_id(
     module_id: UUID,
+    db_session: AsyncSession = Depends(deps.get_db),
 ) -> IGetResponseBase[ModuleRead]:
     """
     Gets a course module by its id
     """
-    module = await crud.module.get(id=module_id)
+    module = await crud.module.get(
+        id=module_id,
+        db_session=db_session,
+        options=[
+            selectinload(Module.courses),
+            selectinload(Module.exam_papers),
+            selectinload(Module.image),
+            selectinload(Module.created_by),
+        ],
+    )
     if not module:
         raise IdNotFoundException(Module, module_id)
 
@@ -122,13 +180,18 @@ async def get_module_by_id(
 
 
 @router.get("/get_by_slug/{module_slug}")
+@cache(expire=600)
 async def get_module_by_slug(
     module_slug: str,
+    db_session: AsyncSession = Depends(deps.get_db),
 ) -> IGetResponseBase[list[ModuleRead]]:
     """
     Gets a module by slug
     """
-    module = await crud.module.get_module_by_slug(slug=module_slug)
+    module = await crud.module.get_module_by_slug(
+        slug=module_slug,
+        db_session=db_session,
+    )
     if not module:
         raise NameNotFoundException(Module, module_slug)
 

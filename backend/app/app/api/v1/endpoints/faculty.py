@@ -67,6 +67,8 @@ async def get_faculty_list(
                 User.id, User.first_name, User.last_name, User.email
             ),
             selectinload(Faculty.image),
+            selectinload(Faculty.institutions),
+            selectinload(Faculty.departments),
         )
     )
     faculties = await crud.faculty.get_multi_paginated_ordered(
@@ -98,6 +100,8 @@ async def search_faculties(
                 User.id, User.first_name, User.last_name, User.email
             ),
             selectinload(Faculty.image),
+            selectinload(Faculty.institutions),
+            selectinload(Faculty.departments),
         )
     )
     
@@ -146,29 +150,41 @@ async def get_faculty_list_order_by_created_at(
 # @cache(expire=600)
 async def get_faculty_by_id(
     faculty_id: UUID,
-    # current_user: User = Depends(deps.get_current_user()),
+    db_session: AsyncSession = Depends(deps.get_db),
 ) -> IGetResponseBase[FacultyRead]:
     """
     Gets a faculty by its id
     """
-    faculty = await crud.faculty.get(id=faculty_id)
+    faculty = await crud.faculty.get(
+        id=faculty_id,
+        db_session=db_session,
+        options=[
+            selectinload(Faculty.institutions),
+            selectinload(Faculty.departments),
+            selectinload(Faculty.image),
+            selectinload(Faculty.created_by),
+        ],
+    )
     if not faculty:
         raise IdNotFoundException(Faculty, faculty_id)
 
-    # print_hero.delay(hero.id)
+  
     return create_response(data=faculty)
 
 
 @router.get("/get_by_slug/{faculty_slug}")
-# @cache(expire=600)
+@cache(expire=600)
 async def get_faculty_by_slug(
     faculty_slug: str,
-    # current_user: User = Depends(deps.get_current_user()),
+    db_session: AsyncSession = Depends(deps.get_db),
 ) -> IGetResponseBase[list[FacultyRead]]:
     """
     Gets a faculty by slug
     """
-    faculty_frm_db = await crud.faculty.get_faculty_by_slug(slug=faculty_slug)
+    faculty_frm_db = await crud.faculty.get_faculty_by_slug(
+        slug=faculty_slug,
+        db_session=db_session,
+    )
     if not faculty_frm_db:
         raise NameNotFoundException(Faculty, faculty_slug)
 

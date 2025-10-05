@@ -47,10 +47,19 @@ class ExamTitleRead(BaseModel):
         from_attributes = True  #
 
 
+class ExamDescriptionReadForExamPaper(BaseModel):
+    id: UUID
+    name: str
+    # slug: str
+
+    class Config:
+        from_attributes = True
+
+
 class ExamPapersReadForCourse(BaseModel):
     id:UUID
-    # title: List[ExamTitleRead]
-    # description: str
+    title: List[ExamTitleRead]
+    description: ExamDescriptionReadForExamPaper
     class Config:
         from_attributes = True 
 

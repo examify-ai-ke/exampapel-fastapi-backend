@@ -32,7 +32,7 @@ class FacultyReadForDepartment(BaseModel):
 # Read schema for Department
 class DepartmentRead(DepartmentBase):
     id: Optional[UUID] # Read schema includes the unique identifier   # Read schema has faculty reference
-    faculty: FacultyReadForDepartment
+    faculty: FacultyReadForDepartment 
     programmes: Optional[List[ProgrammeReadForDepartments]]
     programmes_count: int | None = 0
     # slug: Optional[str]

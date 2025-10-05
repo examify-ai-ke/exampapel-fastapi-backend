@@ -29,10 +29,10 @@ class InstitutionForFaculty(BaseModel):
 
 class FacultyRead(FacultyBase):
     id: UUID
-    departments: list[DepartmentReadForFaculty] | None = []
-    department_count: int | None = 0
-    institutions: list[InstitutionForFaculty] | None =[]
-    institution_count: int | None = 0
+    departments: list[DepartmentReadForFaculty] = []
+    department_count: int = 0
+    institutions: list[InstitutionForFaculty] = []
+    institution_count: int = 0
 
     class Config:
         from_attributes = True

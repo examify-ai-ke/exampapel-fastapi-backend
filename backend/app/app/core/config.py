@@ -17,6 +17,10 @@ class ModeEnum(str, Enum):
 class Settings(BaseSettings):
     # MODE: ModeEnum = ModeEnum.production
     MODE: ModeEnum = os.getenv("ENVIRONMENT", "development")
+    
+    @property
+    def is_development(self) -> bool:
+        return self.MODE == ModeEnum.development
     API_VERSION: str = "v1"
     API_V1_STR: str = f"/api/{API_VERSION}"
     # API_V1_STR: str = "/admin/api"
@@ -47,6 +51,7 @@ class Settings(BaseSettings):
     JWT_AUDIENCE: str = "your-frontend-url"
     DEFAULT_ROLE_NAME:  str ="user"
     USE_REDIS_TOKEN_BLACKLIST: bool = True
+    ENABLE_REDIS_CACHE: bool = True
 
     # Email settings - fixed naming and added missing variables
     MAIL_SMTP_SERVER: str
@@ -167,7 +172,9 @@ class Settings(BaseSettings):
         raise ValueError(v)
 
     model_config = SettingsConfigDict(
-        case_sensitive=True, env_file=os.path.expanduser("~/.env")
+        case_sensitive=True, 
+        env_file=os.path.expanduser("~/.env"),
+        env_file_encoding='utf-8'
     )
 
 

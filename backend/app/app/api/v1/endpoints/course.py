@@ -53,7 +53,7 @@ router = APIRouter()
 
 
 @router.get("")
-@cache(expire=300)
+# @cache(expire=300)
 async def get_course_list(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1),
@@ -84,7 +84,7 @@ async def get_course_list(
 
 
 @router.get("/search")
-@cache(expire=180)
+# @cache(expire=180)
 async def search_courses(
     q: str = Query(default=None, description="Search query for courses"),
     programme_id: UUID = Query(default=None, description="Filter by programme ID"),
@@ -180,12 +180,22 @@ async def get_course_list_order_by_created_at(
 @cache(expire=600)
 async def get_course_by_id(
     course_id: UUID,
-    # current_user: User = Depends(deps.get_current_user()),
+    db_session: AsyncSession = Depends(deps.get_db),
 ) -> IGetResponseBase[CourseRead]:
     """
     Gets a course by its id
     """
-    course = await crud.course.get(id=course_id)
+    course = await crud.course.get(
+        id=course_id,
+        db_session=db_session,
+        options=[
+            selectinload(Course.programme),
+            selectinload(Course.modules),
+            selectinload(Course.exam_papers),
+            selectinload(Course.image),
+            selectinload(Course.created_by),
+        ],
+    )
     if not course:
         raise IdNotFoundException(Course, course_id)
 
@@ -197,12 +207,15 @@ async def get_course_by_id(
 @cache(expire=600)
 async def get_course_by_slug(
     course_slug: str,
-    # current_user: User = Depends(deps.get_current_user()),
+    db_session: AsyncSession = Depends(deps.get_db),
 ) -> IGetResponseBase[list[CourseRead]]:
     """
     Gets a course by slug
     """
-    course_frm_db = await crud.course.get_course_by_slug(slug=course_slug)
+    course_frm_db = await crud.course.get_course_by_slug(
+        slug=course_slug,
+        db_session=db_session,
+    )
     if not course_frm_db:
         raise NameNotFoundException(Course, course_slug)
 

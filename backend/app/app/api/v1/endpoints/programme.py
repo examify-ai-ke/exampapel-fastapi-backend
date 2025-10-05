@@ -43,11 +43,14 @@ from app.core.authz import is_authorized
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlmodel import select
+from sqlalchemy import or_
+from fastapi_cache.decorator import cache
 
 router = APIRouter()
 
 
 @router.get("")
+@cache(expire=300)
 async def get_programme_list(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1),
@@ -59,12 +62,60 @@ async def get_programme_list(
     query = (
         select(Programme)
         .options(
-            selectinload(Programme.departments),  # Load related department
-            selectinload(Programme.courses),  # Load related courses
-            selectinload(Programme.image),  # Load programme image
-            selectinload(Programme.created_by),  # Load creator details
+            selectinload(Programme.departments),
+            selectinload(Programme.courses),
+            selectinload(Programme.image),
+            selectinload(Programme.created_by),
         )
     )
+    programmes = await crud.programme.get_multi_paginated_ordered(
+        db_session=db_session, skip=skip, limit=limit, query=query
+    )
+    return create_response(data=programmes)
+
+
+@router.get("/search")
+@cache(expire=180)
+async def search_programmes(
+    q: str = Query(default=None, description="Search query for programmes"),
+    department_id: UUID = Query(default=None, description="Filter by department ID"),
+    sort_by: str = Query(default="name", description="Sort by: name, created_at"),
+    sort_order: str = Query(default="asc", description="Sort order: asc, desc"),
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=20, ge=1, le=100),
+    db_session: AsyncSession = Depends(deps.get_db),
+) -> IGetResponsePaginated[ProgrammeRead]:
+    """
+    Search programmes with filtering and sorting
+    """
+    from app.models.programme_model import ProgrammeDepartmentLink
+    
+    query = (
+        select(Programme)
+        .options(
+            selectinload(Programme.departments),
+            selectinload(Programme.courses),
+            selectinload(Programme.image),
+            selectinload(Programme.created_by),
+        )
+    )
+    
+    if q:
+        query = query.filter(
+            or_(
+                Programme.description.ilike(f"%{q}%"),
+                Programme.slug.ilike(f"%{q}%"),
+            )
+        )
+    
+    if department_id:
+        query = query.join(ProgrammeDepartmentLink).filter(
+            ProgrammeDepartmentLink.department_id == department_id
+        )
+    
+    sort_field = Programme.created_at if sort_by == "created_at" else Programme.name
+    query = query.order_by(sort_field.asc() if sort_order == "asc" else sort_field.desc())
+    
     programmes = await crud.programme.get_multi_paginated_ordered(
         db_session=db_session, skip=skip, limit=limit, query=query
     )
@@ -90,30 +141,43 @@ async def get_programme_list_order_by_created_at(
 
 
 @router.get("/get_by_id/{programme_id}")
+@cache(expire=600)
 async def get_programme_by_id(
     programme_id: UUID,
-    # current_user: User = Depends(deps.get_current_user()),
+    db_session: AsyncSession = Depends(deps.get_db),
 ) -> IGetResponseBase[ProgrammeRead]:
     """
     Gets a programme by its id
     """
-    programme = await crud.programme.get(id=programme_id)
+    programme = await crud.programme.get(
+        id=programme_id,
+        db_session=db_session,
+        options=[
+            selectinload(Programme.departments),
+            selectinload(Programme.courses),
+            selectinload(Programme.image),
+            selectinload(Programme.created_by),
+        ],
+    )
     if not programme:
         raise IdNotFoundException(Programme, programme_id)
 
-    # print_hero.delay(hero.id)
     return create_response(data=programme)
 
 
 @router.get("/get_by_slug/{programme_slug}")
+@cache(expire=600)
 async def get_programme_by_slug(
     programme_slug: str,
-    # current_user: User = Depends(deps.get_current_user()),
+    db_session: AsyncSession = Depends(deps.get_db),
 ) -> IGetResponseBase[list[ProgrammeRead]]:
     """
     Gets a programme by slug
     """
-    programme = await crud.programme.get_programme_by_slug(slug=programme_slug)
+    programme = await crud.programme.get_programme_by_slug(
+        slug=programme_slug,
+        db_session=db_session,
+    )
     if not programme:
         raise NameNotFoundException(Programme, programme_slug)
 

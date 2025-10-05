@@ -28,6 +28,8 @@ from jwt import DecodeError, ExpiredSignatureError, MissingRequiredClaimError
 from langchain.chat_models import ChatOpenAI
 from langchain.schema import HumanMessage
 from sqlalchemy.pool import NullPool, AsyncAdaptedQueuePool
+from fastapi_cache.backends.inmemory import InMemoryBackend
+
 
 from app import crud
 from app.api.deps import get_redis_client
@@ -147,7 +149,18 @@ async def lifespan(app: FastAPI):
     
     # Initialize Redis and caching
     redis_client = await get_redis_client()
-    FastAPICache.init(RedisBackend(redis_client), prefix="fastapi-cache")
+    
+    # Only enable cache if ENABLE_REDIS_CACHE is True
+    if settings.ENABLE_REDIS_CACHE:
+        FastAPICache.init(RedisBackend(redis_client), prefix="fastapi-cache")
+        logger.info("✅ Redis cache ENABLED - responses will be cached")
+    else:
+        # Initialize with a dummy backend that doesn't cache
+        
+        # FastAPICache.init(InMemoryBackend(), prefix="fastapi-cache")
+        FastAPICache.init(InMemoryBackend(), prefix="fastapi-cache", expire=0.1) # Very short expiry
+        logger.info("❌ Redis cache DISABLED - no caching (development mode)")
+    
     await FastAPILimiter.init(redis_client, identifier=user_id_identifier)
 
     # Load a pre-trained sentiment analysis model as a dictionary to an easy cleanup
@@ -163,7 +176,7 @@ async def lifespan(app: FastAPI):
     try:
         await startup_tasks()
         mark_initialized()
-        logger.info("FastAPI startup completed successfully!")
+        logger.info(f"FastAPI startup completed successfully! Cache: {'ENABLED' if settings.ENABLE_REDIS_CACHE else 'DISABLED'}")
     except Exception as e:
         logger.error(f"FastAPI startup failed: {e}")
         # In production, you might want to prevent startup on failure
@@ -176,7 +189,8 @@ async def lifespan(app: FastAPI):
     
     # Shutdown
     logger.info("Shutting down FastAPI application...")
-    await FastAPICache.clear()
+    if settings.ENABLE_REDIS_CACHE:
+        await FastAPICache.clear()
     await FastAPILimiter.close()
     # models.clear()
     g.cleanup()

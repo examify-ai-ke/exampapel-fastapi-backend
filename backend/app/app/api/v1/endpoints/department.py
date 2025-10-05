@@ -53,7 +53,7 @@ router = APIRouter()
 
 
 @router.get("")
-@cache(expire=300)
+# @cache(expire=300)
 async def get_department_list(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1),
@@ -84,7 +84,7 @@ async def get_department_list(
 
 
 @router.get("/search")
-@cache(expire=180)
+# @cache(expire=180)
 async def search_departments(
     q: str = Query(default=None, description="Search query for departments"),
     faculty_id: UUID = Query(default=None, description="Filter by faculty ID"),
@@ -161,15 +161,24 @@ async def get_departments_list_order_by_created_at(
 
 
 @router.get("/get_by_id/{department_id}")
-@cache(expire=600)
+# @cache(expire=600)
 async def get_department_by_id(
     department_id: UUID,
-    # current_user: User = Depends(deps.get_current_user()),
+    db_session: AsyncSession = Depends(deps.get_db),
 ) -> IGetResponseBase[DepartmentRead]:
     """
-    Gets a deaprtment by its id
+    Gets a department by its id
     """
-    department = await crud.department.get(id=department_id)
+    department = await crud.department.get(
+        id=department_id,
+        db_session=db_session,
+        options=[
+            selectinload(Department.faculty),
+            selectinload(Department.programmes),
+            selectinload(Department.image),
+            selectinload(Department.created_by),
+        ],
+    )
     if not department:
         raise IdNotFoundException(Department, department_id)
 
@@ -181,13 +190,14 @@ async def get_department_by_id(
 @cache(expire=600)
 async def get_department_by_slug(
     department_slug: str,
-    # current_user: User = Depends(deps.get_current_user()),
+    db_session: AsyncSession = Depends(deps.get_db),
 ) -> IGetResponseBase[list[DepartmentRead]]:
     """
     Gets a department by slug
     """
     department_frm_db = await crud.department.get_department_by_slug(
-        slug=department_slug
+        slug=department_slug,
+        db_session=db_session,
     )
     if not department_frm_db:
         raise NameNotFoundException(Department, department_slug)
