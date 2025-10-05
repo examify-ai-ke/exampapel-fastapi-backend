@@ -109,8 +109,8 @@ class InstitutionBase(SQLModel):
     )
     parent_ministry: Optional[str] = Field(default=None, nullable=True)
     # Slug with a validator to generate it from the name
-    tags: List[str] = Field(
-        default_factory=list,
+    tags: Optional[List[str]] = Field(
+        default=None,
         sa_column=Column(JSONB, nullable=True),
         description="List of tags for categorization",
     )

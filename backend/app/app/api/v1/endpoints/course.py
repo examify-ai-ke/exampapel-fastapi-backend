@@ -46,6 +46,7 @@ from app.core.authz import is_authorized
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlmodel import select
+from sqlalchemy import or_
 
 router = APIRouter()
 
@@ -59,23 +60,95 @@ async def get_course_list(
     """
     Gets a paginated list of courses
     """
-    # Optimized query - load only essential data for list view
     query = (
         select(Course)
         .options(
             selectinload(Course.programme).load_only(
                 Programme.id, Programme.name, Programme.slug
-            ),  # Only essential programme fields
+            ),
             selectinload(Course.modules).load_only(
                 Module.id, Module.name, Module.unit_code
-            ),  # Only essential module fields
-            selectinload(Course.image),  # Load course image
+            ),
+            selectinload(Course.image),
             selectinload(Course.created_by).load_only(
                 User.id, User.first_name, User.last_name, User.email
-            ),  # Only essential user fields
+            ),
         )
-
     )
+    courses = await crud.course.get_multi_paginated_ordered(
+        db_session=db_session, skip=skip, limit=limit, query=query
+    )
+    return create_response(data=courses)
+
+
+@router.get("/search")
+async def search_courses(
+    q: str = Query(default=None, description="Search query for courses"),
+    programme_id: UUID = Query(default=None, description="Filter by programme ID"),
+    department_id: UUID = Query(default=None, description="Filter by department ID (via programme)"),
+    institution_id: UUID = Query(default=None, description="Filter by institution ID (via programme→department→faculty)"),
+    course_acronym: str = Query(default=None, description="Filter by course acronym"),
+    sort_by: str = Query(default="name", description="Sort by: name, created_at"),
+    sort_order: str = Query(default="asc", description="Sort order: asc, desc"),
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=20, ge=1, le=100),
+    db_session: AsyncSession = Depends(deps.get_db),
+) -> IGetResponsePaginated[CourseRead]:
+    """
+    Search courses with filtering and sorting
+    """
+    from app.models.programme_model import ProgrammeDepartmentLink
+    from app.models.department_model import Department
+    from app.models.faculty_model import Faculty
+    from app.models.institution_model import InstitutionFacultyLink
+    
+    query = (
+        select(Course)
+        .options(
+            selectinload(Course.programme).load_only(
+                Programme.id, Programme.name, Programme.slug
+            ),
+            selectinload(Course.modules).load_only(
+                Module.id, Module.name, Module.unit_code
+            ),
+            selectinload(Course.image),
+            selectinload(Course.created_by).load_only(
+                User.id, User.first_name, User.last_name, User.email
+            ),
+        )
+    )
+    
+    if q:
+        query = query.filter(
+            or_(
+                Course.name.ilike(f"%{q}%"),
+                Course.description.ilike(f"%{q}%"),
+                Course.slug.ilike(f"%{q}%"),
+                Course.course_acronym.ilike(f"%{q}%"),
+            )
+        )
+    
+    if programme_id:
+        query = query.filter(Course.programme_id == programme_id)
+    
+    if department_id:
+        query = query.join(Programme).join(ProgrammeDepartmentLink).filter(
+            ProgrammeDepartmentLink.department_id == department_id
+        )
+    
+    if institution_id:
+        query = query.join(Programme).join(ProgrammeDepartmentLink).join(
+            Department, ProgrammeDepartmentLink.department_id == Department.id
+        ).join(Faculty).join(InstitutionFacultyLink).filter(
+            InstitutionFacultyLink.institution_id == institution_id
+        )
+    
+    if course_acronym:
+        query = query.filter(Course.course_acronym.ilike(f"%{course_acronym}%"))
+    
+    sort_field = Course.name if sort_by == "name" else Course.created_at
+    query = query.order_by(sort_field.asc() if sort_order == "asc" else sort_field.desc())
+    
     courses = await crud.course.get_multi_paginated_ordered(
         db_session=db_session, skip=skip, limit=limit, query=query
     )

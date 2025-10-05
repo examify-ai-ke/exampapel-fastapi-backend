@@ -46,6 +46,7 @@ from app.core.authz import is_authorized
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlmodel import select
+from sqlalchemy import or_
 
 router = APIRouter()
 
@@ -59,23 +60,79 @@ async def get_department_list(
     """
     Gets a paginated list of departments
     """
-    # Optimized query - load only essential data for list view
     query = (
         select(Department)
         .options(
             selectinload(Department.faculty).load_only(
                 Faculty.id, Faculty.name, Faculty.slug
-            ),  # Only essential faculty fields
+            ),
             selectinload(Department.programmes).load_only(
                 Programme.id, Programme.name, Programme.slug
-            ),  # Only essential programme fields
-            selectinload(Department.image),  # Load department image
+            ),
+            selectinload(Department.image),
             selectinload(Department.created_by).load_only(
                 User.id, User.first_name, User.last_name, User.email
-            ),  # Only essential user fields
+            ),
         )
-
     )
+    departments = await crud.department.get_multi_paginated_ordered(
+        db_session=db_session, skip=skip, limit=limit, query=query
+    )
+    return create_response(data=departments)
+
+
+@router.get("/search")
+async def search_departments(
+    q: str = Query(default=None, description="Search query for departments"),
+    faculty_id: UUID = Query(default=None, description="Filter by faculty ID"),
+    institution_id: UUID = Query(default=None, description="Filter by institution ID (via faculty)"),
+    sort_by: str = Query(default="name", description="Sort by: name, created_at"),
+    sort_order: str = Query(default="asc", description="Sort order: asc, desc"),
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=20, ge=1, le=100),
+    db_session: AsyncSession = Depends(deps.get_db),
+) -> IGetResponsePaginated[DepartmentRead]:
+    """
+    Search departments with filtering and sorting
+    """
+    from app.models.institution_model import InstitutionFacultyLink
+    
+    query = (
+        select(Department)
+        .options(
+            selectinload(Department.faculty).load_only(
+                Faculty.id, Faculty.name, Faculty.slug
+            ),
+            selectinload(Department.programmes).load_only(
+                Programme.id, Programme.name, Programme.slug
+            ),
+            selectinload(Department.image),
+            selectinload(Department.created_by).load_only(
+                User.id, User.first_name, User.last_name, User.email
+            ),
+        )
+    )
+    
+    if q:
+        query = query.filter(
+            or_(
+                Department.name.ilike(f"%{q}%"),
+                Department.description.ilike(f"%{q}%"),
+                Department.slug.ilike(f"%{q}%"),
+            )
+        )
+    
+    if faculty_id:
+        query = query.filter(Department.faculty_id == faculty_id)
+    
+    if institution_id:
+        query = query.join(Faculty).join(InstitutionFacultyLink).filter(
+            InstitutionFacultyLink.institution_id == institution_id
+        )
+    
+    sort_field = Department.name if sort_by == "name" else Department.created_at
+    query = query.order_by(sort_field.asc() if sort_order == "asc" else sort_field.desc())
+    
     departments = await crud.department.get_multi_paginated_ordered(
         db_session=db_session, skip=skip, limit=limit, query=query
     )

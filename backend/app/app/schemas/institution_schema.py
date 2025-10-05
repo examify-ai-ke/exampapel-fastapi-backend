@@ -27,7 +27,7 @@ class InstitutionCreate(BaseModel):
     full_profile: Optional[str] = None
     parent_ministry: Optional[str] = None
     image_id: Optional[UUID] = None
-    tags: Optional[list[str]] = []
+    tags: Optional[list[str]] = None
     # Address relationship
     address: Optional[AddressCreate] = None
 
@@ -121,7 +121,7 @@ class InstitutionRead(InstitutionBase):
     kuccps_institution_url: Optional[str] = None
     full_profile: Optional[str] = None
     parent_ministry: Optional[str] = None
-    tags: list[str] = []
+    tags: Optional[list[str]] = []
     class Config:
         from_attributes = True  # This allows the schema to work with ORM objects
 

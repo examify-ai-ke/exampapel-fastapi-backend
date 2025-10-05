@@ -51,41 +51,70 @@ router = APIRouter()
 
 @router.get("")
 async def get_faculty_list(
-    # params: Params = Depends(),
-    # current_user: User = Depends(deps.get_current_user()),
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1),
     db_session: AsyncSession = Depends(deps.get_db),
-    search_term: str = Query(
-        default=None, description="Search term for institution name and other fields"
-    ),
 ) -> IGetResponsePaginated[FacultyRead]:
     """
     Gets a paginated list of faculties
     """
-    # Ultra-optimized query - minimal data loading for maximum performance
     query = (
         select(Faculty)
         .options(
-            # Use joinedload for many-to-one relationships (more efficient than selectinload)
             joinedload(Faculty.created_by).load_only(
                 User.id, User.first_name, User.last_name, User.email
             ),
-            selectinload(Faculty.image),  # Load faculty image
-            # Don't load institutions or departments - use count properties instead
+            selectinload(Faculty.image),
         )
-       
     )
-    if search_term:
+    faculties = await crud.faculty.get_multi_paginated_ordered(
+        db_session=db_session, skip=skip, limit=limit, query=query
+    )
+    return create_response(data=faculties)
+
+
+@router.get("/search")
+async def search_faculties(
+    q: str = Query(default=None, description="Search query for faculties"),
+    institution_id: UUID = Query(default=None, description="Filter by institution ID"),
+    sort_by: str = Query(default="name", description="Sort by: name, created_at"),
+    sort_order: str = Query(default="asc", description="Sort order: asc, desc"),
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=20, ge=1, le=100),
+    db_session: AsyncSession = Depends(deps.get_db),
+) -> IGetResponsePaginated[FacultyRead]:
+    """
+    Search faculties with filtering and sorting
+    """
+    from app.models.institution_model import Institution, InstitutionFacultyLink
+    
+    query = (
+        select(Faculty)
+        .options(
+            joinedload(Faculty.created_by).load_only(
+                User.id, User.first_name, User.last_name, User.email
+            ),
+            selectinload(Faculty.image),
+        )
+    )
+    
+    if q:
         query = query.filter(
-            # Text fields
             or_(
-                Faculty.name.ilike(f"%{search_term}%"),
-                Faculty.description.ilike(f"%{search_term}%"),
-                Faculty.slug.ilike(f"%{search_term}%"),
-             
+                Faculty.name.ilike(f"%{q}%"),
+                Faculty.description.ilike(f"%{q}%"),
+                Faculty.slug.ilike(f"%{q}%"),
             )
         )
+    
+    if institution_id:
+        query = query.join(InstitutionFacultyLink).filter(
+            InstitutionFacultyLink.institution_id == institution_id
+        )
+    
+    sort_field = Faculty.name if sort_by == "name" else Faculty.created_at
+    query = query.order_by(sort_field.asc() if sort_order == "asc" else sort_field.desc())
+    
     faculties = await crud.faculty.get_multi_paginated_ordered(
         db_session=db_session, skip=skip, limit=limit, query=query
     )
