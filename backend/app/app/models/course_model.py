@@ -25,11 +25,18 @@ class Course(BaseUUIDModel, CourseBase, table=True):
     course_acronym: Optional[str] = Field(default=None, unique=True)
     # Foreign key to Programme
     programme_id: UUID = Field(foreign_key="Programme.id", nullable=False)
+    # Foreign key to Faculty
+    faculty_id: UUID | None = Field(default=None, foreign_key="Faculty.id")
 
     # Relationship with Programme
     programme: "Programme" = Relationship(
         back_populates="courses",
         sa_relationship_kwargs={"lazy": "selectin"}     
+    )
+    # Relationship with Faculty
+    faculty: Optional["Faculty"] = Relationship(
+        back_populates="courses",
+        sa_relationship_kwargs={"lazy": "selectin"}
     )
 
     exam_papers: List["ExamPaper"] = Relationship(

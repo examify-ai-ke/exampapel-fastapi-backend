@@ -55,6 +55,13 @@ class Faculty(BaseUUIDModel, SQLModel, table=True):
         },
     )
 
+    courses: List["Course"] = Relationship(
+        back_populates="faculty",
+        sa_relationship_kwargs={
+            "lazy": "selectin",
+        },
+    )
+
     created_by_id: UUID | None = Field(default=None, foreign_key="User.id")
     created_by: "User" = Relationship(  # noqa: F821
         sa_relationship_kwargs={
@@ -72,6 +79,10 @@ class Faculty(BaseUUIDModel, SQLModel, table=True):
     def total_departments(self):
         total=len(self.departments)
         return total
+
+    @property
+    def courses_count(self):
+        return len(self.courses)
 
     @validator("slug", pre=True, always=True)
     def set_slug(cls, value, values):

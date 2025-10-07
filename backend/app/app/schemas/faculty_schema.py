@@ -27,10 +27,20 @@ class InstitutionForFaculty(BaseModel):
         from_attributes = True
 
 
+class CourseReadForFaculty(BaseModel):
+    id: UUID
+    name: str
+    course_acronym: Optional[str]
+    class Config:
+        from_attributes = True
+
+
 class FacultyRead(FacultyBase):
     id: UUID
     departments: list[DepartmentReadForFaculty] = []
+    courses: list[CourseReadForFaculty] = []
     department_count: int = 0
+    courses_count: int = 0
     institutions: list[InstitutionForFaculty] = []
     institution_count: int = 0
 

@@ -33,10 +33,33 @@ class CRUDModule(CRUDBase[Module, ModuleCreate, ModuleUpdate]):
     ) -> Module:
         db_session = db_session or super().get_db().session
         obj_data = obj_new.model_dump(exclude_unset=True)
+        
+        # Handle courses relationship separately
+        course_ids = obj_data.pop("courses", None)
+        
         if obj_data.get("name"):
             obj_data["name"] = obj_data["name"].title()
+        
+        # Update regular fields
         for key, value in obj_data.items():
             setattr(obj_current, key, value)
+        
+        # Update courses relationship if provided
+        if course_ids is not None:
+            from sqlalchemy.orm import selectinload
+            # Load current courses
+            await db_session.refresh(obj_current, ["courses"])
+            
+            # Fetch new courses
+            new_courses = []
+            for course_id in course_ids:
+                course = await db_session.get(Course, course_id)
+                if course:
+                    new_courses.append(course)
+            
+            # Replace courses
+            obj_current.courses = new_courses
+        
         db_session.add(obj_current)
         await db_session.commit()
         await db_session.refresh(obj_current)

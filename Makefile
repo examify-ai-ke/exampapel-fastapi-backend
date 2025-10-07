@@ -75,6 +75,7 @@ init-db: ## Initialize database with sample data
 
 migrate: ## Run database migrations
 	@echo "🔄 Running Examify database migrations..."
+	docker compose -f docker-compose-dev.yml exec examify_api alembic revision --autogenerate -m "add faculty relationship to course"
 	docker compose -f docker-compose-dev.yml exec examify_api alembic upgrade head
 
 ##@ Utilities
@@ -148,3 +149,7 @@ check-env: ## Check if environment is properly set up
 backfill-slugs: ## Backfill missing slugs for existing records
 	@echo "🔄 Backfilling missing slugs..."
 	docker compose -f docker-compose-dev.yml exec examify_api python app/backfill_slugs.py
+
+backfill-faculties: ## Backfill faculty relationships for existing courses
+	@echo "🔄 Backfilling course faculties..."
+	docker compose -f docker-compose-dev.yml exec examify_api python backfill_course_faculties.py

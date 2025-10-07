@@ -54,7 +54,7 @@ class Module(BaseUUIDModel, SQLModel, table=True):
     slug: Optional[str] = Field(default=None, unique=True)
     unit_code: str = Field(default=None, unique=True)
     description: Optional[str] = Field(
-        default="An academic module/unit that forms part of the course"
+        default="A Course module/unit that forms part of the course"
     )
 
     # Relationship with courses

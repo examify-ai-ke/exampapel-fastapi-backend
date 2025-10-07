@@ -127,8 +127,8 @@ def get_current_user(required_roles: list[str] = None) -> Callable[[], IUserRead
                             detail="Token has been invalidated or logged out",
                         )
                     
-                    # Extend session on activity (optional - uncomment if needed)
-                    # await extend_session_activity(redis_client, user_id_str, access_token)
+                    # Extend session on activity
+                    await extend_session_activity(redis_client, user_id_str, access_token)
                     
             except Exception as redis_error:
                 # Log Redis errors but don't fail authentication if Redis check fails

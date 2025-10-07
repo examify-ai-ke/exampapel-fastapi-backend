@@ -35,6 +35,20 @@ class ExamPaperCreate(ExamPaperBase):
 
 # Potential Update Schema
 
+class ExamTitleUpdateNested(BaseModel):
+    id: Optional[UUID] = None
+    name: Optional[str] = None
+    description: Optional[str] = None
+
+class ExamDescriptionUpdateNested(BaseModel):
+    id: Optional[UUID] = None
+    name: Optional[str] = None
+    description: Optional[str] = None
+
+class ExamInstructionUpdateNested(BaseModel):
+    id: Optional[UUID] = None
+    name: Optional[str] = None
+
 @optional()
 class ExamPaperUpdate(BaseModel):
     title_id: Optional[UUID] = None
@@ -43,23 +57,23 @@ class ExamPaperUpdate(BaseModel):
     institution_id: Optional[UUID] = None
     exam_date: Optional[date] = None
     exam_duration: Optional[int] = None
-    # tags: Optional[str[List]] = None
     tags: Optional[List[str]] = None
     # Many-to-many relationships
-    instruction_ids: Optional[List[UUID]] =None
+    instruction_ids: Optional[List[UUID]] = None
     module_ids: Optional[List[UUID]] = None
+    # Nested objects for inline editing
+    title: Optional[ExamTitleUpdateNested] = None
+    description: Optional[ExamDescriptionUpdateNested] = None
+    instructions: Optional[List[ExamInstructionUpdateNested]] = None
 
-    # Other fields as needed
-
-    # Ensure UUIDs can be validated
     model_config = ConfigDict(json_encoders={UUID: str})
 
 
 class ModuleReadForExamPaper(BaseModel):
-    id: UUID
-    name: str
-    slug: str
-    unit_code: str
+    id: Optional[UUID] = None
+    name: Optional[str] = None
+    slug: Optional[str] = None
+    unit_code: Optional[str] = None
     class Config:
         from_attributes = True  #
 
@@ -91,7 +105,7 @@ class InstitutionReadForExamPaper(BaseModel):
 class CourseReadForExamPaper(BaseModel):
     id:UUID
     name:str
-    slug:str
+    slug:Optional[str] = None
     class Config:
         from_attributes = True  #
 
@@ -102,8 +116,8 @@ class ExamPaperRead(ExamPaperBase):
     slug: Optional[str] = None
     tags: Optional[list[str]] = []
     instructions: Optional[list[InstructionRead]] = []  # To represent the relationship
-    title: "ExamTitleReadForExamPaperRead" 
-    description: "ExamDescriptionReadForExamPaper"
+    title: Optional["ExamTitleReadForExamPaperRead"] = None
+    description: Optional["ExamDescriptionReadForExamPaper"] = None
     modules: Optional[List[ModuleReadForExamPaper]] = []
     created_by_id: UUID
     institution: InstitutionReadForExamPaper

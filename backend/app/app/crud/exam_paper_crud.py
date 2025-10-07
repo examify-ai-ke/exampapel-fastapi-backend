@@ -161,37 +161,79 @@ class CRUDExamPaper(CRUDBase[ExamPaper, ExamPaperCreate, ExamPaperUpdate]):
             else:
                 update_dict = obj_new.model_dump(exclude_unset=True)
 
-            # Handle instructions separately
+            # Handle nested title update
+            if "title" in update_dict and update_dict["title"]:
+                title_data = update_dict.pop("title")
+                if title_data.get("id"):
+                    # Update existing title
+                    title_result = await db_session.execute(
+                        select(ExamTitle).where(ExamTitle.id == title_data["id"])
+                    )
+                    title = title_result.scalar_one_or_none()
+                    if title:
+                        for key, value in title_data.items():
+                            if key != "id" and value is not None:
+                                setattr(title, key, value)
+                        db_session.add(title)
+
+            # Handle nested description update
+            if "description" in update_dict and update_dict["description"]:
+                desc_data = update_dict.pop("description")
+                if desc_data.get("id"):
+                    # Update existing description
+                    desc_result = await db_session.execute(
+                        select(ExamDescription).where(ExamDescription.id == desc_data["id"])
+                    )
+                    description = desc_result.scalar_one_or_none()
+                    if description:
+                        for key, value in desc_data.items():
+                            if key != "id" and value is not None:
+                                setattr(description, key, value)
+                        db_session.add(description)
+
+            # Handle nested instructions update
+            if "instructions" in update_dict and update_dict["instructions"]:
+                instructions_data = update_dict.pop("instructions")
+                for inst_data in instructions_data:
+                    if inst_data.get("id"):
+                        # Update existing instruction
+                        inst_result = await db_session.execute(
+                            select(ExamInstruction).where(ExamInstruction.id == inst_data["id"])
+                        )
+                        instruction = inst_result.scalar_one_or_none()
+                        if instruction:
+                            for key, value in inst_data.items():
+                                if key != "id" and value is not None:
+                                    setattr(instruction, key, value)
+                            db_session.add(instruction)
+
+            # Handle many-to-many relationships separately
             if "instruction_ids" in update_dict:
                 instruction_ids = update_dict.pop("instruction_ids")
-                module_ids = update_dict.pop("module_ids")
                 # Clear existing instructions
                 exam_paper.instructions.clear()
-                exam_paper.modules.clear()
 
                 # Fetch and add new instructions
                 if instruction_ids:
-                    # First create the select statement
                     stmt = select(ExamInstruction).filter(ExamInstruction.id.in_(instruction_ids))
-
-                    # Then execute it with the session and call all()
-                    results =await db_session.execute(stmt)
+                    results = await db_session.execute(stmt)
                     instructions = results.unique().scalars().all()
                     if len(instructions) != len(instruction_ids):
                         raise ValueError("Some instruction IDs are invalid")
-
-                    # Add new instructions
                     exam_paper.instructions.extend(instructions)
 
-                # Fetch and add new Modules
+            if "module_ids" in update_dict:
+                module_ids = update_dict.pop("module_ids")
+                # Clear existing modules
+                exam_paper.modules.clear()
+
+                # Fetch and add new modules
                 if module_ids:
                     mdl_stmt = select(Module).filter(Module.id.in_(module_ids))
                     results = await db_session.execute(mdl_stmt)
                     modules = results.unique().scalars().all()
                     if len(modules) != len(module_ids):
                         raise ValueError("Some Exam Module IDs are invalid")
-
-                    # Add new instructions
                     exam_paper.modules.extend(modules)
             # Update other attributes
             for key, value in update_dict.items():
@@ -201,7 +243,7 @@ class CRUDExamPaper(CRUDBase[ExamPaper, ExamPaperCreate, ExamPaperUpdate]):
             await db_session.commit()
             
             # Refresh the exam paper to get the updated state
-            # await db_session.refresh(exam_paper)
+            await db_session.refresh(exam_paper)
             return exam_paper
 
         except SQLAlchemyError as e:

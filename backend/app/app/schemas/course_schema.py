@@ -11,21 +11,19 @@ from pydantic import   BaseModel
 class CourseBase(BaseModel):
     name: str
     description: Optional[str] = None
-    course_acronym: str | None
+    course_acronym: Optional[str] = None
 
 
 @optional()
 class CourseUpdate(CourseBase):
-    # name: Optional[str]
-    # description: Optional[str]
-    # slug: Optional[str]
+    faculty_id: Optional[UUID] = None
     pass
 
 
 # Schema for creating a Course
 class CourseCreate(CourseBase):
     programme_id: UUID  # Required to create a course within a programme
-    
+    faculty_id: Optional[UUID] = None  # Optional faculty association
     pass
 
 
@@ -58,23 +56,58 @@ class ExamDescriptionReadForExamPaper(BaseModel):
 
 class ExamPapersReadForCourse(BaseModel):
     id:UUID
-    title:  ExamTitleRead
-    description: ExamDescriptionReadForExamPaper
+    title:  Optional[ExamTitleRead] =None
+    description: Optional[ExamDescriptionReadForExamPaper]=None
     class Config:
         from_attributes = True 
 
-class ProgrammeReadForCourse(BaseModel):
-    name:str
-    id: UUID  # ID is known after creation
-    # slug: str
+class FacultyReadForDepartment(BaseModel):
+    id: Optional[UUID]
+    name: Optional[str]
+
     class Config:
-        from_attributes = True 
+        from_attributes = True
+
+
+class InstitutionReadForFaculty(BaseModel):
+    id: UUID
+    name: str
+    slug: str
+    class Config:
+        from_attributes = True
+
+
+class FacultyReadForCourse(BaseModel):
+    id: Optional[UUID]
+    name: Optional[str]
+    institutions: Optional[list[InstitutionReadForFaculty]] = []
+    class Config:
+        from_attributes = True
+
+
+class DepartmentReadForProgrammeCourse(BaseModel):
+    id: Optional[UUID]
+    faculty: Optional[FacultyReadForDepartment]
+    class Config:
+        from_attributes = True
+
+
+class ProgrammeReadForCourse(BaseModel):
+
+    id: Optional[UUID]  # ID is known after creation
+    name: Optional[str]  = None
+    
+    class Config:
+        from_attributes = True
+
+
 # Schema for reading a Course
 class CourseRead(CourseBase):
     id: UUID
     # slug:str
     course_acronym: str | None
     programme: ProgrammeReadForCourse
+    faculty: Optional[FacultyReadForCourse] = None
     modules: Optional[list[ModuleReadForCourse]]
     exam_papers: Optional[List[ExamPapersReadForCourse]]
     image: IImageMediaRead | None

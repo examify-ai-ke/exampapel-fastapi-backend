@@ -62,6 +62,8 @@ async def get_course_list(
     """
     Gets a paginated list of courses
     """
+    from app.models.faculty_model import Faculty
+    
     query = (
         select(Course)
         .options(
@@ -71,6 +73,7 @@ async def get_course_list(
             selectinload(Course.modules).load_only(
                 Module.id, Module.name, Module.unit_code
             ),
+            selectinload(Course.faculty).selectinload(Faculty.institutions),
             selectinload(Course.image),
             selectinload(Course.created_by).load_only(
                 User.id, User.first_name, User.last_name, User.email
@@ -114,6 +117,7 @@ async def search_courses(
             selectinload(Course.modules).load_only(
                 Module.id, Module.name, Module.unit_code
             ),
+            selectinload(Course.faculty).selectinload(Faculty.institutions),
             selectinload(Course.image),
             selectinload(Course.created_by).load_only(
                 User.id, User.first_name, User.last_name, User.email
@@ -140,11 +144,10 @@ async def search_courses(
         )
     
     if institution_id:
-        query = query.join(Programme).join(ProgrammeDepartmentLink).join(
-            Department, ProgrammeDepartmentLink.department_id == Department.id
-        ).join(Faculty).join(InstitutionFacultyLink).filter(
-            InstitutionFacultyLink.institution_id == institution_id
-        )
+        # Filter by institution through course's direct faculty relationship
+        query = query.join(Faculty, Course.faculty_id == Faculty.id).join(
+            InstitutionFacultyLink
+        ).filter(InstitutionFacultyLink.institution_id == institution_id)
     
     if course_acronym:
         query = query.filter(Course.course_acronym.ilike(f"%{course_acronym}%"))
@@ -185,6 +188,8 @@ async def get_course_by_id(
     """
     Gets a course by its id
     """
+    from app.models.faculty_model import Faculty
+    
     course = await crud.course.get(
         id=course_id,
         db_session=db_session,
@@ -192,6 +197,7 @@ async def get_course_by_id(
             selectinload(Course.programme),
             selectinload(Course.modules),
             selectinload(Course.exam_papers),
+            selectinload(Course.faculty).selectinload(Faculty.institutions),
             selectinload(Course.image),
             selectinload(Course.created_by),
         ],
