@@ -352,7 +352,7 @@ async def add_department_to_faculty(
     ),
 )-> IPostResponseBase[FacultyRead]:
     """
-    Uploads a faculty hero image by id
+    Add a Department to a Faculty by IDs
 
     Required roles:
     - admin
@@ -381,3 +381,43 @@ async def add_department_to_faculty(
             appended_parent_object=faculty_db
         )
         return create_response(data=facilty_with_department)
+
+
+@router.delete("/{faculty_id}/departments/{department_id}")
+async def remove_department_from_faculty(
+    faculty_id: UUID,
+    department_id: UUID,
+    db_session: AsyncSession = Depends(deps.get_db),
+    current_user: User = Depends(
+        deps.get_current_user(required_roles=[IRoleEnum.admin, IRoleEnum.manager])
+    ),
+) -> IDeleteResponseBase[FacultyRead]:
+    """
+    Remove a Department from a Faculty (unlink only, does not delete the department)
+
+    Required roles:
+    - admin
+    - manager
+    """
+    faculty_db = await crud.faculty.get(
+        id=faculty_id,
+        db_session=db_session,
+        options=[selectinload(Faculty.departments)],
+    )
+    department_db = await crud.department.get(id=department_id, db_session=db_session)
+    
+    if not faculty_db or not department_db:
+        raise HTTPException(status_code=404, detail="Faculty or Department not found")
+
+    if department_db not in faculty_db.departments:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Department '{department_db.name}' is not associated with Faculty '{faculty_db.name}'",
+        )
+
+    faculty_db.departments.remove(department_db)
+    db_session.add(faculty_db)
+    await db_session.commit()
+    await db_session.refresh(faculty_db)
+
+    return create_response(data=faculty_db, message="Department removed from faculty successfully")

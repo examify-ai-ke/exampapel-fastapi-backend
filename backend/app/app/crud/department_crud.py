@@ -14,6 +14,35 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 class CRUDDepartment(CRUDBase[Department, DepartmentCreate, DepartmentUpdate]):
 
+    async def create(
+        self, *, obj_in: DepartmentCreate, created_by_id: str = None, db_session: AsyncSession | None = None
+    ) -> Department:
+        db_session = db_session or super().get_db().session
+        obj_in_data = obj_in.model_dump()
+        if obj_in_data.get("name"):
+            obj_in_data["name"] = obj_in_data["name"].title()
+        db_obj = self.model(**obj_in_data)
+        if created_by_id:
+            db_obj.created_by_id = created_by_id
+        db_session.add(db_obj)
+        await db_session.commit()
+        await db_session.refresh(db_obj)
+        return db_obj
+
+    async def update(
+        self, *, obj_new: DepartmentUpdate, obj_current: Department, db_session: AsyncSession | None = None
+    ) -> Department:
+        db_session = db_session or super().get_db().session
+        obj_data = obj_new.model_dump(exclude_unset=True)
+        if obj_data.get("name"):
+            obj_data["name"] = obj_data["name"].title()
+        for key, value in obj_data.items():
+            setattr(obj_current, key, value)
+        db_session.add(obj_current)
+        await db_session.commit()
+        await db_session.refresh(obj_current)
+        return obj_current
+
     async def get_department_by_slug(
         self, *, slug: str, db_session: AsyncSession | None = None
     ) -> Department:

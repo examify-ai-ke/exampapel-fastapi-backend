@@ -407,3 +407,43 @@ async def add_module_to_course(
             appended_parent_object=course_db
         )
         return create_response(data=course_with_module)
+
+
+@router.delete("/{course_id}/modules/{module_id}")
+async def remove_module_from_course(
+    course_id: UUID,
+    module_id: UUID,
+    db_session: AsyncSession = Depends(deps.get_db),
+    current_user: User = Depends(
+        deps.get_current_user(required_roles=[IRoleEnum.admin, IRoleEnum.manager])
+    ),
+) -> IDeleteResponseBase[CourseRead]:
+    """
+    Remove a Module from a Course (unlink only, does not delete the module)
+
+    Required roles:
+    - admin
+    - manager
+    """
+    course_db = await crud.course.get(
+        id=course_id,
+        db_session=db_session,
+        options=[selectinload(Course.modules)],
+    )
+    module_db = await crud.module.get(id=module_id, db_session=db_session)
+    
+    if not course_db or not module_db:
+        raise HTTPException(status_code=404, detail="Course or Module not found")
+
+    if module_db not in course_db.modules:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Module '{module_db.name}' is not associated with Course '{course_db.name}'",
+        )
+
+    course_db.modules.remove(module_db)
+    db_session.add(course_db)
+    await db_session.commit()
+    await db_session.refresh(course_db)
+
+    return create_response(data=course_db, message="Module removed from course successfully")

@@ -5,7 +5,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from typing import Any, Dict, List, Optional
 from app.models.image_media_model import ImageMedia
 from sqlalchemy.dialects.postgresql import TEXT
-from pydantic import EmailStr, field_validator, validator
+from pydantic import EmailStr, validator
 from app.utils.slugify_string import generate_slug
  
 from app.models.comment_model import Comment  # Add this import

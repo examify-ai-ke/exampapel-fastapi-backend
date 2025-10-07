@@ -7,7 +7,7 @@ import enum
 from typing import List, Optional
 from app.models.image_media_model import ImageMedia
 from app.utils.slugify_string import generate_slug
-from pydantic import field_validator, validator
+from pydantic import validator
 
 
 # Department model with ForeignKey to Faculty
@@ -47,8 +47,10 @@ class Department(BaseUUIDModel, SQLModel, table=True):
         }
     )
 
-    @validator("slug")
+    @validator("slug", pre=True, always=True)
     def set_slug(cls, value, values):
+        if value:
+            return value
         name = values.get("name", "")
         return generate_slug(name)
 

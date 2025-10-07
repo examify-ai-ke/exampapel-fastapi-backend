@@ -18,7 +18,7 @@ import enum
 from typing import List, Optional, TYPE_CHECKING
 from app.models.image_media_model import ImageMedia
 from sqlalchemy.dialects.postgresql import JSONB
-from pydantic import EmailStr, field_validator, validator
+from pydantic import EmailStr, validator
 from app.utils.slugify_string import generate_slug
 from fastapi_cache.decorator import cache
 
@@ -173,11 +173,12 @@ class Institution(BaseUUIDModel, InstitutionBase, table=True):
         Index("idx_institution_tags", "tags", postgresql_using="gin"),
     )
 
-    @field_validator("slug")
-    @classmethod
-    def set_slug(cls, v: str | None, info) -> str:
-        name = info.data.get("name", "")
-        return v or generate_slug(name)
+    @validator("slug", pre=True, always=True)
+    def set_slug(cls, v, values):
+        if v:
+            return v
+        name = values.get("name", "")
+        return generate_slug(name)
 
     @property
     def exams_count(self):

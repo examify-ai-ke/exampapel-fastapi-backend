@@ -5,7 +5,7 @@ from uuid import UUID
 
 from typing import List, Optional
 from app.models.image_media_model import ImageMedia
-from pydantic import EmailStr, field_validator, validator
+from pydantic import EmailStr, validator
 from app.utils.slugify_string import generate_slug
 
 # Define ENUM for programme types
@@ -42,7 +42,7 @@ class ProgrammeBase(SQLModel):
         sa_column=Column(Enum(ProgrammeTypes), nullable=False, unique=True),
     )
     description: Optional[str] = Field(
-        default="A specific type of undergraduate program, typically lasting 3–4 years (e.g., Bachelor of Arts, Bachelor of Science)"
+        default="A specific type of university/College program (e.g., Bachelors, Masters. etc)"
     )
 
 
@@ -94,3 +94,7 @@ class Programme(BaseUUIDModel, ProgrammeBase, table=True):
     @property
     def courses_count(self):
         return len(self.courses)
+
+    @property
+    def exam_papers_count(self):
+        return sum(len(course.exam_papers) for course in self.courses)

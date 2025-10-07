@@ -29,10 +29,11 @@ class DepartmentReadForProgrammeRead(BaseModel):
 class ProgrammeRead(ProgrammeBase):
     id: UUID  # ID is known after creation
     # slug: str
-    departments: list[DepartmentReadForProgrammeRead] | None = []
-    courses: list[CourseRead] | None = []
+    departments: Optional[list[DepartmentReadForProgrammeRead]] | None = []
+    courses: Optional[list[CourseRead]]  = []
     departments_count: int | None = 0
     courses_count: int | None = 0
+    exam_papers_count: int | None = 0
 
     class Config:
         from_attributes = True  # This allows the schema to work with ORM objects

@@ -50,7 +50,7 @@ router = APIRouter()
 
 
 @router.get("")
-@cache(expire=300)
+# @cache(expire=300)
 async def get_programme_list(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1),
@@ -75,7 +75,7 @@ async def get_programme_list(
 
 
 @router.get("/search")
-@cache(expire=180)
+# @cache(expire=180)
 async def search_programmes(
     q: str = Query(default=None, description="Search query for programmes"),
     department_id: UUID = Query(default=None, description="Filter by department ID"),
@@ -141,7 +141,7 @@ async def get_programme_list_order_by_created_at(
 
 
 @router.get("/get_by_id/{programme_id}")
-@cache(expire=600)
+# @cache(expire=600)
 async def get_programme_by_id(
     programme_id: UUID,
     db_session: AsyncSession = Depends(deps.get_db),

@@ -16,7 +16,7 @@ from uuid import UUID
 from typing import List, Optional
 from app.models.image_media_model import ImageMedia
 from app.utils.slugify_string import generate_slug
-from pydantic import  field_validator, validator
+from pydantic import validator
 from slugify import slugify
 
 # Updated Faculty model to reflect the connection to InstitutionFaculty

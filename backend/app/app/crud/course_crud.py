@@ -15,6 +15,35 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 class CRUDCourse(CRUDBase[Course, CourseCreate, CourseUpdate]):
 
+    async def create(
+        self, *, obj_in: CourseCreate, created_by_id: str = None, db_session: AsyncSession | None = None
+    ) -> Course:
+        db_session = db_session or super().get_db().session
+        obj_in_data = obj_in.model_dump()
+        if obj_in_data.get("name"):
+            obj_in_data["name"] = obj_in_data["name"].title()
+        db_obj = self.model(**obj_in_data)
+        if created_by_id:
+            db_obj.created_by_id = created_by_id
+        db_session.add(db_obj)
+        await db_session.commit()
+        await db_session.refresh(db_obj)
+        return db_obj
+
+    async def update(
+        self, *, obj_new: CourseUpdate, obj_current: Course, db_session: AsyncSession | None = None
+    ) -> Course:
+        db_session = db_session or super().get_db().session
+        obj_data = obj_new.model_dump(exclude_unset=True)
+        if obj_data.get("name"):
+            obj_data["name"] = obj_data["name"].title()
+        for key, value in obj_data.items():
+            setattr(obj_current, key, value)
+        db_session.add(obj_current)
+        await db_session.commit()
+        await db_session.refresh(obj_current)
+        return obj_current
+
     async def get_course_by_slug(
         self, *, slug: str, db_session: AsyncSession | None = None
     ) -> Course:

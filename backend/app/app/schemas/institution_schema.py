@@ -107,6 +107,7 @@ class ExamPaperReadForInstitution(ExamPaperBase):
 
 class InstitutionRead(InstitutionBase):
     id: UUID  # ID is known after creation
+    slug: str
     faculties: list[FacultyReadForInstitution] | None = []
     campuses: list[CampusRead] | None = []
     exam_papers: list[ExamPaperReadForInstitution] | None = []

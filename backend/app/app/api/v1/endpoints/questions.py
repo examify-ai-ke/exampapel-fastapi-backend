@@ -64,6 +64,7 @@ async def get_questions(
     question_set_id: Optional[UUID] = Query(default=None, description="Filter by question set ID (for main questions)"),
     parent_id: Optional[UUID] = Query(default=None, description="Filter by parent question ID (for sub-questions)"),
     exam_paper_id: Optional[UUID] = Query(default=None, description="Filter by exam paper ID (for main questions)"),
+    include_children: bool = Query(default=True, description="Include sub-questions in response (for main questions)"),
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1),
     db_session: AsyncSession = Depends(deps.get_db),
@@ -75,17 +76,31 @@ async def get_questions(
     - **question_set_id**: Filter main questions by question set
     - **parent_id**: Filter sub-questions by parent question
     - **exam_paper_id**: Filter main questions by exam paper
+    - **include_children**: Include sub-questions in response (default: True)
     """
     
-    # Build the query based on filters
-    query = select(Question).options(
+    # Build the query based on filters with academic hierarchy
+    from app.models.exam_paper_model import ExamPaper
+    from app.models.course_model import Course
+    from app.models.programme_model import Programme
+    from app.models.module_model import Module
+    from app.models.institution_model import Institution
+    
+    options = [
         selectinload(Question.question_set),
-        selectinload(Question.exam_paper),
+        selectinload(Question.exam_paper).selectinload(ExamPaper.institution),
+        selectinload(Question.exam_paper).selectinload(ExamPaper.course).selectinload(Course.programme),
+        selectinload(Question.exam_paper).selectinload(ExamPaper.modules),
         selectinload(Question.parent),
-        selectinload(Question.children).selectinload(Question.answers),
         selectinload(Question.answers),
         selectinload(Question.created_by),
-    )
+    ]
+    
+    # Conditionally load children based on include_children parameter
+    if include_children:
+        options.append(selectinload(Question.children).selectinload(Question.answers))
+    
+    query = select(Question).options(*options)
     
     # Apply type filtering
     if question_type == "main":
@@ -110,19 +125,24 @@ async def get_questions(
         order_by="question_number"
     )
     
-    return create_response(data=questions)
+    return create_response(data=questions, message=f"Children included: {include_children}")
 
 
 @router.get("/search")
 async def search_questions(
-    q: str = Query(..., description="Search query for questions"),
+    q: str = Query(default=None, description="Search query for questions"),
     question_type: QuestionType = Query(default="all", description="Filter by question type"),
     exam_paper_id: Optional[UUID] = Query(default=None, description="Filter by exam paper ID"),
     question_set_id: Optional[UUID] = Query(default=None, description="Filter by question set ID"),
+    institution_id: Optional[UUID] = Query(default=None, description="Filter by institution ID"),
+    course_id: Optional[UUID] = Query(default=None, description="Filter by course ID"),
+    module_id: Optional[UUID] = Query(default=None, description="Filter by module ID"),
+    programme_id: Optional[UUID] = Query(default=None, description="Filter by programme ID"),
     marks_min: Optional[int] = Query(default=None, description="Minimum marks"),
     marks_max: Optional[int] = Query(default=None, description="Maximum marks"),
     numbering_style: Optional[str] = Query(default=None, description="Filter by numbering style"),
     has_answers: Optional[bool] = Query(default=None, description="Filter questions with/without answers"),
+    include_children: bool = Query(default=True, description="Include sub-questions in response"),
     sort_by: str = Query(default="relevance", description="Sort by: relevance, marks, created_at"),
     sort_order: str = Query(default="desc", description="Sort order: asc, desc"),
     skip: int = Query(default=0, ge=0),
@@ -166,6 +186,8 @@ async def search_questions(
     
     # Build filter conditions
     filter_conditions = []
+    needs_exam_paper_join = institution_id or course_id or programme_id
+    needs_module_join = module_id is not None
     
     # Question type filtering
     if question_type == "main":
@@ -180,6 +202,17 @@ async def search_questions(
     
     if question_set_id:
         filter_conditions.append(Question.question_set_id == question_set_id)
+    
+    # Academic hierarchy filters (require joins)
+    if institution_id:
+        filter_conditions.append(ExamPaper.institution_id == institution_id)
+    
+    if course_id:
+        filter_conditions.append(ExamPaper.course_id == course_id)
+    
+    if programme_id:
+        from app.models.course_model import Course
+        filter_conditions.append(Course.programme_id == programme_id)
     
     if marks_min is not None:
         filter_conditions.append(Question.marks >= marks_min)
@@ -206,8 +239,13 @@ async def search_questions(
                 )
             )
     
-    # Build the complete query
-    query = select(Question).options(
+    # Build the complete query with conditional children loading
+    from app.models.course_model import Course
+    from app.models.programme_model import Programme
+    from app.models.module_model import Module
+    from app.models.institution_model import Institution
+    
+    options = [
         # Optimized loading for search results
         selectinload(Question.question_set).load_only(
             QuestionSet.id, QuestionSet.title, QuestionSet.slug
@@ -215,6 +253,9 @@ async def search_questions(
         selectinload(Question.exam_paper).load_only(
             ExamPaper.id, ExamPaper.year_of_exam
         ),
+        selectinload(Question.exam_paper).selectinload(ExamPaper.institution),
+        selectinload(Question.exam_paper).selectinload(ExamPaper.course).selectinload(Course.programme),
+        selectinload(Question.exam_paper).selectinload(ExamPaper.modules),
         selectinload(Question.parent).load_only(
             Question.id, Question.question_number, Question.slug
         ),
@@ -225,7 +266,35 @@ async def search_questions(
         selectinload(Question.answers).load_only(
             Answer.id, Answer.likes, Answer.dislikes, Answer.reviewed
         ),
-    )
+    ]
+    
+    # Conditionally load children based on include_children parameter
+    if include_children:
+        options.append(
+            selectinload(Question.children).selectinload(Question.answers).load_only(
+                Answer.id, Answer.likes, Answer.dislikes, Answer.reviewed
+            )
+        )
+    
+    # Build base query with necessary joins
+    query = select(Question).options(*options)
+    
+    # Add joins if needed for filtering
+    if needs_exam_paper_join:
+        query = query.join(ExamPaper, Question.exam_paper_id == ExamPaper.id)
+    
+    if needs_module_join:
+        from app.models.module_model import ModuleExamsLink
+        if not needs_exam_paper_join:
+            query = query.join(ExamPaper, Question.exam_paper_id == ExamPaper.id)
+        query = query.join(ModuleExamsLink, ExamPaper.id == ModuleExamsLink.exam_id)
+        filter_conditions.append(ModuleExamsLink.module_id == module_id)
+    
+    if programme_id:
+        from app.models.course_model import Course
+        if not needs_exam_paper_join:
+            query = query.join(ExamPaper, Question.exam_paper_id == ExamPaper.id)
+        query = query.join(Course, ExamPaper.course_id == Course.id)
     
     # Apply search conditions
     if search_conditions:
@@ -515,6 +584,110 @@ async def create_multiple_sub_questions(
     )
     
     return create_response(data=created_questions)
+
+
+@router.delete("/{main_question_id}/sub-questions/{sub_question_id}")
+async def remove_sub_question_from_main(
+    main_question_id: UUID,
+    sub_question_id: UUID,
+    db_session: AsyncSession = Depends(deps.get_db),
+    current_user: User = Depends(
+        deps.get_current_user(required_roles=[IRoleEnum.admin, IRoleEnum.manager])
+    ),
+) -> IDeleteResponseBase[QuestionRead]:
+    """
+    Remove a sub-question from a main question (deletes the sub-question from database)
+    
+    Required roles:
+    - admin
+    - manager
+    """
+    # Get main question with children
+    main_question = await crud.question.get(
+        id=main_question_id,
+        db_session=db_session,
+        options=[selectinload(Question.children)],
+    )
+    
+    if not main_question:
+        raise IdNotFoundException(Question, main_question_id)
+    
+    if not main_question.is_main_question:
+        raise HTTPException(
+            status_code=400,
+            detail="The specified question is not a main question"
+        )
+    
+    # Get sub-question
+    sub_question = await crud.question.get(id=sub_question_id, db_session=db_session)
+    
+    if not sub_question:
+        raise IdNotFoundException(Question, sub_question_id)
+    
+    if sub_question.parent_id != main_question_id:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Sub-question is not associated with the specified main question"
+        )
+    
+    # Delete the sub-question (cascade will handle it)
+    await crud.question.remove(id=sub_question_id, db_session=db_session)
+    
+    # Refresh main question to get updated children list
+    await db_session.refresh(main_question)
+    
+    return create_response(
+        data=main_question,
+        message="Sub-question removed and deleted from database successfully"
+    )
+
+
+@router.delete("/{main_question_id}/question-set")
+async def unlink_main_question_from_question_set(
+    main_question_id: UUID,
+    db_session: AsyncSession = Depends(deps.get_db),
+    current_user: User = Depends(
+        deps.get_current_user(required_roles=[IRoleEnum.admin, IRoleEnum.manager])
+    ),
+) -> IPutResponseBase[QuestionRead]:
+    """
+    Unlink a main question from its question set (question becomes orphan but remains in database)
+    
+    Required roles:
+    - admin
+    - manager
+    """
+    # Get main question
+    main_question = await crud.question.get(
+        id=main_question_id,
+        db_session=db_session,
+    )
+    
+    if not main_question:
+        raise IdNotFoundException(Question, main_question_id)
+    
+    if not main_question.is_main_question:
+        raise HTTPException(
+            status_code=400,
+            detail="The specified question is not a main question"
+        )
+    
+    if not main_question.question_set_id:
+        raise HTTPException(
+            status_code=400,
+            detail="Question is not linked to any question set"
+        )
+    
+    # Unlink by setting question_set_id to NULL
+    main_question.question_set_id = None
+    db_session.add(main_question)
+    await db_session.commit()
+    await db_session.refresh(main_question)
+    
+    return create_response(
+        data=main_question,
+        message="Main question unlinked from question set successfully (question remains as orphan)"
+    )
 
 
 @router.get("/stats")

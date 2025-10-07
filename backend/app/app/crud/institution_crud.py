@@ -125,7 +125,7 @@ class CRUDInstitution(CRUDBase[Institution, InstitutionCreate, InstitutionUpdate
         db_obj = self.model(**obj_in_data)
         if created_by_id:
             db_obj.created_by_id = created_by_id
-
+        db_obj["name"] = db_obj["name"].title()
         # If address data is provided, create address
         if address_data:
             address_obj = Address(**address_data.model_dump())
@@ -161,6 +161,7 @@ class CRUDInstitution(CRUDBase[Institution, InstitutionCreate, InstitutionUpdate
 
         # Update institution fields (excluding address)
         obj_data = obj_new.model_dump(exclude={"address"}, exclude_unset=True)
+        obj_data["name"] = obj_data["name"].title()
         for key, value in obj_data.items():
             setattr(obj_current, key, value)
 
@@ -171,4 +172,3 @@ class CRUDInstitution(CRUDBase[Institution, InstitutionCreate, InstitutionUpdate
 
 
 institution = CRUDInstitution(Institution)
-

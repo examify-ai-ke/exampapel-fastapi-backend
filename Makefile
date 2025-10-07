@@ -143,3 +143,8 @@ check-env: ## Check if environment is properly set up
 	@test -f .env && echo "✅ .env file exists" || echo "⚠️  .env file missing"
 	@echo "🗄️  Examify containers:"
 	@docker ps | grep -E "(examify)" && echo "✅ Examify containers running" || echo "⚠️  Examify containers not running - use 'make run-bg'"
+
+
+backfill-slugs: ## Backfill missing slugs for existing records
+	@echo "🔄 Backfilling missing slugs..."
+	docker compose -f docker-compose-dev.yml exec examify_api python app/backfill_slugs.py

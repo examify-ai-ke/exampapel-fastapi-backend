@@ -358,18 +358,36 @@ async def get_exam_paper_properties(
 
 @router.get("/get_by_created_at")
 async def get_exams_list_order_by_created_at(
-    order: IOrderEnum
-    | None = Query(
-        default=IOrderEnum.ascendent, description="It is optional. Default is ascendent"
+    order: IOrderEnum = Query(
+        default=IOrderEnum.descendent, description="Sort order: ascendent or descendent"
     ),
-    params: Params = Depends(),
-    current_user: User = Depends(deps.get_current_user()),
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=50, ge=1, le=100),
+    db_session: AsyncSession = Depends(deps.get_db),
 ) -> IGetResponsePaginated[ExamPaperRead]:
     """
-    Gets a paginated list of ExamPapers ordered by created at datetime
+    Gets a paginated list of ExamPapers ordered by created_at datetime
     """
+    query = (
+        select(ExamPaper)
+        .options(
+            selectinload(ExamPaper.course),
+            selectinload(ExamPaper.description),
+            selectinload(ExamPaper.institution),
+            selectinload(ExamPaper.title),
+            selectinload(ExamPaper.modules),
+            selectinload(ExamPaper.instructions),
+            selectinload(ExamPaper.created_by),
+        )
+    )
+    
     exampapers = await crud.exam_paper.get_multi_paginated_ordered(
-        params=params, order=order
+        db_session=db_session,
+        skip=skip,
+        limit=limit,
+        query=query,
+        order=order,
+        order_by="created_at"
     )
     return create_response(data=exampapers)
 

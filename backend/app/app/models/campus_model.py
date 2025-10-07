@@ -6,7 +6,7 @@ from typing import List, Optional, TYPE_CHECKING
 
 from app.models.image_media_model import ImageMedia
 
-from pydantic import EmailStr, field_validator, validator
+from pydantic import EmailStr, validator
 from app.utils.slugify_string import generate_slug
 
 if TYPE_CHECKING:

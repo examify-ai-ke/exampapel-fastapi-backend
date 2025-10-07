@@ -7,10 +7,10 @@ from sqlalchemy.dialects.postgresql import TEXT
 from typing import Any, ClassVar, Dict, List, Optional
 # from app.models.image_media_model import ImageMedia
 from sqlalchemy_utils import ChoiceType
-from pydantic import  field_validator, validator, model_validator
+from pydantic import validator, model_validator
 from app.utils.slugify_string import   generate_slug, generate_slug_for_question_text
 import enum
-from sqlalchemy import UniqueConstraint, event
+from sqlalchemy import UniqueConstraint
 # from sqlmodel import Field, SQLModel
 # from sqlalchemy import  JSON
 from sqlalchemy.dialects.postgresql import JSONB
@@ -207,6 +207,45 @@ class Question(BaseUUIDModel, QuestionBase, table=True):
         """Check if this is a sub-question (has parent_id)"""
         return self.parent_id is not None
     
+    @property
+    def children_count(self) -> int:
+        """Count of sub-questions"""
+        return len(self.children)
+    
+    @property
+    def answers_count(self) -> int:
+        """Count of answers for this question"""
+        return len(self.answers) if self.answers else 0
+    
+    @property
+    def total_marks(self) -> int:
+        """Total marks including all children"""
+        base_marks = self.marks or 0
+        children_marks = sum(child.marks or 0 for child in self.children)
+        return base_marks + children_marks
+    
+    @property
+    def institution(self):
+        """Get institution via exam_paper"""
+        return self.exam_paper.institution if self.exam_paper else None
+    
+    @property
+    def course(self):
+        """Get course via exam_paper"""
+        return self.exam_paper.course if self.exam_paper else None
+    
+    @property
+    def modules(self):
+        """Get modules via exam_paper"""
+        return self.exam_paper.modules if self.exam_paper else []
+    
+    @property
+    def programme(self):
+        """Get programme via exam_paper.course"""
+        if self.exam_paper and self.exam_paper.course:
+            return self.exam_paper.course.programme
+        return None
+    
     __table_args__ = (
         UniqueConstraint(
             "exam_paper_id",
@@ -215,3 +254,11 @@ class Question(BaseUUIDModel, QuestionBase, table=True):
             name="_questions_order_per_question_set_uc",
         ),
     )
+
+# Ensure exam_paper relationships are loaded for computed properties
+from sqlalchemy import event
+
+@event.listens_for(Question, "load")
+def receive_load(target, context):
+    """Ensure exam_paper is loaded when Question is loaded"""
+    pass  # Relationships are handled by selectinload in queries

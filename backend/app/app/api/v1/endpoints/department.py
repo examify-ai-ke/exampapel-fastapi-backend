@@ -363,7 +363,7 @@ async def add_programme_to_department(
     ),
 ) -> IPostResponseBase[DepartmentRead]:
     """
-    Add a Programme to a Department by id
+    Add a Programme to a Department by IDs
 
     Required roles:
     - admin
@@ -393,3 +393,43 @@ async def add_programme_to_department(
             appended_parent_object=department_db
         )
         return create_response(data=department_with_programme)
+
+
+@router.delete("/{department_id}/programmes/{programme_id}")
+async def remove_programme_from_department(
+    department_id: UUID,
+    programme_id: UUID,
+    db_session: AsyncSession = Depends(deps.get_db),
+    current_user: User = Depends(
+        deps.get_current_user(required_roles=[IRoleEnum.admin, IRoleEnum.manager])
+    ),
+) -> IDeleteResponseBase[DepartmentRead]:
+    """
+    Remove a Programme from a Department (unlink only, does not delete the programme)
+
+    Required roles:
+    - admin
+    - manager
+    """
+    department_db = await crud.department.get(
+        id=department_id,
+        db_session=db_session,
+        options=[selectinload(Department.programmes)],
+    )
+    programme_db = await crud.programme.get(id=programme_id, db_session=db_session)
+    
+    if not department_db or not programme_db:
+        raise HTTPException(status_code=404, detail="Department or Programme not found")
+
+    if programme_db not in department_db.programmes:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Programme '{programme_db.name.value}' is not associated with Department '{department_db.name}'",
+        )
+
+    department_db.programmes.remove(programme_db)
+    db_session.add(department_db)
+    await db_session.commit()
+    await db_session.refresh(department_db)
+
+    return create_response(data=department_db, message="Programme removed from department successfully")

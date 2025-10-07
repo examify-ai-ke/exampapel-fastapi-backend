@@ -7,7 +7,8 @@ import enum
 from typing import List, Optional
 # from app.models.image_media_model import ImageMedia
 from app.models.module_model import ModuleExamsLink
-from pydantic import  field_validator, validator 
+from pydantic import validator
+from app.utils.slugify_string import generate_slug
 from app.utils.slugify_string import generate_slug
 # from datetime import date
 from datetime import datetime, date
@@ -174,15 +175,13 @@ class ExamPaper(BaseUUIDModel,ExamPaperBase, table=True):
             "primaryjoin": "ExamPaper.institution_id==Institution.id",
         },
     )
-    # One-to_many
+    # Many-to-many
     question_sets: List["QuestionSet"] = Relationship(
         back_populates="exam_papers",
         link_model=ExamPaperQuestionLink,
         sa_relationship_kwargs={
             "lazy": "selectin",
-            "cascade": "all, delete-orphan",
-            "single_parent": True,  # This allows delete-orphan to work
-            "order_by": "QuestionSet.title.asc()",  # Sort question_sets by slug in ascending order
+            "order_by": "QuestionSet.title.asc()",
         },
     )
 
@@ -200,38 +199,45 @@ class ExamPaper(BaseUUIDModel,ExamPaperBase, table=True):
     modules: List["Module"] = Relationship(
         link_model=ModuleExamsLink,
         back_populates="exam_papers",
-        sa_relationship_kwargs={
-            "lazy": "selectin",
-            "cascade": "all, delete-orphan",
-            "single_parent": True,
-        },
+        sa_relationship_kwargs={"lazy": "selectin"},
     )
 
     # Hash value field
     hash_code: Optional[str] = Field(nullable=False, unique=True, default=None)
+    slug: Optional[str] = Field(default=None, unique=False)
+    # identifying_name: Optional[str] = Field(default=None, unique=False)
 
     @property
     def identifying_name(self) -> str:
         """
         Generate a unique identifying name for the exam paper based on its attributes.
         """
-        title_name = self.title.name if self.title else "Unnamed Exam"
-        year = self.year_of_exam if self.year_of_exam else "Unknown Year"
-        exam_date = self.exam_date.strftime("%Y-%m-%d") if self.exam_date else "No Date"
-        course_name = self.course.name if self.course else "No Course"
+        title_name = self.title.name if self.title else "No-Title"
+        year = self.year_of_exam if self.year_of_exam else "Unknown-Year"
+        course_name = self.course.name if self.course else "No-Course"
+        exam_date = self.exam_date.strftime("%Y-%m-%d") if self.exam_date else "no-date"
         institution_name = (
-            self.institution.name if self.institution else "No Institution"
+            self.institution.name if self.institution else "No-Institution"
         )
+        # hash_part = self.calculate_hash[:6]
 
         # Combine attributes to create a unique identifying name
-        return (
-            f"{title_name}-{year}-{course_name}-{institution_name}"
-        )
+        return f"{title_name}-{year}-{course_name}-{institution_name}+{exam_date}"
+
+    # def generate_identifying_name_with_hash(self) -> str:
+    #     """
+    #     Generate identifying name with hash and exam date for extra uniqueness.
+    #     """
+    #     base_name = self.generate_identifying_name()
+    #     hash_part = self.calculate_hash[:8]  # First 8 chars of hash
+    #     exam_date = self.exam_date.strftime("%Y-%m-%d") if self.exam_date else "no-date"
+    #     return f"{base_name}-{hash_part}-{exam_date}"
 
     @property
     def calculate_hash(self):
+        base_name = self.identifying_name
         input_string = (
-            f"{self.title_id}-{self.year_of_exam}-{self.institution_id}-{self.description_id}-{str(self.exam_date.strftime('%Y-%m-%d'))}-{str(self.exam_duration)}-{''.join(str(m.name) for m in self.modules)}-{''.join(str(i.name) for i in self.instructions)}-{self.identifying_name}"
+            f"{self.title_id}-{self.year_of_exam}-{self.institution_id}-{self.description_id}-{str(self.exam_date.strftime('%Y-%m-%d'))}-{str(self.exam_duration)}-{''.join(str(m.name) for m in self.modules)}-{''.join(str(i.name) for i in self.instructions)}-{base_name}"
         ) 
 
         # Add more fields as needed
@@ -240,10 +246,21 @@ class ExamPaper(BaseUUIDModel,ExamPaperBase, table=True):
         hash_value = hash_object.hexdigest()
         # print(hash_value)
         return hash_value
-    
+
     @property
     def hash_code(self):
         return self.calculate_hash
+
+    @validator("slug", pre=True, always=True)
+    def set_slug(cls, value, values):
+        if value:
+            return value
+        # Generate slug from identifying_name if available
+        _name = values.get("identifying_name")
+        if _name:
+            return generate_slug(_name)
+        return None
+
 
 # -----------------------------------------------------------------------
 # Instruction model

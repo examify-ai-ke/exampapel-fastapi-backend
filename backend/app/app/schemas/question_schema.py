@@ -73,6 +73,62 @@ class MainQuestionUpdate(QuestionBase):
 class SubQuestionUpdate(QuestionBase):
     parent_id: Optional[UUID] = None
 
+# Minimal schemas for nested relationships
+class QuestionSetReadMinimal(BaseModel):
+    id: UUID
+    title: Optional[str] = None
+    slug: Optional[str] = None
+    
+    class Config:
+        from_attributes = True
+
+class InstitutionReadMinimal(BaseModel):
+    id: UUID
+    name: Optional[str] = None
+    slug: Optional[str] = None
+    
+    class Config:
+        from_attributes = True
+
+class CourseReadMinimal(BaseModel):
+    id: UUID
+    name: Optional[str] = None
+    course_acronym: Optional[str] = None
+    
+    class Config:
+        from_attributes = True
+
+class ModuleReadMinimal(BaseModel):
+    id: UUID
+    name: Optional[str] = None
+    unit_code: Optional[str] = None
+    
+    class Config:
+        from_attributes = True
+
+class ProgrammeReadMinimal(BaseModel):
+    id: UUID
+    name: Optional[str] = None
+    
+    class Config:
+        from_attributes = True
+
+class ExamPaperReadMinimal(BaseModel):
+    id: UUID
+    year_of_exam: Optional[str] = None
+    
+    class Config:
+        from_attributes = True
+
+class UserReadMinimal(BaseModel):
+    id: UUID
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    email: Optional[str] = None
+    
+    class Config:
+        from_attributes = True
+
 # Main Question Read schema
 class QuestionRead(QuestionBase):
     id: UUID
@@ -87,13 +143,27 @@ class QuestionRead(QuestionBase):
     # For sub-questions
     parent_id: Optional[UUID] = None
     
-    # Relationships
+    # Direct relationships
     children: Optional[List["QuestionRead"]] = []  # Sub-questions
     answers: Optional[List[AnswerReadForQuestion]] = []
+    question_set: Optional[QuestionSetReadMinimal] = None
+    exam_paper: Optional[ExamPaperReadMinimal] = None
+    created_by: Optional[UserReadMinimal] = None
+    
+    # Academic hierarchy (via exam_paper)
+    institution: Optional[InstitutionReadMinimal] = None
+    course: Optional[CourseReadMinimal] = None
+    modules: Optional[List[ModuleReadMinimal]] = []
+    programme: Optional[ProgrammeReadMinimal] = None
+    
+    # Counts (computed from model)
+    children_count: Optional[int] = 0
+    answers_count: Optional[int] = 0
+    total_marks: Optional[int] = 0
     
     # Helper properties (computed from model)
-    is_main_question: Optional[bool]=False
-    is_sub_question:  Optional[bool]=False
+    is_main_question: Optional[bool] = False
+    is_sub_question: Optional[bool] = False
 
     class Config:
         from_attributes = True
