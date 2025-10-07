@@ -222,7 +222,7 @@ class ExamPaper(BaseUUIDModel,ExamPaperBase, table=True):
         # hash_part = self.calculate_hash[:6]
 
         # Combine attributes to create a unique identifying name
-        return f"{title_name}|{year}|{course_name}|{institution_name}|{exam_date}"
+        return f"{title_name}|{course_name}|{institution_name}|{exam_date}"
 
     # def generate_identifying_name_with_hash(self) -> str:
     #     """

@@ -529,9 +529,28 @@ async def update_exam_paper(
         exam_paper_id=exampaper_id, obj_new=exampaper_new, db_session=db_session
     )
 
-  
+    # Reload with all relationships to prevent MissingGreenlet errors
+    options = [
+        selectinload(ExamPaper.course),
+        selectinload(ExamPaper.description),
+        selectinload(ExamPaper.institution),
+        selectinload(ExamPaper.title),
+        selectinload(ExamPaper.modules),
+        selectinload(ExamPaper.instructions),
+        selectinload(ExamPaper.created_by),
+        selectinload(ExamPaper.question_sets)
+        .selectinload(QuestionSet.questions.and_(Question.question_set_id.is_not(None)))
+        .selectinload(Question.children),
+        selectinload(ExamPaper.question_sets)
+        .selectinload(QuestionSet.questions.and_(Question.question_set_id.is_not(None)))
+        .selectinload(Question.answers),
+    ]
+    
+    exam_full = await crud.exam_paper.get(
+        id=exam_updated.id, db_session=db_session, options=options
+    )
 
-    return create_response(data=exam_updated)
+    return create_response(data=exam_full)
 
 
 @router.delete("/{exampaper_id}")
@@ -643,6 +662,97 @@ async def remove_question_set_from_exam_paper(
     await db_session.commit()
 
     # Fetch the updated ExamPaper to return in the response
+    updated_exam_paper = await crud.exam_paper.get(id=exampaper_id, db_session=db_session)
+
+    return create_response(data=updated_exam_paper)
+
+
+# Associate ExamPaper with Module
+@router.post("/{exampaper_id}/modules/{module_id}")
+async def add_module_to_exam_paper(
+    exampaper_id: UUID,
+    module_id: UUID,
+    current_user: User = Depends(
+        deps.get_current_user(required_roles=[IRoleEnum.admin, IRoleEnum.manager])
+    ),
+    db_session: AsyncSession = Depends(deps.get_db),
+) -> IPostResponseBase[ExamPaperRead]:
+    """
+    Add a Module to an ExamPaper by IDs.
+
+    Required roles:
+    - admin
+    - manager
+    """
+    from app.models.module_model import Module
+    
+    exam_paper = await crud.exam_paper.get(id=exampaper_id, db_session=db_session)
+    if not exam_paper:
+        raise HTTPException(status_code=404, detail="ExamPaper not found")
+
+    module = await crud.module.get(id=module_id, db_session=db_session)
+    if not module:
+        raise HTTPException(status_code=404, detail="Module not found")
+
+    # Check if module is already associated
+    if module.id in [m.id for m in exam_paper.modules]:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Module '{module.name}' is already associated with this ExamPaper",
+        )
+
+    # Add the module
+    exam_paper.modules.append(module)
+    db_session.add(exam_paper)
+    await db_session.commit()
+    await db_session.refresh(exam_paper)
+
+    return create_response(data=exam_paper)
+
+
+@router.delete("/{exampaper_id}/modules/{module_id}")
+async def remove_module_from_exam_paper(
+    exampaper_id: UUID,
+    module_id: UUID,
+    current_user: User = Depends(
+        deps.get_current_user(required_roles=[IRoleEnum.admin, IRoleEnum.manager])
+    ),
+    db_session: AsyncSession = Depends(deps.get_db),
+) -> IDeleteResponseBase[ExamPaperRead]:
+    """
+    Remove a Module from an ExamPaper by IDs without deleting the module.
+
+    Required roles:
+    - admin
+    - manager
+    """
+    from app.models.module_model import Module, ModuleExamsLink
+    
+    exam_paper = await crud.exam_paper.get(id=exampaper_id, db_session=db_session)
+    if not exam_paper:
+        raise HTTPException(status_code=404, detail="ExamPaper not found")
+
+    module = await crud.module.get(id=module_id, db_session=db_session)
+    if not module:
+        raise HTTPException(status_code=404, detail="Module not found")
+
+    # Check if module is associated
+    if module.id not in [m.id for m in exam_paper.modules]:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Module '{module.name}' is not associated with this ExamPaper",
+        )
+
+    # Remove the association
+    await db_session.execute(
+        delete(ModuleExamsLink).where(
+            ModuleExamsLink.exam_id == exampaper_id,
+            ModuleExamsLink.module_id == module_id,
+        )
+    )
+    await db_session.commit()
+
+    # Reload exam paper
     updated_exam_paper = await crud.exam_paper.get(id=exampaper_id, db_session=db_session)
 
     return create_response(data=updated_exam_paper)

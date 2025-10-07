@@ -67,6 +67,14 @@ class QuestionSet(BaseUUIDModel,QuestionSetBase, table=True):
         total = len(self.questions)
         return total
     
+    @property
+    def exam_papers_count(self):
+        try:
+            return len(self.exam_papers) if self.exam_papers else 0
+        except:
+            # If exam_papers relationship is not loaded, return 0
+            return 0
+    
     questions_count = count_questions
 
     @validator("slug", pre=True, always=True)

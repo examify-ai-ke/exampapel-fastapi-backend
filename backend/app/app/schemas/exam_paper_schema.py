@@ -147,7 +147,7 @@ class ExamTitleRead(BaseModel):
     id: UUID
     name: str
     slug: str
-    exam_papers: Optional[List["ExamPaperReadForExamTitle"]] = None
+    # exam_papers: Optional[List["ExamPaperReadForExamTitle"]] = None
 
     class Config:
         from_attributes = True  # Allows ORM-based data to be converted to Pydantic
@@ -191,7 +191,7 @@ class ExamDescriptionRead(BaseModel):
     id: UUID
     name: str
     slug: str
-    exam_papers:Optional[List[ExamPaperReadForExamTitle]]
+    # exam_papers:Optional[List[ExamPaperReadForExamTitle]]
 
     class Config:
         from_attributes = True  # Allows ORM-based data to be converted to Pydantic

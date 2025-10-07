@@ -1,3 +1,4 @@
+from typing import List
 from uuid import UUID
 from app.api.celery_task import print_hero
 from app.utils.exceptions import IdNotFoundException, NameNotFoundException
@@ -26,6 +27,7 @@ from app.models.question_model import Question, QuestionSet
 from app.models.user_model import User
 from app.schemas.common_schema import IOrderEnum
 from app.schemas.question_schema import (
+    QuestionRead,
     QuestionSetCreate,
     QuestionSetRead,
     QuestionSetUpdate,
@@ -54,23 +56,18 @@ async def get_question_set_list(
     db_session: AsyncSession = Depends(deps.get_db),
 ) -> IGetResponsePaginated[QuestionSetRead]:
     """
-    Gets a paginated list of question sets
+    Gets a paginated list of question sets with stats only (no full questions)
     """
-    # Use a more comprehensive selectinload strategy to avoid lazy loading
+    from app.models.user_model import User
+    
+    # Ultra-lightweight query - only load counts, no questions or answers
     query = (
         select(QuestionSet)
         .options(
-            selectinload(QuestionSet.exam_papers),
-            selectinload(QuestionSet.created_by),
-            selectinload(QuestionSet.questions).options(
-                selectinload(Question.answers),
-                selectinload(Question.children).options(
-                    selectinload(Question.answers),
-                    selectinload(Question.children).options(
-                        selectinload(Question.answers)
-                    )
-                )
+            selectinload(QuestionSet.created_by).load_only(
+                User.id, User.first_name, User.last_name, User.email
             )
+            # Don't load questions - use count properties instead
         )
     )
     q_sets = await crud.question_set.get_multi_paginated_ordered(
@@ -87,23 +84,17 @@ async def get_question_set_by_id(
     current_user: User = Depends(deps.get_current_user()),
 ) -> IGetResponseBase[QuestionSetRead]:
     """
-    Gets a QuestionSet by its id with all related entities.
+    Gets a QuestionSet by its id with stats only.
     """
-    # Use a more comprehensive selectinload strategy to avoid lazy loading
+    from app.models.user_model import User
+    
+    # Lightweight query - only load counts, no questions
     query = (
         select(QuestionSet)
         .where(QuestionSet.id == question_set_id)
         .options(
-            selectinload(QuestionSet.exam_papers),
-            selectinload(QuestionSet.created_by),
-            selectinload(QuestionSet.questions).options(
-                selectinload(Question.answers),
-                selectinload(Question.children).options(
-                    selectinload(Question.answers),
-                    selectinload(Question.children).options(
-                        selectinload(Question.answers)
-                    )
-                )
+            selectinload(QuestionSet.created_by).load_only(
+                User.id, User.first_name, User.last_name, User.email
             )
         )
     )
@@ -123,22 +114,43 @@ async def get_questions_by_question_set(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1),
     db_session: AsyncSession = Depends(deps.get_db),
-) -> IGetResponsePaginated[Question]:
+) -> IGetResponsePaginated[QuestionRead]:
     """
     Gets all main questions for a specific question set
     """
+    from app.schemas.question_schema import QuestionRead
+    from app.models.user_model import User
+    
     # Verify question set exists
     question_set = await crud.question_set.get(id=question_set_id, db_session=db_session)
     if not question_set:
         raise IdNotFoundException(QuestionSet, question_set_id)
 
-    # Get main questions for this question set
-    main_questions = await crud.question.get_questions_by_type(
-        question_type="main",
-        question_set_id=question_set_id,
+    # Build optimized query for main questions
+    query = (
+        select(Question)
+        .where(
+            Question.question_set_id == question_set_id,
+            Question.parent_id.is_(None)  # Main questions only
+        )
+        .options(
+            selectinload(Question.question_set),
+            selectinload(Question.exam_paper),
+            selectinload(Question.created_by).load_only(
+                User.id, User.first_name, User.last_name, User.email
+            ),
+            selectinload(Question.answers),
+            selectinload(Question.children).selectinload(Question.answers)
+        )
+        .order_by(Question.question_number)
+    )
+    
+    # Get paginated results
+    main_questions = await crud.question.get_multi_paginated_ordered(
+        db_session=db_session,
         skip=skip,
         limit=limit,
-        db_session=db_session
+        query=query
     )
     
     return create_response(data=main_questions)
@@ -212,3 +224,50 @@ async def remove_question_set(
         raise IdNotFoundException(QuestionSet, question_set_id)
     quiz = await crud.question_set.remove(id=question_set_id, db_session=db_session)
     return create_response(data=quiz)
+
+@router.get("/by-exam-paper/{exam_paper_id}")
+async def get_question_sets_by_exam_paper(
+    exam_paper_id: UUID,
+    db_session: AsyncSession = Depends(deps.get_db),
+) -> IGetResponseBase[List[QuestionSetRead]]:
+    """
+    Gets all QuestionSets that belong to a specific exam paper with questions count
+    """
+    from app.models.user_model import User
+    from app.models.exam_paper_model import ExamPaper
+    
+    # Verify exam paper exists
+    exam_paper = await crud.exam_paper.get(id=exam_paper_id, db_session=db_session)
+    if not exam_paper:
+        raise IdNotFoundException(ExamPaper, exam_paper_id)
+    
+    # Get distinct question set IDs first
+    question_set_ids_query = (
+        select(QuestionSet.id)
+        .join(Question, QuestionSet.id == Question.question_set_id)
+        .where(Question.exam_paper_id == exam_paper_id)
+        .distinct()
+    )
+    
+    result = await db_session.execute(question_set_ids_query)
+    question_set_ids = [row[0] for row in result.all()]
+    
+    if not question_set_ids:
+        return create_response(data=[])
+    
+    # Now get the full question sets
+    query = (
+        select(QuestionSet)
+        .where(QuestionSet.id.in_(question_set_ids))
+        .options(
+            selectinload(QuestionSet.created_by).load_only(
+                User.id, User.first_name, User.last_name, User.email
+            ),
+            selectinload(QuestionSet.questions)
+        )
+    )
+    
+    result = await db_session.execute(query)
+    question_sets = result.unique().scalars().all()
+    
+    return create_response(data=question_sets)

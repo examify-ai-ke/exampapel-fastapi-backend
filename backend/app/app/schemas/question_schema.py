@@ -211,8 +211,8 @@ class QuestionSetUpdate(QuestionSetBase):
 class QuestionSetRead(QuestionSetBase):
     id: UUID
     slug: Optional[str] = None
-    questions: Optional[List[QuestionReadForQuestionSet]] = []  # Main questions only
     questions_count: Optional[int] = 0
+    exam_papers_count: Optional[int] = 0
     # created_at: datetime
     
     class Config:

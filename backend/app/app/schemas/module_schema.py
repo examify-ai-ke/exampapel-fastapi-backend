@@ -49,6 +49,7 @@ class ExamPaperReadForModule(ExamPaperBase):
     id: UUID
     tags: Optional[List]
     title: Optional[ExamTitleReadForExamPaperRead] # Nested relationship
+    identifying_name: str
     class Config:
         from_attributes = True  # Allows ORM-based data to be converted to Pydantic
 
