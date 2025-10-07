@@ -432,16 +432,40 @@ async def get_exam_paper_by_id(
 @router.get("/get_by_slug/{exampaper_slug}")
 async def get_exam_paper_by_slug(
     exampaper_slug: str,
-    # current_user: User = Depends(deps.get_current_user()),
+    db_session: AsyncSession = Depends(deps.get_db),
 ) -> IGetResponseBase[ExamPaperRead]:
     """
-    Gets a ExamPaper by slug
+    Gets a ExamPaper by slug with all related data
     """
-    exampaper = await crud.exam_paper.get_exam_paper_by_slug(slug=exampaper_slug)
+    exampaper = await crud.exam_paper.get_exam_paper_by_slug(
+        slug=exampaper_slug, db_session=db_session
+    )
     if not exampaper:
         raise NameNotFoundException(ExamPaper, exampaper_slug)
 
-    return create_response(data=exampaper)
+    # Load all relationships to match the schema
+    options = [
+        selectinload(ExamPaper.course),
+        selectinload(ExamPaper.description),
+        selectinload(ExamPaper.institution),
+        selectinload(ExamPaper.title),
+        selectinload(ExamPaper.modules),
+        selectinload(ExamPaper.instructions),
+        selectinload(ExamPaper.created_by),
+        selectinload(ExamPaper.question_sets)
+        .selectinload(QuestionSet.questions.and_(Question.question_set_id.is_not(None)))
+        .selectinload(Question.children),
+        selectinload(ExamPaper.question_sets)
+        .selectinload(QuestionSet.questions.and_(Question.question_set_id.is_not(None)))
+        .selectinload(Question.answers),
+    ]
+    
+    # Reload with all relationships
+    exampaper_full = await crud.exam_paper.get(
+        id=exampaper.id, db_session=db_session, options=options
+    )
+
+    return create_response(data=exampaper_full)
 
 
 @router.post("")
