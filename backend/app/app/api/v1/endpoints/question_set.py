@@ -30,6 +30,7 @@ from app.schemas.question_schema import (
     QuestionRead,
     QuestionSetCreate,
     QuestionSetRead,
+    QuestionSetReadWithQuestions,
     QuestionSetUpdate,
 )
 from app.schemas.response_schema import (
@@ -229,45 +230,32 @@ async def remove_question_set(
 async def get_question_sets_by_exam_paper(
     exam_paper_id: UUID,
     db_session: AsyncSession = Depends(deps.get_db),
-) -> IGetResponseBase[List[QuestionSetRead]]:
+) -> IGetResponseBase[List[QuestionSetReadWithQuestions]]:
     """
-    Gets all QuestionSets that belong to a specific exam paper with questions count
+    Gets all QuestionSets that belong to a specific exam paper with main and sub-questions
     """
     from app.models.user_model import User
     from app.models.exam_paper_model import ExamPaper
     
-    # Verify exam paper exists
-    exam_paper = await crud.exam_paper.get(id=exam_paper_id, db_session=db_session)
+    # Get exam paper with its question sets and all questions
+    exam_paper = await crud.exam_paper.get(
+        id=exam_paper_id,
+        db_session=db_session,
+        options=[
+            selectinload(ExamPaper.question_sets).options(
+                selectinload(QuestionSet.created_by).load_only(
+                    User.id, User.first_name, User.last_name, User.email
+                ),
+                selectinload(QuestionSet.questions).options(
+                    selectinload(Question.answers),
+                    selectinload(Question.children).selectinload(Question.answers)
+                )
+            )
+        ]
+    )
+    
     if not exam_paper:
         raise IdNotFoundException(ExamPaper, exam_paper_id)
     
-    # Get distinct question set IDs first
-    question_set_ids_query = (
-        select(QuestionSet.id)
-        .join(Question, QuestionSet.id == Question.question_set_id)
-        .where(Question.exam_paper_id == exam_paper_id)
-        .distinct()
-    )
-    
-    result = await db_session.execute(question_set_ids_query)
-    question_set_ids = [row[0] for row in result.all()]
-    
-    if not question_set_ids:
-        return create_response(data=[])
-    
-    # Now get the full question sets
-    query = (
-        select(QuestionSet)
-        .where(QuestionSet.id.in_(question_set_ids))
-        .options(
-            selectinload(QuestionSet.created_by).load_only(
-                User.id, User.first_name, User.last_name, User.email
-            ),
-            selectinload(QuestionSet.questions)
-        )
-    )
-    
-    result = await db_session.execute(query)
-    question_sets = result.unique().scalars().all()
-    
-    return create_response(data=question_sets)
+    # Return the question sets from the exam paper
+    return create_response(data=exam_paper.question_sets)

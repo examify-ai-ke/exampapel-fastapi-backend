@@ -219,3 +219,51 @@ class QuestionSetRead(QuestionSetBase):
     
     class Config:
         from_attributes = True
+
+class QuestionReadForQuestionSet(QuestionBase):
+    id: UUID
+    slug: Optional[str] = None
+    marks: int | None
+    created_at: datetime
+    question_set_id: Optional[UUID] = None
+    exam_paper_id: Optional[UUID] = None
+    parent_id: Optional[UUID] = None
+    children: Optional[List[AnswerReadForQuestion]] = None  # Sub-questions
+    answers: Optional[List[AnswerReadForQuestion]] = []
+    
+    class Config:
+        from_attributes = True
+
+class SubQuestionReadSimple(QuestionBase):
+    id: UUID
+    slug: Optional[str] = None
+    marks: int | None
+    created_at: datetime
+    parent_id: Optional[UUID] = None
+    answers: Optional[List[AnswerReadForQuestion]] = []
+    
+    class Config:
+        from_attributes = True
+
+class MainQuestionReadForQuestionSet(QuestionBase):
+    id: UUID
+    slug: Optional[str] = None
+    marks: int | None
+    created_at: datetime
+    question_set_id: Optional[UUID] = None
+    exam_paper_id: Optional[UUID] = None
+    children: Optional[List[SubQuestionReadSimple]] = []  # Only one level of sub-questions
+    answers: Optional[List[AnswerReadForQuestion]] = []
+    
+    class Config:
+        from_attributes = True
+
+class QuestionSetReadWithQuestions(QuestionSetBase):
+    id: UUID
+    slug: Optional[str] = None
+    questions: Optional[List[MainQuestionReadForQuestionSet]] = []
+    questions_count: Optional[int] = 0
+    exam_papers_count: Optional[int] = 0
+    
+    class Config:
+        from_attributes = True
