@@ -22,14 +22,14 @@ class CRUDInstitution(CRUDBase[Institution, InstitutionCreate, InstitutionUpdate
 
     async def get_institution_by_slug(
         self, *, slug: str, db_session: AsyncSession | None = None
-    ) -> Institution:
+    ) -> Institution | None:
         db_session = db_session or super().get_db().session
         query = (
             select(Institution)
-            .where(col(Institution.slug).ilike(f"%{slug}%"))
+            .where(Institution.slug == slug)
             .options(
-                selectinload(Institution.faculties),
-                selectinload(Institution.campuses),
+                selectinload(Institution.faculties).selectinload(Faculty.departments),
+                selectinload(Institution.campuses).selectinload(Campus.address),
                 selectinload(Institution.exam_papers),
                 selectinload(Institution.logo),
                 selectinload(Institution.created_by),
@@ -37,7 +37,7 @@ class CRUDInstitution(CRUDBase[Institution, InstitutionCreate, InstitutionUpdate
             )
         )
         result = await db_session.execute(query)
-        return result.unique().scalars().all()
+        return result.unique().scalar_one_or_none()
 
     async def get_count_of_institutions(
         self,
@@ -121,11 +121,14 @@ class CRUDInstitution(CRUDBase[Institution, InstitutionCreate, InstitutionUpdate
         # Remove address from institution data for model creation
         obj_in_data = obj_in.model_dump(exclude={"address"})
 
+        # Format name to title case
+        if obj_in_data.get("name"):
+            obj_in_data["name"] = obj_in_data["name"].title()
+        
         # Create institution
         db_obj = self.model(**obj_in_data)
         if created_by_id:
             db_obj.created_by_id = created_by_id
-        db_obj["name"] = db_obj["name"].title()
         # If address data is provided, create address
         if address_data:
             address_obj = Address(**address_data.model_dump())
@@ -161,7 +164,8 @@ class CRUDInstitution(CRUDBase[Institution, InstitutionCreate, InstitutionUpdate
 
         # Update institution fields (excluding address)
         obj_data = obj_new.model_dump(exclude={"address"}, exclude_unset=True)
-        obj_data["name"] = obj_data["name"].title()
+        if obj_data.get("name"):
+            obj_data["name"] = obj_data["name"].title()
         for key, value in obj_data.items():
             setattr(obj_current, key, value)
 

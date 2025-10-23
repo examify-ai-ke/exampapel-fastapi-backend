@@ -18,7 +18,7 @@ import enum
 from typing import List, Optional, TYPE_CHECKING
 from app.models.image_media_model import ImageMedia
 from sqlalchemy.dialects.postgresql import JSONB
-from pydantic import EmailStr, validator
+from pydantic import EmailStr, validator, computed_field
 from app.utils.slugify_string import generate_slug
 from fastapi_cache.decorator import cache
 
@@ -180,16 +180,17 @@ class Institution(BaseUUIDModel, InstitutionBase, table=True):
         name = values.get("name", "")
         return generate_slug(name)
 
+    @computed_field
     @property
-    def exams_count(self):
-        count=len(self.exam_papers)
-        return count
+    def exams_count(self) -> int:
+        return len(self.exam_papers) if self.exam_papers else 0
+    
+    @computed_field
     @property
-    def campuses_count(self):
-        count_campuses = len(self.campuses)
-        return count_campuses
+    def campuses_count(self) -> int:
+        return len(self.campuses) if self.campuses else 0
 
+    @computed_field
     @property
-    def faculties_count(self):
-        count_faculties = len(self.faculties)
-        return count_faculties
+    def faculties_count(self) -> int:
+        return len(self.faculties) if self.faculties else 0

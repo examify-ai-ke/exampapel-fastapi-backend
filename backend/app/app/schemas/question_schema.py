@@ -116,7 +116,9 @@ class ProgrammeReadMinimal(BaseModel):
 class ExamPaperReadMinimal(BaseModel):
     id: UUID
     year_of_exam: Optional[str] = None
-    
+    identifying_name: Optional[str] = None
+    slug: Optional[str] = None
+
     class Config:
         from_attributes = True
 

@@ -7,7 +7,7 @@ import enum
 from typing import List, Optional
 # from app.models.image_media_model import ImageMedia
 from app.models.module_model import ModuleExamsLink
-from pydantic import validator
+from pydantic import validator, computed_field
 from app.utils.slugify_string import generate_slug
 from app.utils.slugify_string import generate_slug
 # from datetime import date
@@ -207,6 +207,7 @@ class ExamPaper(BaseUUIDModel,ExamPaperBase, table=True):
     slug: Optional[str] = Field(default=None, unique=False)
     # identifying_name: Optional[str] = Field(default=None, unique=False)
 
+    @computed_field
     @property
     def identifying_name(self) -> str:
         """
@@ -250,6 +251,12 @@ class ExamPaper(BaseUUIDModel,ExamPaperBase, table=True):
     @property
     def hash_code(self):
         return self.calculate_hash
+
+    @computed_field
+    @property
+    def questions_count(self) -> int:
+        """Return the total count of questions in this exam paper"""
+        return len(self.questions) if self.questions else 0
 
     @validator("slug", pre=True, always=True)
     def set_slug(cls, value, values):

@@ -39,6 +39,7 @@ from app.schemas.institution_schema import (
     InstitutionCreate,
     InstitutionRead,
     InstitutionUpdate,
+    ExamPaperReadForInstitution,
 )
 from app.schemas.address_schema import (
     AddressCreate,
@@ -97,8 +98,10 @@ async def get_institution_list(
             joinedload(Institution.created_by).load_only(
                 User.id, User.first_name, User.last_name, User.email
             ),
-            # Don't load exam papers with nested questions for list view - too heavy
-            # Use count properties instead
+            # Load faculties and exam_papers for count properties (load only IDs for efficiency)
+            selectinload(Institution.faculties).load_only(Faculty.id),
+            selectinload(Institution.exam_papers).load_only(ExamPaper.id),
+            selectinload(Institution.campuses).load_only(Campus.id),
         )
     )
     # Add text search if search parameter is provided
@@ -396,9 +399,9 @@ async def get_institution_by_slug(
     institution_slug: str,
     db_session: AsyncSession = Depends(deps.get_db),
     # current_user: User = Depends(deps.get_current_user()),
-) -> IGetResponseBase[list[InstitutionRead]]:
+) -> IGetResponseBase[InstitutionRead]:
     """
-    Gets a institution by slug
+    Gets an institution by slug
     """
     # Use db_session parameter and load address relationship
     institution = await crud.institution.get_institution_by_slug(
@@ -409,6 +412,53 @@ async def get_institution_by_slug(
         raise NameNotFoundException(Institution, institution_slug)
 
     return create_response(data=institution)
+
+
+@router.get("/{institution_id}/exam-papers")
+@cache(expire=300)
+async def get_institution_exam_papers(
+    institution_id: UUID,
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=50, ge=1),
+    db_session: AsyncSession = Depends(deps.get_db),
+) -> IGetResponsePaginated[ExamPaperReadForInstitution]:
+    """
+    Gets all exam papers belonging to an institution
+    """
+    # Verify institution exists
+    institution = await crud.institution.get(id=institution_id, db_session=db_session)
+    if not institution:
+        raise IdNotFoundException(Institution, institution_id)
+    
+    # Query exam papers for this institution
+    query = (
+        select(ExamPaper)
+        .where(ExamPaper.institution_id == institution_id)
+        .options(
+            selectinload(ExamPaper.title),
+            selectinload(ExamPaper.description),
+            selectinload(ExamPaper.course),
+            selectinload(ExamPaper.modules),
+            selectinload(ExamPaper.instructions),
+            selectinload(ExamPaper.question_sets),
+            selectinload(ExamPaper.questions).load_only(Question.id),  # Load only IDs for count
+            selectinload(ExamPaper.created_by),
+        )
+        .order_by(ExamPaper.created_at.desc())
+    )
+    
+    # Execute query with pagination
+    result = await db_session.execute(query.offset(skip).limit(limit))
+    exam_papers = result.unique().scalars().all()
+    
+    # Get total count
+    count_query = select(func.count()).select_from(ExamPaper).where(ExamPaper.institution_id == institution_id)
+    total_result = await db_session.execute(count_query)
+    total = total_result.scalar()
+    
+    return create_response(
+        data={"items": exam_papers, "total": total, "page": skip // limit + 1, "size": limit}
+    )
 
 
 @router.post("")

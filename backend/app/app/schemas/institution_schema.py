@@ -90,16 +90,20 @@ class QuestionSetReadForExamPaperReadForInstitution(BaseModel):
 
 class ExamPaperReadForInstitution(ExamPaperBase):
     id: UUID
+    slug: Optional[str] = None
+    hash_code: Optional[str] = None
+    identifying_name: Optional[str] = None
     tags: Optional[list[str]] = []
     instructions: Optional[list[InstructionRead]] = []  # To represent the relationship
     title: Optional[ExamTitleReadForExamPaperRead] = None  # To represent the relationship
     description: Optional[ExamDescriptionReadForExamPaper] = None  # To represent the relationship
     modules: Optional[list[ModuleReadForExamPaper]] = []
     created_by_id: UUID
-    # institution: InstitutionReadForExamPaper
-    # hash_code: Optional[str]
-    course: Optional[CourseReadForExamPaper]
+    course: Optional[CourseReadForExamPaper] = None
     question_sets: Optional[list[QuestionSetReadForExamPaperReadForInstitution]] = []
+    questions_count: int = 0
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
 
     class Config:
         from_attributes = True  # Allows ORM-based data to be converted to Pydantic
