@@ -220,10 +220,11 @@ class ExamPaper(BaseUUIDModel,ExamPaperBase, table=True):
         institution_name = (
             self.institution.name if self.institution else "No-Institution"
         )
+        exam_description =self.description.name if self.description else "No-Description"
         # hash_part = self.calculate_hash[:6]
 
         # Combine attributes to create a unique identifying name
-        return f"{title_name}|{course_name}|{institution_name}|{exam_date}"
+        return f"{year} {exam_description} | {title_name} | {course_name} | {institution_name} | {exam_date}"
 
     # def generate_identifying_name_with_hash(self) -> str:
     #     """
