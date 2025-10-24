@@ -31,7 +31,7 @@ class QuestionSetTitleEnum(enum.Enum):
 class QuestionSetBase(SQLModel):
     title: QuestionSetTitleEnum | None = Field(
         default=QuestionSetTitleEnum.QUESTION_ONE,
-        sa_column=Column(Enum(QuestionSetTitleEnum, impl=String()), unique=True)
+        sa_column=Column(Enum(QuestionSetTitleEnum, impl=String()))
     )
 
 class QuestionSet(BaseUUIDModel,QuestionSetBase, table=True):
@@ -44,7 +44,7 @@ class QuestionSet(BaseUUIDModel,QuestionSetBase, table=True):
 
         This is the Main Question Section of the question Paper. e.g "QUESTION ONE" section
     """
-    slug: Optional[str] = Field(default=None, unique=True)
+    slug: Optional[str] = Field(default=None, unique=False)
     questions: List["Question"] = Relationship(
         back_populates="question_set",
         sa_relationship_kwargs={"lazy": "joined"}
