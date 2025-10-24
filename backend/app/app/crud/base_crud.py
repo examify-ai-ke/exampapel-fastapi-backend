@@ -351,8 +351,15 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         else:
             raise ValueError("Unsupported type for update")
 
+        # Get model's computed fields to exclude them from updates
+        computed_fields = set()
+        if hasattr(self.model, "model_computed_fields"):
+            computed_fields = set(self.model.model_computed_fields.keys())
+
         for field in update_data:
-            setattr(obj_current, field, update_data[field])
+            # Skip computed fields as they don't have setters
+            if field not in computed_fields:
+                setattr(obj_current, field, update_data[field])
 
         db_session.add(obj_current)
         await db_session.commit()

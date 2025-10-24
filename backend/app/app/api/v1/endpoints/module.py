@@ -62,11 +62,13 @@ async def get_module_list(
     """
     Gets a paginated list of modules
     """
+    from app.models.exam_paper_model import ExamPaper, ExamTitle
+    
     query = (
         select(Module)
         .options(
             selectinload(Module.courses),
-            selectinload(Module.exam_papers),
+            selectinload(Module.exam_papers).selectinload(ExamPaper.title),
             selectinload(Module.image),
             selectinload(Module.created_by),
         )
@@ -93,12 +95,13 @@ async def search_modules(
     Search modules with filtering and sorting
     """
     from app.models.module_model import CourseModuleLink
+    from app.models.exam_paper_model import ExamPaper
     
     query = (
         select(Module)
         .options(
             selectinload(Module.courses),
-            selectinload(Module.exam_papers),
+            selectinload(Module.exam_papers).selectinload(ExamPaper.title),
             selectinload(Module.image),
             selectinload(Module.created_by),
         )
@@ -163,12 +166,14 @@ async def get_module_by_id(
     """
     Gets a course module by its id
     """
+    from app.models.exam_paper_model import ExamPaper
+    
     module = await crud.module.get(
         id=module_id,
         db_session=db_session,
         options=[
             selectinload(Module.courses),
-            selectinload(Module.exam_papers),
+            selectinload(Module.exam_papers).selectinload(ExamPaper.title),
             selectinload(Module.image),
             selectinload(Module.created_by),
         ],
