@@ -96,6 +96,9 @@ class QuestionSet(BaseUUIDModel,QuestionSetBase, table=True):
 class NumberingStyleEnum(enum.Enum):
     ROMAN = "roman"
     ALPHA = "alpha"
+    NUMERICAL = "numerical"
+    # LOWERCASE_ALPHA = "lowercase_alpha"
+    # LOWERCASE_ROMAN = "lowercase_roman"
 
 
 class QuestionBase(SQLModel):
