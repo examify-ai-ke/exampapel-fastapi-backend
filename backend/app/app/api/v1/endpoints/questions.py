@@ -10,7 +10,7 @@ from app.deps import user_deps
 from app.schemas.media_schema import IMediaCreate
 from app.utils.slugify_string import generate_slug
 from fastapi import APIRouter, Depends, HTTPException, Query
-from app.utils.minio_client import MinioClient
+from app.utils.minio_client import MinioClient, S3Client
 from fastapi_pagination import Params
 from fastapi import (
     APIRouter,
@@ -688,6 +688,131 @@ async def unlink_main_question_from_question_set(
         data=main_question,
         message="Main question unlinked from question set successfully (question remains as orphan)"
     )
+
+
+@router.post("/image")
+async def upload_question_image(
+    image_file: UploadFile = File(...),
+    current_user: User = Depends(deps.get_current_user()),
+    minio_client: S3Client = Depends(deps.minio_auth),
+) -> IPostResponseBase[dict]:
+    """
+    Upload an image for use in Editor.js question content.
+    
+    This endpoint is specifically designed for Editor.js image tool integration.
+    Returns the image URL that can be embedded in question text JSON.
+    """
+    try:
+        # Validate file type
+        if not image_file.content_type or not image_file.content_type.startswith('image/'):
+            raise HTTPException(
+                status_code=400,
+                detail="File must be an image"
+            )
+        
+        # Read and process the image
+        image_data = await image_file.read()
+        image_modified = modify_image(BytesIO(image_data))
+        
+        # Upload to S3/Minio
+        data_file = minio_client.put_object(
+            file_name=image_file.filename,
+            file_data=BytesIO(image_modified.file_data),
+            content_type=image_file.content_type,
+        )
+        
+        # Return Editor.js compatible response
+        response_data = {
+            "success": 1,
+            "file": {
+                "url": data_file.url,
+                "name": image_file.filename,
+                "size": len(image_modified.file_data),
+                "width": image_modified.width,
+                "height": image_modified.height,
+                "format": image_modified.file_format
+            }
+        }
+        
+        return create_response(
+            data=response_data,
+            message="Image uploaded successfully for question content"
+        )
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to upload image: {str(e)}"
+        )
+
+
+@router.post("/image/url")
+async def upload_question_image_by_url(
+    url: str = Body(..., embed=True),
+    current_user: User = Depends(deps.get_current_user()),
+    minio_client: S3Client = Depends(deps.minio_auth),
+) -> IPostResponseBase[dict]:
+    """
+    Upload an image from URL for use in Editor.js question content.
+    
+    This endpoint fetches an image from a URL and stores it in S3/Minio.
+    Designed for Editor.js uploadByUrl functionality.
+    """
+    import httpx
+    import os
+    from urllib.parse import urlparse
+    
+    try:
+        # Validate URL
+        parsed_url = urlparse(url)
+        if not parsed_url.scheme or not parsed_url.netloc:
+            raise HTTPException(status_code=400, detail="Invalid URL")
+        
+        # Fetch image from URL
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.get(url)
+            response.raise_for_status()
+            
+            # Validate content type
+            content_type = response.headers.get('content-type', '')
+            if not content_type.startswith('image/'):
+                raise HTTPException(status_code=400, detail="URL does not point to an image")
+            
+            # Get filename from URL or generate one
+            filename = os.path.basename(parsed_url.path) or f"image.{content_type.split('/')[-1]}"
+            
+            # Process the image
+            image_modified = modify_image(BytesIO(response.content))
+            
+            # Upload to S3/Minio
+            data_file = minio_client.put_object(
+                file_name=filename,
+                file_data=BytesIO(image_modified.file_data),
+                content_type=content_type,
+            )
+            
+            # Return Editor.js compatible response
+            response_data = {
+                "success": 1,
+                "file": {
+                    "url": data_file.url,
+                    "name": filename,
+                    "size": len(image_modified.file_data),
+                    "width": image_modified.width,
+                    "height": image_modified.height,
+                    "format": image_modified.file_format
+                }
+            }
+            
+            return create_response(
+                data=response_data,
+                message="Image uploaded successfully from URL"
+            )
+            
+    except httpx.HTTPError as e:
+        raise HTTPException(status_code=400, detail=f"Failed to fetch image from URL: {str(e)}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to process image: {str(e)}")
 
 
 @router.get("/stats")
