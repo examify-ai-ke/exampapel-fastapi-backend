@@ -236,6 +236,7 @@ async def get_question_sets_by_exam_paper(
     """
     from app.models.user_model import User
     from app.models.exam_paper_model import ExamPaper
+    from app.models.answer_model import Answer
     
     # Get exam paper with its question sets and all questions
     exam_paper = await crud.exam_paper.get(
@@ -246,9 +247,12 @@ async def get_question_sets_by_exam_paper(
                 selectinload(QuestionSet.created_by).load_only(
                     User.id, User.first_name, User.last_name, User.email
                 ),
-                selectinload(QuestionSet.questions).options(
-                    selectinload(Question.answers),
-                    selectinload(Question.children).selectinload(Question.answers)
+                # Load only main questions (parent_id is None) with their answers and children
+                selectinload(QuestionSet.questions.and_(Question.parent_id.is_(None))).options(
+                    selectinload(Question.answers).selectinload(Answer.created_by),
+                    selectinload(Question.children).options(
+                        selectinload(Question.answers).selectinload(Answer.created_by)
+                    )
                 )
             )
         ]

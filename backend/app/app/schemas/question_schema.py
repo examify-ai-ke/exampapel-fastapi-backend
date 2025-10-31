@@ -23,17 +23,33 @@ class QuestionTextSchema(BaseModel):
     class Config:
         json_schema_extra = {
             "example": {
-                "time": 1742156891260,
+                "time": 1761416444650,
                 "blocks": [
                     {
-                        "id": "dCcbQeoht12",
+                        "id": "8z7KYTOioJ",
                         "data": {
-                            "text": "Write a Python function that calculates the factorial of a given number. Explain your code."
+                            "file": {
+                                "url": "https://exampapel-images-bucket2025.s3.amazonaws.com/019a1c1c-a20e-77fc-b3c8-dfd5587162b0favicon-exam.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIA6QJRQF7UB6UGBA4E%2F20251025%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20251025T160351Z&X-Amz-Expires=604800&X-Amz-SignedHeaders=host&X-Amz-Signature=4d2bc69a2d68b30da57cfd18cebae3f18150f3d0936ad566a0fb6a7b5cc32fee",
+                                "name": "favicon-exam.png",
+                                "size": 104763,
+                                "width": 265,
+                                "format": "PNG",
+                                "height": 262,
+                            },
+                            "caption": "logo-sample",
+                            "stretched": False,
+                            "withBorder": False,
+                            "withBackground": False,
                         },
+                        "type": "image",
+                    },
+                    {
+                        "id": "pp0wt2psxQ",
+                        "data": {"text": "this is a question with an image.edited"},
                         "type": "paragraph",
-                    }
+                    },
                 ],
-            }
+            },
         }
 
 # Unified Question schemas
