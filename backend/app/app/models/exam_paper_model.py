@@ -104,7 +104,7 @@ class ExamPaperBase(SQLModel):
     # year_of_exam: Optional[str] = Field(
     #     default=academic_years[-1], nullable=True  # Default to the latest academic year
     # )
-    exam_duration: int = Field(
+    exam_duration: Optional[int] = Field(
         default=120,
         nullable=True,
     )  # Time taken to sit the examination, in minutes

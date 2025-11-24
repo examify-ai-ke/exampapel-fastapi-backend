@@ -96,7 +96,7 @@ async def get_institution_list(
             User.id, User.first_name, User.last_name, User.email
         ),
         selectinload(Institution.faculties).load_only(Faculty.id),
-        selectinload(Institution.exam_papers).load_only(ExamPaper.id),
+        selectinload(Institution.exam_papers),
         selectinload(Institution.campuses).load_only(Campus.id),
     )
     # Add text search if search parameter is provided

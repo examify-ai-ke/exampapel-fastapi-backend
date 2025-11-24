@@ -1,4 +1,5 @@
-from typing import  Optional
+from datetime import datetime
+from typing import  Any, Optional
 from app.models.institution_model import InstitutionBase, InstitutionType, InstitutionCategory
 # from app.models.team_model import TeamBase
 from app.utils.partial import optional
@@ -102,8 +103,8 @@ class ExamPaperReadForInstitution(ExamPaperBase):
     course: Optional[CourseReadForExamPaper] = None
     question_sets: Optional[list[QuestionSetReadForExamPaperReadForInstitution]] = []
     questions_count: int = 0
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True  # Allows ORM-based data to be converted to Pydantic
@@ -114,14 +115,14 @@ class InstitutionRead(InstitutionBase):
     slug: str
     faculties: list[FacultyReadForInstitution] | None = []
     campuses: list[CampusRead] | None = []
-    exam_papers: list[ExamPaperReadForInstitution] | None = []
+    exam_papers: Optional[list[ExamPaperReadForInstitution]] | None = []
     exams_count: int | None = 0
     campuses_count: int | None =0
     faculties_count: int | None =0
-    # logo: IImageMediaRead | None = None
-    # address: Optional[AddressRead] = None
+    logo: IImageMediaRead | None = None
+    address: Optional[AddressRead] = None
     category: InstitutionCategory
-    # institution_type: Optional[InstitutionType] = None
+    institution_type: Optional[InstitutionType] = None
     key: Optional[str] = None
     kuccps_institution_url: Optional[str] = None
     full_profile: Optional[str] = None
