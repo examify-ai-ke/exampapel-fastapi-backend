@@ -120,9 +120,9 @@ class InstitutionBase(SQLModel):
 
 class Institution(BaseUUIDModel, InstitutionBase, table=True): 
     image_id: UUID | None = Field(default=None, foreign_key="ImageMedia.id")
-    logo: ImageMedia = Relationship(
+    logo: Optional[ImageMedia] = Relationship(
         sa_relationship_kwargs={
-            "lazy": "selectin",  # Changed from "joined" to "selectin" for better performance
+            "lazy": "selectin",
         }
     )
     created_by_id: UUID | None = Field(default=None, foreign_key="User.id", index=True)

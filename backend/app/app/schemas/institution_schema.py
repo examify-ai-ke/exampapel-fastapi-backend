@@ -119,7 +119,7 @@ class InstitutionRead(InstitutionBase):
     campuses_count: int | None =0
     faculties_count: int | None =0
     logo: IImageMediaRead | None = None
-    address: Optional[AddressRead] = None
+    # address: Optional[AddressRead] = None
     category: InstitutionCategory
     institution_type: Optional[InstitutionType] = None
     key: Optional[str] = None

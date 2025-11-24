@@ -1,9 +1,9 @@
 from app.models.image_media_model import ImageMedia, ImageMediaBase
 from app.models.media_model import Media
 from pydantic import model_validator
-from .media_schema import IMediaRead
+from .media_schema import IMediaRead, IMediaReadForInstituion
 from app.utils.partial import optional
-
+from pydantic import BaseModel
 
 # Image Media
 class IImageMediaCreate(ImageMediaBase):
@@ -16,8 +16,8 @@ class IImageMediaUpdate(ImageMediaBase):
     pass
 
 
-class IImageMediaRead(ImageMediaBase):
-    media: IMediaRead | None
+class IImageMediaRead(BaseModel):
+    media: IMediaReadForInstituion | None
 
 
 # Todo make it compatible with pydantic v2

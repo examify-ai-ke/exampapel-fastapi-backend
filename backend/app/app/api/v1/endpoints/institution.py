@@ -1,6 +1,7 @@
 from uuid import UUID
 from typing import Dict, List
 from sqlalchemy import or_, and_, func
+from app.models.image_media_model import ImageMedia
 from fastapi_cache.decorator import cache
 from app.api.celery_task import print_hero
 from app.utils.exceptions import IdNotFoundException, NameNotFoundException
@@ -67,7 +68,7 @@ router = APIRouter()
 
 
 @router.get("")
-@cache(expire=300)
+# @cache(expire=300)
 async def get_institution_list(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1),
@@ -88,21 +89,18 @@ async def get_institution_list(
     Gets a paginated list of institutions with ultra-optimized loading
     """
     # Ultra-optimized query - minimal data loading for maximum performance
-    query = (
-        select(Institution)
-        .options(
-            # Only load absolutely essential relationships
-            selectinload(Institution.logo),  # Small image data
-            selectinload(Institution.address),  # Basic address info
-            # Use joinedload for many-to-one relationships (more efficient)
-            joinedload(Institution.created_by).load_only(
-                User.id, User.first_name, User.last_name, User.email
-            ),
-            # Load faculties and exam_papers for count properties (load only IDs for efficiency)
-            selectinload(Institution.faculties).load_only(Faculty.id),
-            selectinload(Institution.exam_papers).load_only(ExamPaper.id),
-            selectinload(Institution.campuses).load_only(Campus.id),
-        )
+    query = select(Institution).options(
+        # Only load absolutely essential relationships
+        selectinload(Institution.logo),  # Small image data
+        # selectinload(Institution.address).load_only(Address.address_line1,Address.country, Address.website, Address.address_line2, Address.county),  # Basic address info
+        # Use joinedload for many-to-one relationships (more efficient)
+        joinedload(Institution.created_by).load_only(
+            User.id, User.first_name, User.last_name, User.email
+        ),
+        # Load faculties and exam_papers for count properties (load only IDs for efficiency)
+        selectinload(Institution.faculties).load_only(Faculty.id),
+        selectinload(Institution.exam_papers).load_only(ExamPaper.id),
+        selectinload(Institution.campuses).load_only(Campus.id),
     )
     # Add text search if search parameter is provided
     if search_term:
@@ -136,11 +134,12 @@ async def get_institution_list(
         db_session=db_session, skip=skip, limit=limit, query=query, order_by=order_by,
         order=order,
     )
+    # print(institutions)
     return create_response(data=institutions)
 
 
 @router.get("/search/advanced")
-@cache(expire=180)
+# @cache(expire=180)
 async def advanced_search_institutions(
     q: str = Query(..., description="Search query for institutions"),
     institution_type: InstitutionType = Query(
@@ -279,7 +278,7 @@ async def advanced_search_institutions(
 
 
 @router.get("/search/suggestions")
-@cache(expire=120)
+# @cache(expire=120)
 async def get_institution_search_suggestions(
     q: str = Query(..., min_length=2, description="Search query for suggestions"),
     limit: int = Query(default=10, ge=1, le=20),
@@ -363,7 +362,7 @@ async def get_institution_list_order_by_created_at(
 
 
 @router.get("/get_by_id/{institution_id}")
-@cache(expire=600)
+# @cache(expire=600)
 async def get_institution_by_id(
     institution_id: UUID,
     db_session: AsyncSession = Depends(deps.get_db),
@@ -394,7 +393,7 @@ async def get_institution_by_id(
 
 
 @router.get("/get_by_slug/{institution_slug}")
-@cache(expire=600)
+# @cache(expire=600)
 async def get_institution_by_slug(
     institution_slug: str,
     db_session: AsyncSession = Depends(deps.get_db),
@@ -415,7 +414,7 @@ async def get_institution_by_slug(
 
 
 @router.get("/{institution_id}/exam-papers")
-@cache(expire=300)
+# @cache(expire=300)
 async def get_institution_exam_papers(
     institution_id: UUID,
     skip: int = Query(default=0, ge=0),
