@@ -18,8 +18,11 @@ class Media(BaseUUIDModel, MediaBase, table=True):
     def link(self) -> str | None:
         if self.path is None:
             return ""
-        minio: MinioClient = api.deps.minio_auth()
-        url = minio.presigned_get_object(
-            bucket_name=settings.S3_BUCKET_NAME, object_name=self.path
-        )
-        return url
+        try:
+            minio: MinioClient = api.deps.minio_auth()
+            url = minio.presigned_get_object(
+                bucket_name=settings.S3_BUCKET_NAME, object_name=self.path
+            )
+            return url
+        except Exception:
+            return self.path

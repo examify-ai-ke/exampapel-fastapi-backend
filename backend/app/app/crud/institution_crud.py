@@ -31,7 +31,7 @@ class CRUDInstitution(CRUDBase[Institution, InstitutionCreate, InstitutionUpdate
                 selectinload(Institution.faculties).selectinload(Faculty.departments),
                 selectinload(Institution.campuses).selectinload(Campus.address),
                 selectinload(Institution.exam_papers),
-                selectinload(Institution.logo),
+                selectinload(Institution.logo).selectinload(ImageMedia.media),
                 selectinload(Institution.created_by),
                 selectinload(Institution.address),
             )

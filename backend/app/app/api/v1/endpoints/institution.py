@@ -90,14 +90,11 @@ async def get_institution_list(
     """
     # Ultra-optimized query - minimal data loading for maximum performance
     query = select(Institution).options(
-        # Only load absolutely essential relationships
-        selectinload(Institution.logo),  # Small image data
-        # selectinload(Institution.address).load_only(Address.address_line1,Address.country, Address.website, Address.address_line2, Address.county),  # Basic address info
-        # Use joinedload for many-to-one relationships (more efficient)
-        joinedload(Institution.created_by).load_only(
+        selectinload(Institution.logo),
+        selectinload(Institution.address),
+        selectinload(Institution.created_by).load_only(
             User.id, User.first_name, User.last_name, User.email
         ),
-        # Load faculties and exam_papers for count properties (load only IDs for efficiency)
         selectinload(Institution.faculties).load_only(Faculty.id),
         selectinload(Institution.exam_papers).load_only(ExamPaper.id),
         selectinload(Institution.campuses).load_only(Campus.id),

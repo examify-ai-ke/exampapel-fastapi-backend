@@ -118,10 +118,10 @@ class InstitutionRead(InstitutionBase):
     exams_count: int | None = 0
     campuses_count: int | None =0
     faculties_count: int | None =0
-    logo: IImageMediaRead | None = None
+    # logo: IImageMediaRead | None = None
     # address: Optional[AddressRead] = None
     category: InstitutionCategory
-    institution_type: Optional[InstitutionType] = None
+    # institution_type: Optional[InstitutionType] = None
     key: Optional[str] = None
     kuccps_institution_url: Optional[str] = None
     full_profile: Optional[str] = None
