@@ -197,34 +197,38 @@ async def update_answer(
     return create_response(data=answer_updated)
 
 
-@router.put("/{answer_id}/likes", response_model=IPutResponseBase[AnswerRead])
-async def update_answer_likes(
+@router.post("/{answer_id}/like", response_model=IPostResponseBase[AnswerRead])
+async def toggle_answer_like(
     answer_id: UUID,
-    likes: int = Query(ge=0, description="Number of likes"),
     current_user: User = Depends(deps.get_current_user()),
     db_session: AsyncSession = Depends(deps.get_db),
-) -> IPutResponseBase[AnswerRead]:
+) -> IPostResponseBase[AnswerRead]:
     """
-    Updates the likes count for an answer
+    Toggle like for an answer
+    - If user hasn't voted: adds a like
+    - If user already liked: removes the like
+    - If user disliked: changes to like (removes dislike, adds like)
     """
-    answer = await crud.answer.update_answer_likes(
-        answer_id=answer_id, likes=likes, db_session=db_session
+    answer = await crud.answer.toggle_answer_like(
+        answer_id=answer_id, user_id=current_user.id, db_session=db_session
     )
     return create_response(data=answer)
 
 
-@router.put("/{answer_id}/dislikes", response_model=IPutResponseBase[AnswerRead])
-async def update_answer_dislikes(
+@router.post("/{answer_id}/dislike", response_model=IPostResponseBase[AnswerRead])
+async def toggle_answer_dislike(
     answer_id: UUID,
-    dislikes: int = Query(ge=0, description="Number of dislikes"),
     current_user: User = Depends(deps.get_current_user()),
     db_session: AsyncSession = Depends(deps.get_db),
-) -> IPutResponseBase[AnswerRead]:
+) -> IPostResponseBase[AnswerRead]:
     """
-    Updates the dislikes count for an answer
+    Toggle dislike for an answer
+    - If user hasn't voted: adds a dislike
+    - If user already disliked: removes the dislike
+    - If user liked: changes to dislike (removes like, adds dislike)
     """
-    answer = await crud.answer.update_answer_dislikes(
-        answer_id=answer_id, dislikes=dislikes, db_session=db_session
+    answer = await crud.answer.toggle_answer_dislike(
+        answer_id=answer_id, user_id=current_user.id, db_session=db_session
     )
     return create_response(data=answer)
 

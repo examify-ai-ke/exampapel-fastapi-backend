@@ -184,14 +184,16 @@ class CRUDAnswer(CRUDBase[Answer, AnswerCreate, AnswerUpdate]):
         
         return reply
     
-    async def update_answer_likes(
+    async def toggle_answer_like(
         self,
         *,
         answer_id: UUID,
-        likes: int,
+        user_id: UUID,
         db_session: AsyncSession | None = None
     ) -> Answer:
-        """Update the likes count for an answer"""
+        """Toggle like for an answer - handles like/unlike and removes dislike if exists"""
+        from app.models.answer_model import AnswerVote
+        
         db_session = db_session or super().get_db().session
         
         answer = await self.get(id=answer_id, db_session=db_session)
@@ -201,21 +203,52 @@ class CRUDAnswer(CRUDBase[Answer, AnswerCreate, AnswerUpdate]):
                 detail=f"Answer with id {answer_id} not found"
             )
         
-        answer.likes = likes
+        # Check if user has already voted
+        vote_query = select(AnswerVote).where(
+            and_(
+                AnswerVote.answer_id == answer_id,
+                AnswerVote.user_id == user_id
+            )
+        )
+        vote_result = await db_session.execute(vote_query)
+        existing_vote = vote_result.scalar_one_or_none()
+        
+        if existing_vote:
+            if existing_vote.vote_type == "like":
+                # Unlike - remove the vote
+                await db_session.delete(existing_vote)
+                answer.likes = max(0, answer.likes - 1)
+            else:
+                # Change from dislike to like
+                existing_vote.vote_type = "like"
+                answer.dislikes = max(0, answer.dislikes - 1)
+                answer.likes += 1
+        else:
+            # New like
+            new_vote = AnswerVote(
+                answer_id=answer_id,
+                user_id=user_id,
+                vote_type="like"
+            )
+            db_session.add(new_vote)
+            answer.likes += 1
+        
         db_session.add(answer)
         await db_session.commit()
         await db_session.refresh(answer)
         
         return answer
     
-    async def update_answer_dislikes(
+    async def toggle_answer_dislike(
         self,
         *,
         answer_id: UUID,
-        dislikes: int,
+        user_id: UUID,
         db_session: AsyncSession | None = None
     ) -> Answer:
-        """Update the dislikes count for an answer"""
+        """Toggle dislike for an answer - handles dislike/undislike and removes like if exists"""
+        from app.models.answer_model import AnswerVote
+        
         db_session = db_session or super().get_db().session
         
         answer = await self.get(id=answer_id, db_session=db_session)
@@ -225,7 +258,36 @@ class CRUDAnswer(CRUDBase[Answer, AnswerCreate, AnswerUpdate]):
                 detail=f"Answer with id {answer_id} not found"
             )
         
-        answer.dislikes = dislikes
+        # Check if user has already voted
+        vote_query = select(AnswerVote).where(
+            and_(
+                AnswerVote.answer_id == answer_id,
+                AnswerVote.user_id == user_id
+            )
+        )
+        vote_result = await db_session.execute(vote_query)
+        existing_vote = vote_result.scalar_one_or_none()
+        
+        if existing_vote:
+            if existing_vote.vote_type == "dislike":
+                # Undislike - remove the vote
+                await db_session.delete(existing_vote)
+                answer.dislikes = max(0, answer.dislikes - 1)
+            else:
+                # Change from like to dislike
+                existing_vote.vote_type = "dislike"
+                answer.likes = max(0, answer.likes - 1)
+                answer.dislikes += 1
+        else:
+            # New dislike
+            new_vote = AnswerVote(
+                answer_id=answer_id,
+                user_id=user_id,
+                vote_type="dislike"
+            )
+            db_session.add(new_vote)
+            answer.dislikes += 1
+        
         db_session.add(answer)
         await db_session.commit()
         await db_session.refresh(answer)

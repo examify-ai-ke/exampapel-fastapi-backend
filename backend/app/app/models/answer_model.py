@@ -7,8 +7,20 @@ from app.models.image_media_model import ImageMedia
 from sqlalchemy.dialects.postgresql import TEXT
 from pydantic import EmailStr, validator
 from app.utils.slugify_string import generate_slug
+from sqlalchemy import UniqueConstraint
  
 from app.models.comment_model import Comment  # Add this import
+
+# Like/Dislike tracking table
+class AnswerVote(BaseUUIDModel, table=True):
+    """Track user votes (likes/dislikes) on answers"""
+    answer_id: UUID = Field(foreign_key="Answer.id", nullable=False)
+    user_id: UUID = Field(foreign_key="User.id", nullable=False)
+    vote_type: str = Field(nullable=False)  # "like" or "dislike"
+    
+    __table_args__ = (
+        UniqueConstraint("answer_id", "user_id", name="_answer_user_vote_uc"),
+    )
 
 class AnswerBase(SQLModel):  
     text: Optional[Dict[str, Any]] = Field(

@@ -7,8 +7,11 @@ from app.models.exam_paper_model import ExamInstruction, ExamPaperBase, ExamTitl
 from app.models.module_model import Module
 from pydantic import field_validator, ConfigDict, BaseModel
 
+from app.schemas.answer_schema import AnswerReadForQuestion
+from app.schemas.question_schema import QuestionBase, SubQuestionReadSimple
 
-from  app.schemas.question_schema import QuestionSetRead
+
+# from  app.schemas.question_schema import QuestionSetRead
 
 
 class ExamPaperCreate(ExamPaperBase):
@@ -110,6 +113,35 @@ class CourseReadForExamPaper(BaseModel):
         from_attributes = True  #
 
 
+class MainQuestionReadForQuestionSet(QuestionBase):
+    id: UUID
+    slug: Optional[str] = None
+    # marks: int | None
+    # created_at: datetime
+    # question_set_id: Optional[UUID] = None
+    # exam_paper_id: Optional[UUID] = None
+    children: Optional[List[SubQuestionReadSimple]] = (
+        []
+    )  # Only one level of sub-questions
+    # answers: Optional[List[AnswerReadForQuestion]] = []
+
+    class Config:
+        from_attributes = True
+
+
+class QuestionSetReadForExamPaperRead(BaseModel):
+    id: UUID
+    slug: Optional[str] = None
+    title: Optional[str] = None
+    questions_count: Optional[int] = 0
+    questions: Optional[List[MainQuestionReadForQuestionSet]] = []
+    # exam_papers_count: Optional[int] = 0
+    # created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
 # Schema for reading a ExamPaper
 class ExamPaperRead(ExamPaperBase):
     id: UUID
@@ -123,7 +155,7 @@ class ExamPaperRead(ExamPaperBase):
     institution: InstitutionReadForExamPaper
     # hash_code: Optional[str]
     course:Optional[CourseReadForExamPaper]
-    question_sets: Optional[List[QuestionSetRead]] = []
+    question_sets: Optional[List[QuestionSetReadForExamPaperRead]] = []
     identifying_name: Optional[str]
 
     class Config:

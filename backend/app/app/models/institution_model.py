@@ -34,6 +34,8 @@ class InstitutionCategory(enum.Enum):
     UNIVERSITY = "University"
     COLLEGE = "College"
     TVET = "TVET"
+    TVC = "TVC"
+    TTI = "TTI"
     OTHER = "Other"
 
 # Define an enumeration for institution ownership types

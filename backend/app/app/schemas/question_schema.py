@@ -230,7 +230,7 @@ class QuestionSetRead(QuestionSetBase):
     id: UUID
     slug: Optional[str] = None
     questions_count: Optional[int] = 0
-    exam_papers_count: Optional[int] = 0
+    # exam_papers_count: Optional[int] = 0
     # created_at: datetime
     
     class Config:
@@ -239,7 +239,7 @@ class QuestionSetRead(QuestionSetBase):
 class QuestionReadForQuestionSet(QuestionBase):
     id: UUID
     slug: Optional[str] = None
-    marks: int | None
+    # marks: int | None
     created_at: datetime
     question_set_id: Optional[UUID] = None
     exam_paper_id: Optional[UUID] = None
@@ -253,7 +253,7 @@ class QuestionReadForQuestionSet(QuestionBase):
 class SubQuestionReadSimple(QuestionBase):
     id: UUID
     slug: Optional[str] = None
-    marks: int | None
+    # marks: int | None
     created_at: datetime
     parent_id: Optional[UUID] = None
     answers: Optional[List[AnswerReadForQuestion]] = []
@@ -264,7 +264,7 @@ class SubQuestionReadSimple(QuestionBase):
 class MainQuestionReadForQuestionSet(QuestionBase):
     id: UUID
     slug: Optional[str] = None
-    marks: int | None
+    # marks: int | None
     created_at: datetime
     question_set_id: Optional[UUID] = None
     exam_paper_id: Optional[UUID] = None
