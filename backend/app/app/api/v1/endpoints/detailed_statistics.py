@@ -46,11 +46,7 @@ router = APIRouter()
 
 @router.get("/detailed-statistics")
 async def get_detailed_statistics(
-    
     db_session: AsyncSession = Depends(deps.get_db),
-    current_user: User = Depends(
-        deps.get_current_user(required_roles=[IRoleEnum.admin, IRoleEnum.manager])
-    ),
 ) -> IGetResponseBase[InstitutionDetailedStatistics]:
     """
     Get detailed dashboard statistics for institutions and its related entities.
@@ -71,8 +67,7 @@ async def get_detailed_statistics(
     total_faculties = await crud.faculty.get_count(
         db_session=db_session
     )
-    total_main_questions = await crud.question.count_questions_by_type(
-        question_type="main",
+    total_questions = await crud.question.get_count(
         db_session=db_session
     )
     total_users = await crud.user.get_count(
@@ -89,13 +84,12 @@ async def get_detailed_statistics(
     )
 
     statsData = InstitutionDetailedStatistics(
-        # institution_id=institution.id,
         total_institutions=total_institutions,
         total_courses=total_courses,
         total_departments=total_departments,
         total_modules=total_modules,
         total_faculties=total_faculties,
-        total_main_questions=total_main_questions,
+        total_main_questions=total_questions,
         total_users=total_users,
         total_exam_papers=total_exam_papers,
         total_answers=total_answers,
