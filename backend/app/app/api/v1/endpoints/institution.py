@@ -33,7 +33,7 @@ from fastapi import (
 from sqlmodel.ext.asyncio.session import AsyncSession
 from app import crud
 from app.api import deps
-from app.models.institution_model import Institution, InstitutionType
+from app.models.institution_model import Institution, InstitutionType, InstitutionCategory
 from app.models.user_model import User
 from app.schemas.common_schema import IOrderEnum
 from app.schemas.institution_schema import (
@@ -114,10 +114,18 @@ async def get_institution_list(
         # print("query:", query)
     # Filter by specific fields when provided
     if category:
-        query = query.filter(Institution.category == category)
+        try:
+            category_enum = InstitutionCategory(category)
+            query = query.filter(Institution.category == category_enum)
+        except ValueError:
+            pass  # Invalid category, skip filter
 
     if institution_type:
-        query = query.filter(Institution.institution_type == institution_type)
+        try:
+            institution_type_enum = InstitutionType(institution_type)
+            query = query.filter(Institution.institution_type == institution_type_enum)
+        except ValueError:
+            pass  # Invalid institution_type, skip filter
 
     if location:
         query = query.filter(Institution.location.ilike(f"%{location}%"))
