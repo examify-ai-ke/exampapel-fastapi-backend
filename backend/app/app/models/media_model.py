@@ -18,6 +18,9 @@ class Media(BaseUUIDModel, MediaBase, table=True):
     def link(self) -> str | None:
         if self.path is None:
             return ""
+        # If path is already a full URL, return it as-is
+        # if self.path.startswith("http://") or self.path.startswith("https://"):
+        #     return self.path
         try:
             minio: MinioClient = api.deps.minio_auth()
             url = minio.presigned_get_object(

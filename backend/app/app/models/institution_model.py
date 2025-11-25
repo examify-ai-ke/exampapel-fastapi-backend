@@ -33,9 +33,9 @@ if TYPE_CHECKING:
 class InstitutionCategory(enum.Enum):
     UNIVERSITY = "University"
     COLLEGE = "College"
-    TVET = "TVET"
-    TVC = "TVC"
-    TTI = "TTI"
+    TVET = "Tvet"
+    TVC = "Tvc"
+    TTI = "Tti"
     OTHER = "Other"
 
 # Define an enumeration for institution ownership types

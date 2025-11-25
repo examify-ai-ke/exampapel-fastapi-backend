@@ -17,7 +17,7 @@ class IImageMediaUpdate(ImageMediaBase):
 
 
 class IImageMediaRead(BaseModel):
-    media: IMediaReadForInstituion | None
+    media: IMediaRead | None
 
 
 # Todo make it compatible with pydantic v2
