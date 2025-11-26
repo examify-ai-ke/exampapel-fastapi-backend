@@ -9,6 +9,7 @@ from pydantic import field_validator, ConfigDict, BaseModel
 
 from app.schemas.answer_schema import AnswerReadForQuestion
 from app.schemas.question_schema import QuestionBase, SubQuestionReadSimple
+from app.schemas.image_media_schema import IImageMediaRead
 
 
 # from  app.schemas.question_schema import QuestionSetRead
@@ -102,9 +103,11 @@ class InstructionRead(BaseModel):
 class InstitutionReadForExamPaper(BaseModel):
     id:UUID
     name:str
-    
+    logo: IImageMediaRead | None = None
+
     class Config:
         from_attributes = True
+
 class CourseReadForExamPaper(BaseModel):
     id:UUID
     name:str
