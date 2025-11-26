@@ -39,6 +39,7 @@ from app.schemas.common_schema import IOrderEnum
 from app.schemas.institution_schema import (
     InstitutionCreate,
     InstitutionRead,
+    InstitutionReadSimple,
     InstitutionUpdate,
     ExamPaperReadForInstitution,
 )
@@ -161,7 +162,7 @@ async def advanced_search_institutions(
     limit: int = Query(default=20, ge=1, le=100),
     highlight: bool = Query(default=False, description="Enable search term highlighting"),
     db_session: AsyncSession = Depends(deps.get_db),
-) -> IGetResponsePaginated[InstitutionRead]:
+) -> IGetResponsePaginated:
     """
     Advanced search for institutions with comprehensive filtering and sorting.
     
@@ -239,14 +240,14 @@ async def advanced_search_institutions(
     query = (
         select(Institution)
         .options(
-            joinedload(Institution.created_by).load_only(
+            selectinload(Institution.logo),
+            selectinload(Institution.address),
+            selectinload(Institution.created_by).load_only(
                 User.id, User.first_name, User.last_name, User.email
             ),
-            selectinload(Institution.logo),
-            # Load exam papers count for sorting
-            selectinload(Institution.exam_papers).load_only(
-                ExamPaper.id, ExamPaper.year_of_exam
-            ),
+            selectinload(Institution.faculties).load_only(Faculty.id, Faculty.name),
+            selectinload(Institution.campuses).load_only(Campus.id, Campus.name),
+            selectinload(Institution.exam_papers).load_only(ExamPaper.id),
         )
     )
     

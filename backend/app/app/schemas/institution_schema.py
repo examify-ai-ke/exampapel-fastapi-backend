@@ -110,6 +110,27 @@ class ExamPaperReadForInstitution(ExamPaperBase):
         from_attributes = True  # Allows ORM-based data to be converted to Pydantic
 
 
+class InstitutionReadSimple(InstitutionBase):
+    """Simplified schema for list/search endpoints without nested relationships"""
+    id: UUID
+    slug: str
+    exams_count: int | None = 0
+    campuses_count: int | None = 0
+    faculties_count: int | None = 0
+    logo: IImageMediaRead | None = None
+    address: Optional[AddressRead] = None
+    category: InstitutionCategory
+    institution_type: Optional[InstitutionType] = None
+    key: Optional[str] = None
+    kuccps_institution_url: Optional[str] = None
+    full_profile: Optional[str] = None
+    parent_ministry: Optional[str] = None
+    tags: Optional[list[str]] = []
+    
+    class Config:
+        from_attributes = True
+
+
 class InstitutionRead(InstitutionBase):
     id: UUID  # ID is known after creation
     slug: str
