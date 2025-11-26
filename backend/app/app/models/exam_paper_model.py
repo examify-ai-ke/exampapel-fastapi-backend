@@ -138,7 +138,10 @@ class ExamPaper(BaseUUIDModel,ExamPaperBase, table=True):
     instructions: List["ExamInstruction"] = Relationship(
         link_model=InstructionExamsLink,
         back_populates="exam_papers",
-        sa_relationship_kwargs={"lazy": "selectin"},
+        sa_relationship_kwargs={
+            "lazy": "selectin",
+            "passive_deletes": True,
+        },
     )
     # Relationship
     description_id: UUID | None = Field(default=None, foreign_key="ExamDescription.id")
@@ -182,6 +185,7 @@ class ExamPaper(BaseUUIDModel,ExamPaperBase, table=True):
         sa_relationship_kwargs={
             "lazy": "selectin",
             "order_by": "QuestionSet.title.asc()",
+            "passive_deletes": True,
         },
     )
 
@@ -199,7 +203,10 @@ class ExamPaper(BaseUUIDModel,ExamPaperBase, table=True):
     modules: List["Module"] = Relationship(
         link_model=ModuleExamsLink,
         back_populates="exam_papers",
-        sa_relationship_kwargs={"lazy": "selectin"},
+        sa_relationship_kwargs={
+            "lazy": "selectin",
+            "passive_deletes": True,
+        },
     )
 
     # Hash value field - stored in database

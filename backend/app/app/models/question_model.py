@@ -178,7 +178,10 @@ class Question(BaseUUIDModel, QuestionBase, table=True):
     
     answers: List["Answer"] | None = Relationship(
         back_populates="question",
-        sa_relationship_kwargs={"lazy": "selectin"}
+        sa_relationship_kwargs={
+            "lazy": "selectin",
+            "cascade": "all, delete-orphan",
+        }
     )
     
     @validator("slug", pre=True, always=True)

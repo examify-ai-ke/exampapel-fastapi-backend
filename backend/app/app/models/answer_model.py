@@ -57,8 +57,9 @@ class Answer(BaseUUIDModel,AnswerBase, table=True):
     children: List["Answer"] = Relationship(
         back_populates="parent",
         sa_relationship_kwargs={
-            "lazy": "selectin",  # More efficient for collections than "joined"
+            "lazy": "selectin",
             "remote_side": "Answer.parent_id",
+            "cascade": "all, delete-orphan",
         },
     )
 
@@ -70,5 +71,8 @@ class Answer(BaseUUIDModel,AnswerBase, table=True):
 
     comments: List["Comment"] = Relationship(
         back_populates="answer",
-        sa_relationship_kwargs={"lazy": "selectin"},
+        sa_relationship_kwargs={
+            "lazy": "selectin",
+            "cascade": "all, delete-orphan",
+        },
     )
