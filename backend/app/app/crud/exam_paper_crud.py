@@ -312,6 +312,36 @@ class CRUDExamPaper(CRUDBase[ExamPaper, ExamPaperCreate, ExamPaperUpdate]):
         await db_session.commit()
         return {"message": "Successfully linked question set wiht exam: "+{exam_paper_id}}
 
+    async def update_exam_paper_slug(
+        self,
+        *,
+        exam_paper: ExamPaper,
+        db_session: AsyncSession | None = None,
+    ) -> ExamPaper:
+        """Update exam paper slug after relationships are loaded"""
+        from app.utils.slugify_string import generate_slug
+        
+        db_session = db_session or super().get_db().session
+        
+        # Build slug from loaded relationships
+        year = exam_paper.year_of_exam or "unknown"
+        exam_description = exam_paper.description.name if exam_paper.description else "no-desc"
+        institution_name = exam_paper.institution.name if exam_paper.institution else "no-inst"
+        course_name = exam_paper.course.name if exam_paper.course else "no-course"
+        title_name = exam_paper.title.name if exam_paper.title else "no-title"
+        exam_date = exam_paper.exam_date.strftime("%Y-%m-%d") if exam_paper.exam_date else "no-date"
+        exam_module = exam_paper.modules[0].name if exam_paper.modules else "-"
+        hash_suffix = exam_paper.hash_code[:12] if exam_paper.hash_code else "temp"
+        
+        slug_string = f"{year}-{exam_description}-{institution_name}-{course_name}-{exam_module}-{hash_suffix}"
+        exam_paper.slug = generate_slug(slug_string)
+        
+        db_session.add(exam_paper)
+        await db_session.commit()
+        await db_session.refresh(exam_paper)
+        
+        return exam_paper
+
 
 exam_paper = CRUDExamPaper(ExamPaper)
 

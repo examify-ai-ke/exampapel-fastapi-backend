@@ -501,11 +501,14 @@ async def create_exam_paper(
         obj_in=exampaper,
         related_list_object1=instructions,
         related_list_object2=modules,
-        # related_object3=course,
         items1="instructions",
         items2="modules",
         created_by_id=current_user.id,
     )
+    
+    # Update slug with relationship data
+    exampaper = await crud.exam_paper.update_exam_paper_slug(exam_paper=exampaper)
+    
     return create_response(data=exampaper)
 
 

@@ -289,14 +289,20 @@ class ExamPaper(BaseUUIDModel,ExamPaperBase, table=True):
 
     @validator("slug", pre=True, always=True)
     def set_slug(cls, value, values):
-        """Auto-generate slug from hash_code if not provided"""
+        """Auto-generate slug from exam paper attributes"""
         if value:
             return value
 
+        # Build slug from available fields
+        year = values.get("year_of_exam", "unknown")
+        exam_date = values.get("exam_date")
         hash_code = values.get("hash_code")
-        if hash_code:
-            return generate_slug(hash_code[:12])  # Use first 12 chars of hash for slug
-        return None
+        
+        exam_date_str = exam_date.strftime("%Y-%m-%d") if exam_date else "no-date"
+        hash_suffix = hash_code[:12] if hash_code else "temp"
+        
+        slug_string = f"{year}-{exam_date_str}-{hash_suffix}"
+        return generate_slug(slug_string)
 
 
 # -----------------------------------------------------------------------
