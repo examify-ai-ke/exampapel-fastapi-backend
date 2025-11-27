@@ -16,15 +16,16 @@ class Media(BaseUUIDModel, MediaBase, table=True):
     @computed_field
     @property
     def link(self) -> str | None:
+        """Generate fresh pre-signed URL every time this property is accessed"""
         if self.path is None:
             return ""
-        # If path is already a full URL, return it as-is
-        # if self.path.startswith("http://") or self.path.startswith("https://"):
-        #     return self.path
         try:
             minio: MinioClient = api.deps.minio_auth()
+            # Generate URL that expires in 24 hours (refreshed on each request)
             url = minio.presigned_get_object(
-                bucket_name=settings.S3_BUCKET_NAME, object_name=self.path
+                bucket_name=settings.S3_BUCKET_NAME, 
+                object_name=self.path,
+                expires_hours=24
             )
             return url
         except Exception:

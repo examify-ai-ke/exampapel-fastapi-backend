@@ -51,10 +51,12 @@ class MinioClient:
             self.client.make_bucket(self.bucket_name)
         return self.bucket_name
 
-    def presigned_get_object(self, bucket_name, object_name):
-        # Request URL expired after 7 days
+    def presigned_get_object(self, bucket_name, object_name, expires_hours=24):
+        # Generate fresh pre-signed URL with configurable expiration
         url = self.client.presigned_get_object(
-            bucket_name=bucket_name, object_name=object_name, expires=timedelta(days=7)
+            bucket_name=bucket_name, 
+            object_name=object_name, 
+            expires=timedelta(hours=expires_hours)
         )
         return url
 
@@ -130,14 +132,13 @@ class S3Client:
                 )
         return self.bucket_name
 
-    def presigned_get_object(self, bucket_name, object_name):
-        # Request URL expired after 7 days
+    def presigned_get_object(self, bucket_name, object_name, expires_hours=24):
+        # Generate fresh pre-signed URL with configurable expiration
         url = self.client.generate_presigned_url(
             "get_object",
             Params={"Bucket": bucket_name, "Key": object_name},
-            ExpiresIn=7 * 24 * 3600,  # 7 days in seconds
+            ExpiresIn=expires_hours * 3600,  # Convert hours to seconds
         )
-        # print("presigned_get_object...", url)
         return url
 
     def check_file_name_exists(self, bucket_name, file_name):
