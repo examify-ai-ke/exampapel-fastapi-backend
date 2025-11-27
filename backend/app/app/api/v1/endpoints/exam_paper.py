@@ -552,6 +552,11 @@ async def update_exam_paper(
     exam_full = await crud.exam_paper.get(
         id=exam_updated.id, db_session=db_session, options=options
     )
+    
+    # Update slug with latest relationship data
+    exam_full = await crud.exam_paper.update_exam_paper_slug(
+        exam_paper=exam_full, db_session=db_session
+    )
 
     return create_response(data=exam_full)
 
@@ -708,9 +713,28 @@ async def add_module_to_exam_paper(
     exam_paper.modules.append(module)
     db_session.add(exam_paper)
     await db_session.commit()
-    await db_session.refresh(exam_paper)
+    
+    # Reload with all relationships for proper serialization
+    options = [
+        selectinload(ExamPaper.course),
+        selectinload(ExamPaper.description),
+        selectinload(ExamPaper.institution),
+        selectinload(ExamPaper.title),
+        selectinload(ExamPaper.modules),
+        selectinload(ExamPaper.instructions),
+        selectinload(ExamPaper.created_by),
+        selectinload(ExamPaper.question_sets),
+    ]
+    exam_paper_full = await crud.exam_paper.get(
+        id=exam_paper.id, db_session=db_session, options=options
+    )
+    
+    # Update slug since module changed
+    exam_paper_full = await crud.exam_paper.update_exam_paper_slug(
+        exam_paper=exam_paper_full, db_session=db_session
+    )
 
-    return create_response(data=exam_paper)
+    return create_response(data=exam_paper_full)
 
 
 @router.delete("/{exampaper_id}/modules/{module_id}")
@@ -755,7 +779,24 @@ async def remove_module_from_exam_paper(
     )
     await db_session.commit()
 
-    # Reload exam paper
-    updated_exam_paper = await crud.exam_paper.get(id=exampaper_id, db_session=db_session)
+    # Reload exam paper with all relationships
+    options = [
+        selectinload(ExamPaper.course),
+        selectinload(ExamPaper.description),
+        selectinload(ExamPaper.institution),
+        selectinload(ExamPaper.title),
+        selectinload(ExamPaper.modules),
+        selectinload(ExamPaper.instructions),
+        selectinload(ExamPaper.created_by),
+        selectinload(ExamPaper.question_sets),
+    ]
+    updated_exam_paper = await crud.exam_paper.get(
+        id=exampaper_id, db_session=db_session, options=options
+    )
+    
+    # Update slug since module changed
+    updated_exam_paper = await crud.exam_paper.update_exam_paper_slug(
+        exam_paper=updated_exam_paper, db_session=db_session
+    )
 
     return create_response(data=updated_exam_paper)
