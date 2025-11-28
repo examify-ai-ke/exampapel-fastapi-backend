@@ -672,7 +672,7 @@ async def upload_institution_logo(
         )
         # print("data_file:", data_file)
         media = IMediaCreate(
-            title=title, description=description, path=data_file.url
+            title=title, description=description, path=data_file.file_name
         )
         inst = await crud.institution.update_institution_logo(
             institution=valid_institution,

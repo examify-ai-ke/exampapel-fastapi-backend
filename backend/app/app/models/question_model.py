@@ -47,7 +47,7 @@ class QuestionSet(BaseUUIDModel,QuestionSetBase, table=True):
     slug: Optional[str] = Field(default=None, unique=False)
     questions: List["Question"] = Relationship(
         back_populates="question_set",
-        sa_relationship_kwargs={"lazy": "joined"}
+        sa_relationship_kwargs={"lazy": "noload"}
     )
 
     exam_papers: List["ExamPaper"] = Relationship(

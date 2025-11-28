@@ -119,14 +119,14 @@ class CourseReadForExamPaper(BaseModel):
 class MainQuestionReadForQuestionSet(QuestionBase):
     id: UUID
     slug: Optional[str] = None
-    # marks: int | None
+    marks: int | None
     # created_at: datetime
     # question_set_id: Optional[UUID] = None
-    # exam_paper_id: Optional[UUID] = None
+    exam_paper_id: Optional[UUID] = None
     children: Optional[List[SubQuestionReadSimple]] = (
         []
     )  # Only one level of sub-questions
-    # answers: Optional[List[AnswerReadForQuestion]] = []
+    answers: Optional[List[AnswerReadForQuestion]] = []
 
     class Config:
         from_attributes = True

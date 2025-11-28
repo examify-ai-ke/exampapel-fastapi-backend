@@ -21,11 +21,11 @@ class Media(BaseUUIDModel, MediaBase, table=True):
             return ""
         try:
             minio: MinioClient = api.deps.minio_auth()
-            # Generate URL that expires in 24 hours (refreshed on each request)
+            # Generate URL that expires in 7 days (refreshed on each request)
             url = minio.presigned_get_object(
                 bucket_name=settings.S3_BUCKET_NAME, 
                 object_name=self.path,
-                expires_hours=24
+                expires_hours=168
             )
             return url
         except Exception:

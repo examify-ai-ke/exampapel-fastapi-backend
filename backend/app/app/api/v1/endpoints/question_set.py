@@ -247,8 +247,7 @@ async def get_question_sets_by_exam_paper(
                 selectinload(QuestionSet.created_by).load_only(
                     User.id, User.first_name, User.last_name, User.email
                 ),
-                # Load only main questions (parent_id is None) with their answers and children
-                selectinload(QuestionSet.questions.and_(Question.parent_id.is_(None))).options(
+                selectinload(QuestionSet.questions.and_(Question.exam_paper_id == exam_paper_id)).options(
                     selectinload(Question.answers).selectinload(Answer.created_by),
                     selectinload(Question.children).options(
                         selectinload(Question.answers).selectinload(Answer.created_by)
