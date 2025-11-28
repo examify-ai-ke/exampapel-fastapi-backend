@@ -169,7 +169,7 @@ class CRUDInstitution(CRUDBase[Institution, InstitutionCreate, InstitutionUpdate
         for key, value in obj_data.items():
             setattr(obj_current, key, value)
 
-        db_session.add(obj_current)
+        obj_current = await db_session.merge(obj_current)
         await db_session.commit()
         await db_session.refresh(obj_current)
         return obj_current
