@@ -159,6 +159,7 @@ class ExamPaperRead(ExamPaperBase):
     # hash_code: Optional[str]
     course:Optional[CourseReadForExamPaper]
     question_sets: Optional[List[QuestionSetReadForExamPaperRead]] = []
+    questions_count: int = 0
     identifying_name: Optional[str]
 
     class Config:
