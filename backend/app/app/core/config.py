@@ -52,6 +52,7 @@ class Settings(BaseSettings):
     DEFAULT_ROLE_NAME:  str ="user"
     USE_REDIS_TOKEN_BLACKLIST: bool = True
     ENABLE_REDIS_CACHE: bool = True
+    ENABLE_ACTIVITY_LOGGING: bool = True
 
     # Email settings - fixed naming and added missing variables
     MAIL_SMTP_SERVER: str

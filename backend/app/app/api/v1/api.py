@@ -27,6 +27,7 @@ from app.api.v1.endpoints import (
     comment,
     detailed_statistics,
     health,  # Add health endpoints
+    audit_logs,  # Add audit logs endpoints
 )
 
 api_router = APIRouter()
@@ -82,4 +83,9 @@ api_router.include_router(
 )
 api_router.include_router(
     comment.router, prefix="/comment", tags=["comment"]
+)
+
+# Audit logs endpoints (admin only)
+api_router.include_router(
+    audit_logs.router, prefix="/audit-logs", tags=["audit-logs"]
 )
