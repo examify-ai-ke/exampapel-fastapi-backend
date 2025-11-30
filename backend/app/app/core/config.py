@@ -47,8 +47,8 @@ class Settings(BaseSettings):
     ASYNC_DATABASE_URI: PostgresDsn | str = ""
     # MINIO_ACCESS_KEY: str
     # MINIO_SECRET_KEY: str
-    JWT_ISSUER: str = "your-application-name"
-    JWT_AUDIENCE: str = "your-frontend-url"
+    JWT_ISSUER: str = "exampapel-fastapi-backend"
+    JWT_AUDIENCE: str = "localhost"
     DEFAULT_ROLE_NAME:  str ="user"
     USE_REDIS_TOKEN_BLACKLIST: bool = True
     ENABLE_REDIS_CACHE: bool = True

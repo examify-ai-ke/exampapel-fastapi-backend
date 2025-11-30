@@ -147,7 +147,7 @@ async def get_institution_list(
 @router.get("/search/advanced")
 # @cache(expire=180)
 async def advanced_search_institutions(
-    q: str = Query(..., description="Search query for institutions"),
+    q: str = Query(default=None, description="Search query for institutions"),
     institution_type: InstitutionType = Query(
         default=None, description="Filter by institution type"
     ),
@@ -183,7 +183,7 @@ async def advanced_search_institutions(
     # Build search conditions
     search_conditions = []
     
-    if q:
+    if q and q.strip():
         q_clean = q.strip()
         
         # Multi-field search with different weights

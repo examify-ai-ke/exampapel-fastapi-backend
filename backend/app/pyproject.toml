@@ -39,7 +39,7 @@ exclude = ["alembic", "__pycache__"]
 
 
 [tool.poetry.dependencies]
-python = ">3.9,<3.12"
+python = ">=3.12,<3.13"
 alembic = "^1.15.2"
 asyncpg = "^0.29.0"
 fastapi = "^0.115.12"
@@ -63,10 +63,6 @@ celery = "^5.3.6"
 celery-sqlalchemy-scheduler = "^0.3.0"
 psycopg2-binary = "^2.9.10"
 transformers = "^4.51.2"
-torch = [
-  {url = "https://download.pytorch.org/whl/cpu/torch-2.0.0%2Bcpu-cp311-cp311-linux_x86_64.whl", markers = "sys_platform == 'linux'"},
-  {url = "https://download.pytorch.org/whl/cpu/torch-2.0.0%2Bcpu-cp311-cp311-win_amd64.whl", markers = "sys_platform == 'win32'"}
-]
 requests = "^2.31.0"
 wheel = "^0.42.0"
 setuptools = "^69.0.2"
@@ -87,6 +83,7 @@ dotenv = "^0.9.9"
 fastapi-pagination = "0.13.0a3"
 fastapi-sqla = "^3.4.8"
 psycopg-binary = "^3.2.6"
+rich = "^14.2.0"
  
 
 [tool.poetry.group.dev.dependencies]

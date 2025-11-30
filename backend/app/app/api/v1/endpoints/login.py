@@ -185,7 +185,7 @@ async def login(
     return create_response(meta=meta_data, data=data, message="Login correctly")
 
 
-@router.post("/change_password", dependencies=[Depends(RateLimiter(times=3, minutes=15))], response_model=IPostResponseBase[Token])
+@router.post("/change_password", dependencies=[Depends(RateLimiter(times=5, minutes=15))], response_model=IPostResponseBase[Token])
 async def change_password(
     password_data: PasswordChange,
     current_user: User = Depends(deps.get_current_user()),
@@ -429,7 +429,7 @@ async def login_access_token(
     }
 
 
-@router.post("/password-reset", dependencies=[Depends(RateLimiter(times=3, minutes=60))], response_model=IPostResponseBase[bool])
+@router.post("/password-reset", dependencies=[Depends(RateLimiter(times=5, minutes=15))], response_model=IPostResponseBase[bool])
 async def request_password_reset(
     reset_data: PasswordReset,
     redis_client: Redis = Depends(get_redis_client),

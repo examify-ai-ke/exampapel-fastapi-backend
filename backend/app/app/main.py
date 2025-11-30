@@ -4,7 +4,7 @@ import os
 from contextlib import asynccontextmanager
 from typing import Any
 from uuid import UUID, uuid4
-
+from rich.logging import RichHandler
 from fastapi import (
     FastAPI,
     HTTPException,
@@ -84,7 +84,12 @@ from app.health import router as health_router
 from fastapi_pagination import add_pagination, pagination_ctx
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+    handlers=[RichHandler()],
+)
 logger = logging.getLogger(__name__)
 
 # Add these settings at the top of the file

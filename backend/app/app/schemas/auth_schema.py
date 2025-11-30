@@ -26,7 +26,7 @@ class PasswordChange(BaseModel):
     """
     Schema for password change requests with enhanced security requirements
     """
-    current_password: str = Field(..., min_length=8)
+    current_password: str = Field(..., min_length=4)
     new_password: str = Field(..., min_length=8, max_length=128)
     
     @validator('new_password')
