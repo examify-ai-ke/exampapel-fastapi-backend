@@ -604,6 +604,147 @@ async def verify_email(
         )
 
 
+@router.post("/social-auth/{provider}/callback",response_model=IPostResponseBase[Token])
+async def social_auth_callback(
+    provider: AuthProvider,
+    code: str = Body(..., embed=True),
+    redirect_uri: str = Body(..., embed=True),
+    redis_client: Redis = Depends(deps.get_redis_client),
+) -> IPostResponseBase[Token]:
+    """
+    Handle OAuth callback - exchange authorization code for tokens
+    """
+    try:
+        logging.info(f"Social auth callback for provider: {provider}, code length: {len(code)}")
+        
+        # Exchange authorization code for tokens with the provider
+        if provider == AuthProvider.google:
+            import httpx
+            
+            async with httpx.AsyncClient() as client:
+                token_response = await client.post(
+                    "https://oauth2.googleapis.com/token",
+                    data={
+                        "code": code,
+                        "client_id": settings.GOOGLE_CLIENT_ID,
+                        "client_secret": settings.GOOGLE_CLIENT_SECRET,
+                        "redirect_uri": redirect_uri,
+                        "grant_type": "authorization_code",
+                    },
+                )
+                
+                if token_response.status_code != 200:
+                    error_data = token_response.json()
+                    logging.error(f"Google token exchange failed: {error_data}")
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Failed to exchange code with Google: {error_data.get('error_description', error_data.get('error'))}"
+                    )
+                
+                tokens = token_response.json()
+                access_token = tokens.get("id_token") or tokens.get("access_token")
+                
+                if not access_token:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="No token received from Google"
+                    )
+                
+                logging.info(f"Successfully exchanged code for token (length: {len(access_token)})")
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Provider {provider} not supported for callback flow"
+            )
+        
+        # Now proceed with the normal social auth flow using the token
+        logging.info(f"Verifying token with provider...")
+        user_info = await verify_social_token(provider, access_token)
+        logging.info(f"User info retrieved: {user_info.get('email', 'NO_EMAIL')}")
+
+        # Check if user exists
+        user_email = user_info.get("email")
+        if not user_email:
+            raise ValueError("No email provided in user info")
+        
+        logging.info(f"Checking if user exists: {user_email}")
+        user = await crud.user.get_by_email(email=user_email)
+
+        if not user:
+            # Get the default role
+            default_role = await crud.role.get_role_by_name(name=settings.DEFAULT_ROLE_NAME)
+            if not default_role:
+                logging.error(f"Default role '{settings.DEFAULT_ROLE_NAME}' not found")
+                raise HTTPException(
+                    status_code=500,
+                    detail="Error setting up user role"
+                )
+
+            # Create new user if doesn't exist
+            new_user = {
+                "email": user_info["email"],
+                "first_name": user_info.get("given_name", ""),
+                "last_name": user_info.get("family_name", ""),
+                "provider": provider,
+                "provider_user_id": user_info["sub"],
+                "email_verified": True,
+                "is_active": True,
+                "role_id": default_role.id
+            }
+            user = await crud.user.create_with_role(obj_in=new_user)
+
+        # Check if user is active
+        if not user.is_active:
+            raise HTTPException(
+                status_code=400,
+                detail="Inactive user"
+            )
+
+        # Generate tokens
+        access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+        refresh_token_expires = timedelta(minutes=settings.REFRESH_TOKEN_EXPIRE_MINUTES)
+
+        access_token = security.create_access_token(
+            user.id, expires_delta=access_token_expires
+        )
+        refresh_token = security.create_refresh_token(
+            user.id, expires_delta=refresh_token_expires
+        )
+
+        # Store refresh token in Redis
+        await redis_client.set(
+            f"refresh_token:{user.id}",
+            refresh_token,
+            ex=settings.REFRESH_TOKEN_EXPIRE_MINUTES * 60
+        )
+
+        # Create token response
+        token_data = Token(
+            access_token=access_token,
+            token_type="bearer",
+            refresh_token=refresh_token,
+            user=user
+        )
+
+        return create_response(
+            data=token_data,
+            message=f"Successfully authenticated with {provider}"
+        )
+
+    except ValueError as e:
+        logging.error(f"Social auth callback ValueError for {provider}: {str(e)}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Error during social authentication: {str(e)}"
+        )
+    except Exception as e:
+        logging.error(f"Social auth callback error for {provider}: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Internal server error during authentication: {str(e)}"
+        )
+
+
 @router.post("/social-auth/{provider}",response_model=IPostResponseBase[Token])
 async def social_auth(
     provider: AuthProvider,
@@ -614,11 +755,18 @@ async def social_auth(
     Handle social authentication
     """
     try:
+        logging.info(f"Social auth request for provider: {provider}, token length: {len(access_token)}")
         # Verify token with provider and get user info
         user_info = await verify_social_token(provider, access_token)
+        logging.info(f"User info retrieved: {user_info.get('email', 'NO_EMAIL')}")
 
         # Check if user exists
-        user = await crud.user.get_by_email(email=user_info["email"])
+        user_email = user_info.get("email")
+        if not user_email:
+            raise ValueError("No email provided in user info")
+        
+        logging.info(f"Checking if user exists: {user_email}")
+        user = await crud.user.get_by_email(email=user_email)
 
         if not user:
             # Get the default role
@@ -682,15 +830,16 @@ async def social_auth(
         )
 
     except ValueError as e:
+        logging.error(f"Social auth ValueError for {provider}: {str(e)}")
         raise HTTPException(
             status_code=400,
             detail=f"Error during social authentication: {str(e)}"
         )
     except Exception as e:
-        logging.error(f"Social auth error: {str(e)}")
+        logging.error(f"Social auth error for {provider}: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail="Internal server error during authentication"
+            detail=f"Internal server error during authentication: {str(e)}"
         )
 
 

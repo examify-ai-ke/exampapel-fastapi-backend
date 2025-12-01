@@ -38,20 +38,26 @@ class CRUDUser(CRUDBase[User, IUserCreate, IUserUpdate]):
     ) -> User:
         db_session = db_session or super().get_db().session
         
-        # Handle case where obj_in is a dict
+        # Handle case where obj_in is a dict (e.g., from social auth)
         if isinstance(obj_in, dict):
-            # Convert dict to IUserCreate object
-            user_data = IUserCreate(**obj_in)
+            # For social auth users, create User directly without IUserCreate validation
+            if obj_in.get('provider') and obj_in['provider'] != AuthProvider.email:
+                # Social auth user - create directly from dict
+                db_obj = User(**obj_in)
+                # Set a dummy hashed password for social auth users (they don't use passwords)
+                if not db_obj.hashed_password:
+                    db_obj.hashed_password = get_password_hash(f"social_auth_{obj_in.get('provider')}_{obj_in.get('provider_user_id')}")
+            else:
+                # Regular user - validate with IUserCreate
+                user_data = IUserCreate(**obj_in)
+                db_obj = User.model_validate(user_data)
+                if user_data.password:
+                    db_obj.hashed_password = get_password_hash(user_data.password)
         else:
-            user_data = obj_in
-        
-        # Create User model from validated data
-        db_obj = User.model_validate(user_data)
-        
-        # Handle password hashing safely
-        password = user_data.password if hasattr(user_data, 'password') else obj_in.get('password')
-        if password:
-            db_obj.hashed_password = get_password_hash(password)
+            # IUserCreate object
+            db_obj = User.model_validate(obj_in)
+            if obj_in.password:
+                db_obj.hashed_password = get_password_hash(obj_in.password)
         
         db_session.add(db_obj)
         await db_session.commit()
