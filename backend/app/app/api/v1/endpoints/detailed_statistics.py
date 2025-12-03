@@ -40,11 +40,13 @@ from app.models.user_model import User
 from app.schemas.common_schema import IOrderEnum
 from sqlmodel.ext.asyncio.session import AsyncSession
 from app.schemas.role_schema import IRoleEnum
-
+from fastapi_cache.decorator import cache
 
 router = APIRouter()
 
 @router.get("/detailed-statistics")
+@cache(expire=180)
+
 async def get_detailed_statistics(
     db_session: AsyncSession = Depends(deps.get_db),
 ) -> IGetResponseBase[InstitutionDetailedStatistics]:
