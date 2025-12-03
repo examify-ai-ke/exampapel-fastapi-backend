@@ -392,5 +392,6 @@ class CRUDBase(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
 
         await db_session.delete(obj)
         await db_session.commit()
-
+        # Don't refresh after deletion as the object is no longer persistent
+        # Return the object before deletion for reference
         return obj

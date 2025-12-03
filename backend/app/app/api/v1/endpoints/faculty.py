@@ -251,6 +251,7 @@ async def remove_faculty(
     current_user: User = Depends(
         deps.get_current_user(required_roles=[IRoleEnum.admin, IRoleEnum.manager])
     ),
+    db_session: AsyncSession = Depends(deps.get_db),
 ) -> IDeleteResponseBase[FacultyRead]:
     """
     Deletes a faculty by its id
@@ -259,10 +260,22 @@ async def remove_faculty(
     - admin
     - manager
     """
-    current_faculty = await crud.faculty.get(id=faculty_id)
+    current_faculty = await crud.faculty.get(
+        id=faculty_id,
+        db_session=db_session,
+        options=[selectinload(Faculty.departments)]
+    )
     if not current_faculty:
         raise IdNotFoundException(Faculty, faculty_id)
-    faculty = await crud.faculty.remove(id=faculty_id)
+    
+    # Check if faculty has associated departments
+    if current_faculty.departments:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot delete faculty '{current_faculty.name}' because it has {len(current_faculty.departments)} associated department(s). Please reassign or delete these departments first."
+        )
+    
+    faculty = await crud.faculty.remove(id=faculty_id, db_session=db_session)
     return create_response(data=faculty)
 
 
