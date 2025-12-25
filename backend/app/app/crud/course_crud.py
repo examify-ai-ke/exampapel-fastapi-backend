@@ -11,6 +11,8 @@ from app.models.course_model import Course
 from app.models.programme_model import Programme
 from sqlmodel import select, func, and_, col
 from sqlmodel.ext.asyncio.session import AsyncSession
+from sqlalchemy import exc
+from fastapi import HTTPException
 
 
 class CRUDCourse(CRUDBase[Course, CourseCreate, CourseUpdate]):
@@ -25,8 +27,15 @@ class CRUDCourse(CRUDBase[Course, CourseCreate, CourseUpdate]):
         db_obj = self.model(**obj_in_data)
         if created_by_id:
             db_obj.created_by_id = created_by_id
-        db_session.add(db_obj)
-        await db_session.commit()
+        try:
+            db_session.add(db_obj)
+            await db_session.commit()
+        except exc.IntegrityError:
+            await db_session.rollback()
+            raise HTTPException(
+                status_code=409,
+                detail="Resource already exists",
+            )
         await db_session.refresh(db_obj)
         return db_obj
 

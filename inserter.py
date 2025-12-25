@@ -102,7 +102,7 @@ class AuthClient:
             login_data = LoginRequest(email=email, password=password)
             response = await self.client.post(
                 f"{self.config.base_url}/login",
-                json=login_data.model_dump()
+                json=login_data.model_dump(mode='json')
             )
             
             if response.status_code == 200:
@@ -141,7 +141,7 @@ class AuthClient:
             refresh_data = RefreshTokenRequest(refresh_token=self.refresh_token)
             response = await self.client.post(
                 f"{self.config.base_url}/login/new_access_token",
-                json=refresh_data.model_dump()
+                json=refresh_data.model_dump(mode='json')
             )
             
             if response.status_code == 200:
@@ -256,10 +256,10 @@ class ProgrammeClient:
             response = await self.client.post(
                 f"{self.config.base_url}/programme",
                 headers=headers,
-                json=programme_data.model_dump()
+                json=programme_data.model_dump(mode='json')
             )
             
-            if response.status_code == 201:
+            if response.status_code in [200, 201]:
                 data = response.json()["data"]
                 logger.info(f"Created programme: {data['name']}")
                 return ProgrammeRead(**data)
@@ -478,10 +478,10 @@ class InstitutionClient:
             response = await self.client.post(
                 f"{self.config.base_url}/institution",
                 headers=headers,
-                json=institution_data.model_dump()
+                json=institution_data.model_dump(mode='json')
             )
             
-            if response.status_code == 201:
+            if response.status_code in [200, 201]:
                 data = response.json()["data"]
                 logger.info(f"Created institution: {data['name']}")
                 return InstitutionRead(**data)
@@ -621,10 +621,10 @@ class MainQuestionCreate(BaseModel):
     """Schema for creating main questions"""
     text: Optional[QuestionTextSchema] = None
     marks: Optional[int] = Field(None, ge=1, le=100)
-    numbering_style: str = Field(default="numerical")
+    numbering_style: str = Field(default="numeric")
     question_number: str = Field(..., min_length=1)
-    question_set_id: UUID
-    exam_paper_id: UUID
+    question_set_id: Optional[UUID] = None
+    exam_paper_id: Optional[UUID] = None
     
     @field_validator("text", mode="before")
     @classmethod
@@ -634,7 +634,7 @@ class MainQuestionCreate(BaseModel):
         if isinstance(v, dict):
             return v
         if hasattr(v, "model_dump"):
-            return v.model_dump()
+            return v.model_dump(mode='json')
         return v
     
     model_config = ConfigDict(from_attributes=True)
@@ -645,7 +645,7 @@ class SubQuestionCreate(BaseModel):
     marks: Optional[int] = Field(None, ge=1, le=100)
     numbering_style: str = Field(default="alphabetic")
     question_number: str = Field(default="a")
-    parent_id: UUID
+    parent_id: Optional[UUID] = None
     
     @field_validator("text", mode="before")
     @classmethod
@@ -655,7 +655,7 @@ class SubQuestionCreate(BaseModel):
         if isinstance(v, dict):
             return v
         if hasattr(v, "model_dump"):
-            return v.model_dump()
+            return v.model_dump(mode='json')
         return v
     
     model_config = ConfigDict(from_attributes=True)
@@ -713,6 +713,25 @@ class ExamPaperClient:
         """Helper to find an entity by name from all results"""
         try:
             headers = await self.auth_client.get_headers()
+            
+            # Use search endpoint for supported entities
+            if endpoint in ["exam-title", "exam-description", "instruction", "module", "course"]:
+                try:
+                   response = await self.client.get(
+                        f"{self.config.base_url}/{endpoint}/search",
+                        headers=headers,
+                        params={"q": name, "limit": 1}
+                   )
+                   if response.status_code == 200:
+                       data = response.json().get("data", {})
+                       items = data.get("items", []) if isinstance(data, dict) else data
+                       if items:
+                           return items[0]
+                       return None
+                except Exception as e:
+                    logger.warning(f"Search failed for {endpoint}, falling back to list: {e}")
+
+            # Fallback to listing all pages (legacy or if search fails)
             items = await self._get_all_pages(endpoint, headers)
             
             for item in items:
@@ -731,10 +750,10 @@ class ExamPaperClient:
             response = await self.client.post(
                 f"{self.config.base_url}/exam-title",
                 headers=headers,
-                json=title_data.model_dump()
+                json=title_data.model_dump(mode='json')
             )
             
-            if response.status_code == 201:
+            if response.status_code in [200, 201]:
                 data = response.json()["data"]
                 logger.info(f"Created exam title: {data['name']}")
                 return data
@@ -756,10 +775,10 @@ class ExamPaperClient:
             response = await self.client.post(
                 f"{self.config.base_url}/exam-description",
                 headers=headers,
-                json=description_data.model_dump()
+                json=description_data.model_dump(mode='json')
             )
             
-            if response.status_code == 201:
+            if response.status_code in [200, 201]:
                 data = response.json()["data"]
                 logger.info(f"Created exam description: {data['name']}")
                 return data
@@ -781,10 +800,10 @@ class ExamPaperClient:
             response = await self.client.post(
                 f"{self.config.base_url}/instruction",
                 headers=headers,
-                json=instruction_data.model_dump()
+                json=instruction_data.model_dump(mode='json')
             )
             
-            if response.status_code == 201:
+            if response.status_code in [200, 201]:
                 data = response.json()["data"]
                 logger.info(f"Created exam instruction: {data['name']}")
                 return data
@@ -806,10 +825,10 @@ class ExamPaperClient:
             response = await self.client.post(
                 f"{self.config.base_url}/module",
                 headers=headers,
-                json=module_data.model_dump()
+                json=module_data.model_dump(mode='json')
             )
             
-            if response.status_code == 201:
+            if response.status_code in [200, 201]:
                 data = response.json()["data"]
                 logger.info(f"Created module: {data['name']}")
                 return data
@@ -831,10 +850,10 @@ class ExamPaperClient:
             response = await self.client.post(
                 f"{self.config.base_url}/course",
                 headers=headers,
-                json=course_data.model_dump()
+                json=course_data.model_dump(mode='json')
             )
             
-            if response.status_code == 201:
+            if response.status_code in [200, 201]:
                 data = response.json()["data"]
                 logger.info(f"Created course: {data['name']}")
                 return data
@@ -856,13 +875,34 @@ class ExamPaperClient:
             response = await self.client.post(
                 f"{self.config.base_url}/exampaper",
                 headers=headers,
-                json=exam_paper_data.model_dump()
+                json=exam_paper_data.model_dump(mode='json')
             )
             
-            if response.status_code == 201:
+            if response.status_code in [200, 201]:
                 data = response.json()["data"]
                 logger.info(f"Created exam paper: {data['id']}")
                 return data
+            elif response.status_code == 409:
+                logger.warning("Exam paper already exists, fetching existing...")
+                # Fetch all exam papers and find the match
+                # Matching criteria: course_id and year_of_exam
+                items = await self._get_all_pages("exampaper", headers)
+                target_course_id = str(exam_paper_data.course_id)
+                target_year = exam_paper_data.year_of_exam
+                
+                for item in items:
+                    # Check course_id (might be in 'course' object or direct field)
+                    # Based on typical API response structure
+                    item_course_id = item.get("course_id")
+                    if not item_course_id and "course" in item:
+                        item_course_id = item["course"].get("id")
+                    
+                    if str(item_course_id) == target_course_id and item.get("year_of_exam") == target_year:
+                        logger.info(f"Found existing exam paper: {item['id']}")
+                        return item
+                
+                logger.error("Could not find the existing exam paper despite 409 error")
+                return None
             else:
                 logger.error(f"Failed to create exam paper: {response.status_code} - {response.text}")
                 return None
@@ -899,15 +939,29 @@ class QuestionClient:
             response = await self.client.post(
                 f"{self.config.base_url}/question-set",
                 headers=headers,
-                json=question_set_data.model_dump()
+                json=question_set_data.model_dump(mode='json')
             )
             
-            if response.status_code == 201:
+            if response.status_code in [200, 201]:
                 data = response.json()["data"]
                 logger.info(f"Created question set: {data['title']}")
                 return data
+            elif response.status_code == 409:
+                logger.warning(f"Question set '{question_set_data.title}' already exists, fetching existing...")
+                get_response = await self.client.get(
+                    f"{self.config.base_url}/question-set",
+                    headers=headers,
+                    params={"limit": 100}
+                )
+                if get_response.status_code == 200:
+                    items_data = get_response.json().get("data", {})
+                    items = items_data.get("items", []) if isinstance(items_data, dict) else items_data
+                    for item in items:
+                        if item.get("title") == question_set_data.title:
+                             return item
+                return None
             else:
-                logger.error(f"Failed to create question set: {response.status_code}")
+                logger.error(f"Failed to create question set: {response.status_code} - {response.text}")
                 return None
                 
         except Exception as e:
@@ -921,15 +975,15 @@ class QuestionClient:
             response = await self.client.post(
                 f"{self.config.base_url}/questions/main",
                 headers=headers,
-                json=question_data.model_dump()
+                json=question_data.model_dump(mode='json')
             )
             
-            if response.status_code == 201:
+            if response.status_code in [200, 201]:
                 data = response.json()["data"]
                 logger.info(f"Created main question: {question_data.question_number}")
                 return data
             else:
-                logger.error(f"Failed to create main question: {response.status_code}")
+                logger.error(f"Failed to create main question: {response.status_code} - {response.text}")
                 return None
                 
         except Exception as e:
@@ -943,10 +997,10 @@ class QuestionClient:
             response = await self.client.post(
                 f"{self.config.base_url}/questions/sub",
                 headers=headers,
-                json=question_data.model_dump()
+                json=question_data.model_dump(mode='json')
             )
             
-            if response.status_code == 201:
+            if response.status_code in [200, 201]:
                 data = response.json()["data"]
                 logger.info(f"Created sub-question: {question_data.question_number}")
                 return data
@@ -990,7 +1044,7 @@ class QuestionClient:
         """Create multiple sub-questions for a main question"""
         try:
             headers = await self.auth_client.get_headers()
-            sub_questions_data = [sq.model_dump() for sq in sub_questions]
+            sub_questions_data = [sq.model_dump(mode='json') for sq in sub_questions]
             
             response = await self.client.post(
                 f"{self.config.base_url}/questions/{main_question_id}/sub-questions/bulk",
@@ -998,7 +1052,7 @@ class QuestionClient:
                 json=sub_questions_data
             )
             
-            if response.status_code == 201:
+            if response.status_code in [200, 201]:
                 data = response.json()["data"]
                 logger.info(f"Created {len(data)} sub-questions")
                 return data
@@ -1155,7 +1209,7 @@ class ExamPaperInserter:
              programme = await self.programme_client.create_programme(programme_data)
              if programme:
                  programme_id = programme.id
-                 self.created_entities['programme'] = programme.model_dump()
+                 self.created_entities['programme'] = programme.model_dump(mode='json')
              else:
                  # Try to continue if course doesn't strictly need it here (but schema says it does)
                  logger.warning("Failed to create/retrieve programme, course creation might fail")
@@ -1556,7 +1610,7 @@ def create_sample_exam_paper() -> Dict[str, Any]:
                                     }
                                 ]
                             },
-                            "marks": null,
+                            "marks": None,
                             "numbering_style": "roman",
                             "question_number": "i"
                         },
@@ -1573,7 +1627,7 @@ def create_sample_exam_paper() -> Dict[str, Any]:
                                     }
                                 ]
                             },
-                            "marks": null,
+                            "marks": None,
                             "numbering_style": "roman",
                             "question_number": "ii"
                         }

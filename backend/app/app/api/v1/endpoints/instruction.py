@@ -43,9 +43,25 @@ from app.schemas.role_schema import IRoleEnum
 from app.core.authz import is_authorized
 from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy.orm import selectinload
-from sqlmodel import select
+from sqlmodel import select, col
 
 router = APIRouter()
+
+@router.get("/search")
+async def search_instructions(
+    q: str = Query(..., min_length=1),
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=50, ge=1),
+    db_session: AsyncSession = Depends(deps.get_db),
+) -> IGetResponsePaginated[InstructionRead]:
+    """
+    Search instructions by name
+    """
+    query = select(ExamInstruction).where(col(ExamInstruction.name).ilike(f"%{q}%"))
+    results = await crud.instruction.get_multi_paginated_ordered(
+        db_session=db_session, skip=skip, limit=limit, query=query
+    )
+    return create_response(data=results)
 
 
 @router.get("")
