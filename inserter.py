@@ -216,6 +216,96 @@ class AuthClient:
 
 
 # ============================================================================
+# PROGRAMME SCHEMAS AND CLIENT
+# ============================================================================
+
+class ProgrammeCreate(BaseModel):
+    """Schema for creating a programme"""
+    name: str = Field(default="Bachelors/Undergraduate")
+    description: Optional[str] = Field("A specific type of university/College program (e.g., Bachelors, Masters. etc)", max_length=500)
+    
+    model_config = ConfigDict(from_attributes=True)
+
+class ProgrammeRead(BaseModel):
+    """Schema for programme response"""
+    id: UUID
+    name: str
+    slug: Optional[str]
+    description: Optional[str]
+    
+    model_config = ConfigDict(from_attributes=True)
+
+class ProgrammeClient:
+    """
+    Client for handling programme operations.
+    """
+    
+    def __init__(self, config: APIConfig, auth_client: AuthClient):
+        self.config = config
+        self.auth_client = auth_client
+        self.client = httpx.AsyncClient(timeout=config.timeout)
+    
+    async def create_programme(self, programme_data: ProgrammeCreate) -> Optional[ProgrammeRead]:
+        """Create a new programme"""
+        try:
+            headers = await self.auth_client.get_headers()
+            # First try to get all programmes and check if it exists (since we don't have search by name yet maybe)
+            # But the backend might return 400 if duplicate. Let's try to create and handle error or success.
+            # Actually, standard flow: try create.
+            
+            response = await self.client.post(
+                f"{self.config.base_url}/programme",
+                headers=headers,
+                json=programme_data.model_dump()
+            )
+            
+            if response.status_code == 201:
+                data = response.json()["data"]
+                logger.info(f"Created programme: {data['name']}")
+                return ProgrammeRead(**data)
+            elif response.status_code == 400 or response.status_code == 409:
+                 # Ensure we handle existing programmes if API returns error for duplicates
+                 logger.warning(f"Programme might already exist: {response.status_code}")
+                 # You might need a way to fetch the existing programme here if create fails
+                 # For now, let's assume valid flow or look at search if available.
+                 # Let's try to fetch all and find it (inefficient but works for script)
+                 return await self.get_programme_by_name(programme_data.name)
+            else:
+                logger.error(f"Failed to create programme: {response.status_code} - {response.text}")
+                return None
+                
+        except Exception as e:
+            logger.error(f"Error creating programme: {str(e)}")
+            return None
+
+    async def get_programme_by_name(self, name: str) -> Optional[ProgrammeRead]:
+        """Helper to find programme by name from list"""
+        try:
+            headers = await self.auth_client.get_headers()
+            response = await self.client.get(
+                f"{self.config.base_url}/programme",
+                headers=headers
+            )
+            
+            if response.status_code == 200:
+                data = response.json()["data"]
+                # data is likely list of items or paginated {items: []}
+                items = data.get("items", []) if isinstance(data, dict) else data
+                
+                for item in items:
+                    if item.get("name") == name:
+                         return ProgrammeRead(**item)
+                return None
+            else:
+                return None
+        except Exception:
+            return None
+
+    async def close(self):
+        await self.client.aclose()
+
+
+# ============================================================================
 # INSTITUTION SCHEMAS AND CLIENT
 # ============================================================================
 
@@ -223,8 +313,8 @@ class InstitutionCreate(BaseModel):
     """Schema for creating an institution"""
     name: str = Field(..., min_length=2, max_length=200)
     description: Optional[str] = Field("An Institution of choice", max_length=500)
-    category: str = Field(default="UNIVERSITY")
-    institution_type: str = Field(default="PUBLIC")
+    category: str = Field(default="University")
+    institution_type: str = Field(default="Public")
     location: Optional[str] = Field(None, max_length=200)
     key: Optional[str] = None
     kuccps_institution_url: Optional[str] = None
@@ -318,35 +408,41 @@ class InstitutionClient:
     async def search_institutions(
         self, 
         search_term: Optional[str] = None,
-        category: Optional[str] = None,
-        institution_type: Optional[str] = None,
-        limit: int = 50
+        limit: int = 50,
+        sort_by: str = "relevance",
+        sort_order: str = "desc",
+        skip: int = 0,
+        highlight: bool = False
     ) -> List[InstitutionRead]:
         """
-        Search institutions with filters
+        Search institutions using advanced search
         
         Args:
-            search_term: Search term for institution name/description
-            category: Filter by institution category
-            institution_type: Filter by institution type
+            search_term: Search query (q)
             limit: Maximum number of results
+            sort_by: Sort field (relevance, name, created_at)
+            sort_order: Sort order (asc, desc)
+            skip: Pagination skip
+            highlight: Enable highlighting
             
         Returns:
             List of institutions matching criteria
         """
         try:
             headers = await self.auth_client.get_headers()
-            params = {"limit": limit}
+            params = {
+                "limit": limit,
+                "sort_by": sort_by,
+                "sort_order": sort_order,
+                "skip": skip,
+                "highlight": str(highlight).lower()
+            }
             
             if search_term:
-                params["search_term"] = search_term
-            if category:
-                params["category"] = category
-            if institution_type:
-                params["institution_type"] = institution_type
+                params["q"] = search_term
                 
             response = await self.client.get(
-                f"{self.config.base_url}/institution",
+                f"{self.config.base_url}/institution/search/advanced",
                 headers=headers,
                 params=params
             )
@@ -354,7 +450,9 @@ class InstitutionClient:
             if response.status_code == 200:
                 data = response.json()["data"]
                 institutions = []
-                for item in data.get("items", []):
+                # Advanced search likely returns list directly or inside items
+                items = data.get("items", []) if isinstance(data, dict) else data
+                for item in items:
                     institutions.append(InstitutionRead(**item))
                 return institutions
             else:
@@ -489,6 +587,7 @@ class CourseCreate(BaseModel):
     name: str = Field(..., min_length=2, max_length=200)
     course_acronym: Optional[str] = Field(None, max_length=10)
     description: Optional[str] = Field(None, max_length=500)
+    programme_id: UUID
     
     model_config = ConfigDict(from_attributes=True)
 
@@ -693,7 +792,7 @@ class ExamPaperClient:
         try:
             headers = await self.auth_client.get_headers()
             response = await self.client.post(
-                f"{self.config.base_url}/exam-paper",
+                f"{self.config.base_url}/exampaper",
                 headers=headers,
                 json=exam_paper_data.model_dump()
             )
@@ -806,7 +905,7 @@ class QuestionClient:
         try:
             headers = await self.auth_client.get_headers()
             response = await self.client.post(
-                f"{self.config.base_url}/exam-paper/{exam_paper_id}/question-sets/{question_set_id}",
+                f"{self.config.base_url}/exampaper/{exam_paper_id}/question-sets/{question_set_id}",
                 headers=headers
             )
             
@@ -874,6 +973,7 @@ class ExamPaperInserter:
         self.config = config
         self.auth_client = AuthClient(config)
         self.institution_client = InstitutionClient(config, self.auth_client)
+        self.programme_client = ProgrammeClient(config, self.auth_client)
         self.exam_paper_client = ExamPaperClient(config, self.auth_client)
         self.question_client = QuestionClient(config, self.auth_client)
         self.created_entities: Dict[str, Any] = {}
@@ -949,6 +1049,7 @@ class ExamPaperInserter:
         self,
         exam_title_data: Optional[ExamTitleCreate] = None,
         exam_description_data: Optional[ExamDescriptionCreate] = None,
+        programme_data: Optional[ProgrammeCreate] = None,
         course_data: Optional[CourseCreate] = None,
         module_data_list: Optional[List[ModuleCreate]] = None,
         instruction_data_list: Optional[List[ExamInstructionCreate]] = None
@@ -986,8 +1087,22 @@ class ExamPaperInserter:
             else:
                 raise Exception("Failed to create exam description")
         
+        # Create programme
+        programme_id = None
+        if programme_data:
+             programme = await self.programme_client.create_programme(programme_data)
+             if programme:
+                 programme_id = programme.id
+                 self.created_entities['programme'] = programme.model_dump()
+             else:
+                 # Try to continue if course doesn't strictly need it here (but schema says it does)
+                 logger.warning("Failed to create/retrieve programme, course creation might fail")
+
         # Create course
         if course_data:
+            if programme_id:
+                course_data.programme_id = programme_id
+            
             course = await self.exam_paper_client.create_course(course_data)
             if course:
                 prerequisites_ids['course_id'] = course['id']
@@ -1136,6 +1251,7 @@ class ExamPaperInserter:
         await self.auth_client.close()
         await self.institution_client.close()
         await self.exam_paper_client.close()
+        await self.programme_client.close()
         await self.question_client.close()
 
 
@@ -1174,9 +1290,13 @@ def create_sample_exam_paper() -> Dict[str, Any]:
             "institution": {
                 "name": "University of Technology",
                 "description": "Leading technology university",
-                "category": "UNIVERSITY",
-                "institution_type": "PUBLIC",
+                "category": "University",
+                "institution_type": "Public",
                 "location": "Nairobi"
+            },
+            "programme": {
+                "name": "Bachelors/Undergraduate",
+                "description": "Bachelor of Science in Information Technology"
             },
             "modules": [
                 {
@@ -1200,7 +1320,7 @@ def create_sample_exam_paper() -> Dict[str, Any]:
         "questions": {
          "question_sets": [
             {
-            "title": "QUESTION_ONE",
+            "title": "Question One",
             "main_questions": [
                 {
                     "text": {
@@ -1432,7 +1552,7 @@ async def main():
     
     # Configuration
     config = APIConfig(
-        base_url="http://fastapi.localhost/api/v1",
+        base_url="http://localhost:8000/api/v1",
         timeout=30
     )
     
@@ -1488,13 +1608,22 @@ async def main():
         # Convert to schema objects
         exam_title_data = ExamTitleCreate(**prerequisites["exam_title"])
         exam_description_data = ExamDescriptionCreate(**prerequisites["exam_description"])
-        course_data = CourseCreate(**prerequisites["course"])
+        
+        # We need a dummy UUID for initial schema validation of CourseCreate, 
+        # but it will be overwritten in create_prerequisites with actual ID
+        course_dict = prerequisites["course"].copy()
+        course_dict["programme_id"] = uuid4() 
+        course_data = CourseCreate(**course_dict)
+        
+        programme_data = ProgrammeCreate(**prerequisites["programme"])
+        
         module_data_list = [ModuleCreate(**m) for m in prerequisites["modules"]]
         instruction_data_list = [ExamInstructionCreate(**i) for i in prerequisites["instructions"]]
         
         prerequisites_ids = await inserter.create_prerequisites(
             exam_title_data=exam_title_data,
             exam_description_data=exam_description_data,
+            programme_data=programme_data,
             course_data=course_data,
             module_data_list=module_data_list,
             instruction_data_list=instruction_data_list

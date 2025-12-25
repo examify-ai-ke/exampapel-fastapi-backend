@@ -113,7 +113,7 @@ class ExamPaperReadForInstitution(ExamPaperBase):
 class InstitutionReadSimple(InstitutionBase):
     """Simplified schema for list/search endpoints without nested relationships"""
     id: UUID
-    slug: str
+    slug: Optional[str] = None
     exams_count: int | None = 0
     campuses_count: int | None = 0
     faculties_count: int | None = 0
@@ -133,7 +133,7 @@ class InstitutionReadSimple(InstitutionBase):
 
 class InstitutionRead(InstitutionBase):
     id: UUID  # ID is known after creation
-    slug: str
+    slug: Optional[str] = None
     faculties: list[FacultyReadForInstitution] | None = []
     campuses: list[CampusRead] | None = []
     exam_papers: Optional[list[ExamPaperReadForInstitution]] | None = []
