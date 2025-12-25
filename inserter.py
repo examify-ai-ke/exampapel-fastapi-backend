@@ -31,7 +31,7 @@ from pydantic import BaseModel, Field, validator, field_validator, ConfigDict, E
 
 class APIConfig(BaseModel):
     """Configuration for API connection"""
-    base_url: str = "http://localhost:8000/api/v1"
+    base_url: str = "http://fastapi.localhost/api/v1"
     timeout: int = 30
     max_retries: int = 3
     
@@ -676,7 +676,54 @@ class ExamPaperClient:
         self.config = config
         self.auth_client = auth_client
         self.client = httpx.AsyncClient(timeout=config.timeout)
-    
+
+    async def _get_all_pages(self, endpoint: str, headers: Dict[str, str]) -> List[Dict[str, Any]]:
+        """Helper to fetch all pages of a paginated resource"""
+        all_items = []
+        skip = 0
+        limit = 100
+        
+        while True:
+            response = await self.client.get(
+                f"{self.config.base_url}/{endpoint}",
+                headers=headers,
+                params={"skip": skip, "limit": limit}
+            )
+            
+            if response.status_code != 200:
+                break
+                
+            data = response.json().get("data", {})
+            items = data.get("items", []) if isinstance(data, dict) else data
+            
+            if not items:
+                break
+                
+            all_items.extend(items)
+            
+            # If we got fewer items than limit, we're done
+            if len(items) < limit:
+                break
+                
+            skip += limit
+            
+        return all_items
+
+    async def _find_entity_by_name(self, endpoint: str, name: str) -> Optional[Dict[str, Any]]:
+        """Helper to find an entity by name from all results"""
+        try:
+            headers = await self.auth_client.get_headers()
+            items = await self._get_all_pages(endpoint, headers)
+            
+            for item in items:
+                # Some entities might use 'title' instead of 'name' if mismatched, but schema says 'name' for all these
+                if item.get("name") == name:
+                    return item
+            
+            return None
+        except Exception as e:
+            logger.error(f"Error finding entity in {endpoint}: {str(e)}")
+            return None    
     async def create_exam_title(self, title_data: ExamTitleCreate) -> Optional[Dict[str, Any]]:
         """Create an exam title"""
         try:
@@ -691,6 +738,9 @@ class ExamPaperClient:
                 data = response.json()["data"]
                 logger.info(f"Created exam title: {data['name']}")
                 return data
+            elif response.status_code == 409:
+                logger.warning(f"Exam title '{title_data.name}' already exists, fetching existing...")
+                return await self._find_entity_by_name("exam-title", title_data.name)
             else:
                 logger.error(f"Failed to create exam title: {response.status_code}")
                 return None
@@ -713,6 +763,9 @@ class ExamPaperClient:
                 data = response.json()["data"]
                 logger.info(f"Created exam description: {data['name']}")
                 return data
+            elif response.status_code == 409:
+                logger.warning(f"Exam description '{description_data.name}' already exists, fetching existing...")
+                return await self._find_entity_by_name("exam-description", description_data.name)
             else:
                 logger.error(f"Failed to create exam description: {response.status_code}")
                 return None
@@ -735,6 +788,9 @@ class ExamPaperClient:
                 data = response.json()["data"]
                 logger.info(f"Created exam instruction: {data['name']}")
                 return data
+            elif response.status_code == 409:
+                logger.warning(f"Exam instruction '{instruction_data.name}' already exists, fetching existing...")
+                return await self._find_entity_by_name("instruction", instruction_data.name)
             else:
                 logger.error(f"Failed to create exam instruction: {response.status_code}")
                 return None
@@ -757,6 +813,9 @@ class ExamPaperClient:
                 data = response.json()["data"]
                 logger.info(f"Created module: {data['name']}")
                 return data
+            elif response.status_code == 409:
+                logger.warning(f"Module '{module_data.name}' already exists, fetching existing...")
+                return await self._find_entity_by_name("module", module_data.name)
             else:
                 logger.error(f"Failed to create module: {response.status_code}")
                 return None
@@ -779,6 +838,9 @@ class ExamPaperClient:
                 data = response.json()["data"]
                 logger.info(f"Created course: {data['name']}")
                 return data
+            elif response.status_code == 409:
+                logger.warning(f"Course '{course_data.name}' already exists, fetching existing...")
+                return await self._find_entity_by_name("course", course_data.name)
             else:
                 logger.error(f"Failed to create course: {response.status_code}")
                 return None
@@ -1552,7 +1614,7 @@ async def main():
     
     # Configuration
     config = APIConfig(
-        base_url="http://localhost:8000/api/v1",
+        base_url="http://fastapi.localhost/api/v1",
         timeout=30
     )
     
