@@ -17,12 +17,12 @@ Author: Kilo Code
 import asyncio
 import json
 import logging
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import List, Optional, Dict, Any, Union
 from uuid import UUID, uuid4
 
 import httpx
-from pydantic import BaseModel, Field, validator, EmailStr
+from pydantic import BaseModel, Field, validator, field_validator, ConfigDict, EmailStr
 
 
 # ============================================================================
@@ -35,8 +35,7 @@ class APIConfig(BaseModel):
     timeout: int = 30
     max_retries: int = 3
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # Configure logging
 logging.basicConfig(
@@ -54,26 +53,24 @@ class LoginRequest(BaseModel):
     """Login request schema"""
     email: EmailStr
     password: str
+    provider: str = Field(default="email")
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class TokenResponse(BaseModel):
-    """Token response schema"""
+    """Token response schema - matches backend Token schema"""
     access_token: str
     token_type: str
     refresh_token: str
-    user: Dict[str, Any]
+    user: Dict[str, Any]  # Backend returns IUserRead object, but we accept as dict for flexibility
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class RefreshTokenRequest(BaseModel):
     """Refresh token request schema"""
     refresh_token: str
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class AuthClient:
     """
@@ -105,11 +102,13 @@ class AuthClient:
             login_data = LoginRequest(email=email, password=password)
             response = await self.client.post(
                 f"{self.config.base_url}/login",
-                json=login_data.dict()
+                json=login_data.model_dump()
             )
             
             if response.status_code == 200:
-                token_data = TokenResponse(**response.json())
+                response_data = response.json()
+                # Backend returns data wrapped in response format: {data: {...}, message: "...", meta: {...}}
+                token_data = TokenResponse(**response_data["data"])
                 self.access_token = token_data.access_token
                 self.refresh_token = token_data.refresh_token
                 self.user_info = token_data.user
@@ -142,11 +141,13 @@ class AuthClient:
             refresh_data = RefreshTokenRequest(refresh_token=self.refresh_token)
             response = await self.client.post(
                 f"{self.config.base_url}/login/new_access_token",
-                json=refresh_data.dict()
+                json=refresh_data.model_dump()
             )
             
             if response.status_code == 200:
-                token_data = response.json()
+                response_data = response.json()
+                # Backend returns data wrapped in response format: {data: {...}, message: "...", meta: {...}}
+                token_data = response_data["data"]
                 self.access_token = token_data["access_token"]
                 self.token_expires_at = datetime.now() + timedelta(minutes=25)
                 
@@ -221,13 +222,17 @@ class AuthClient:
 class InstitutionCreate(BaseModel):
     """Schema for creating an institution"""
     name: str = Field(..., min_length=2, max_length=200)
-    description: Optional[str] = Field(None, max_length=500)
-    category: Optional[str] = Field("University")
-    institution_type: Optional[str] = Field("Public")
+    description: Optional[str] = Field("An Institution of choice", max_length=500)
+    category: str = Field(default="UNIVERSITY")
+    institution_type: str = Field(default="PUBLIC")
     location: Optional[str] = Field(None, max_length=200)
+    key: Optional[str] = None
+    kuccps_institution_url: Optional[str] = None
+    full_profile: Optional[str] = None
+    parent_ministry: Optional[str] = None
+    tags: Optional[List[str]] = None
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class InstitutionRead(BaseModel):
     """Schema for institution response"""
@@ -240,8 +245,7 @@ class InstitutionRead(BaseModel):
     location: Optional[str]
     created_at: datetime
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class InstitutionClient:
     """
@@ -376,7 +380,7 @@ class InstitutionClient:
             response = await self.client.post(
                 f"{self.config.base_url}/institution",
                 headers=headers,
-                json=institution_data.dict()
+                json=institution_data.model_dump()
             )
             
             if response.status_code == 201:
@@ -418,7 +422,7 @@ class ExamPaperCreate(BaseModel):
     year_of_exam: str = Field(default="2024/2025")
     exam_duration: int = Field(default=120, ge=30, le=480)
     exam_date: Optional[date] = Field(None)
-    tags: Optional[List[str]] = Field(default=[])
+    tags: Optional[List[str]] = Field(default=None)
     
     # Required relationships
     title_id: UUID
@@ -430,7 +434,8 @@ class ExamPaperCreate(BaseModel):
     instruction_ids: List[UUID] = Field(default=[])
     module_ids: List[UUID] = Field(default=[])
     
-    @validator('year_of_exam')
+    @field_validator('year_of_exam')
+    @classmethod
     def validate_year_format(cls, v):
         """Validate academic year format (YYYY/YYYY)"""
         if not v or '/' not in v:
@@ -448,31 +453,28 @@ class ExamPaperCreate(BaseModel):
             raise ValueError('Year parts must be valid integers')
         return v
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class ExamTitleCreate(BaseModel):
     """Schema for creating exam title"""
     name: str = Field(..., min_length=2, max_length=200)
     description: Optional[str] = Field(None, max_length=500)
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class ExamDescriptionCreate(BaseModel):
     """Schema for creating exam description"""
     name: str = Field(..., min_length=2, max_length=200)
-    description: Optional[str] = Field(None, max_length=500)
+    description: Optional[str] = Field("The description usually provides additional information about the exam, such as its level, degree program, or specific course details. e.g SECOND YEAR STAGE EXAMINATION For....", max_length=500)
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class ExamInstructionCreate(BaseModel):
     """Schema for creating exam instruction"""
     name: str = Field(..., min_length=2, max_length=500)
+    slug: Optional[str] = None
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class ModuleCreate(BaseModel):
     """Schema for creating a module"""
@@ -480,8 +482,7 @@ class ModuleCreate(BaseModel):
     unit_code: Optional[str] = Field(None, max_length=20)
     description: Optional[str] = Field(None, max_length=500)
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class CourseCreate(BaseModel):
     """Schema for creating a course"""
@@ -489,8 +490,7 @@ class CourseCreate(BaseModel):
     course_acronym: Optional[str] = Field(None, max_length=10)
     description: Optional[str] = Field(None, max_length=500)
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ============================================================================
@@ -503,23 +503,20 @@ class EditorJSBlock(BaseModel):
     type: str
     data: Dict[str, Any]
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class QuestionTextSchema(BaseModel):
     """Schema for question text using Editor.js format"""
     time: int
     blocks: List[EditorJSBlock]
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class QuestionSetCreate(BaseModel):
     """Schema for creating a question set"""
     title: str = Field(..., min_length=2, max_length=200)
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class MainQuestionCreate(BaseModel):
     """Schema for creating main questions"""
@@ -530,8 +527,18 @@ class MainQuestionCreate(BaseModel):
     question_set_id: UUID
     exam_paper_id: UUID
     
-    class Config:
-        from_attributes = True
+    @field_validator("text", mode="before")
+    @classmethod
+    def text_to_dict(cls, v):
+        if v is None:
+            return v
+        if isinstance(v, dict):
+            return v
+        if hasattr(v, "model_dump"):
+            return v.model_dump()
+        return v
+    
+    model_config = ConfigDict(from_attributes=True)
 
 class SubQuestionCreate(BaseModel):
     """Schema for creating sub-questions"""
@@ -541,8 +548,18 @@ class SubQuestionCreate(BaseModel):
     question_number: str = Field(default="a")
     parent_id: UUID
     
-    class Config:
-        from_attributes = True
+    @field_validator("text", mode="before")
+    @classmethod
+    def text_to_dict(cls, v):
+        if v is None:
+            return v
+        if isinstance(v, dict):
+            return v
+        if hasattr(v, "model_dump"):
+            return v.model_dump()
+        return v
+    
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ============================================================================
@@ -568,7 +585,7 @@ class ExamPaperClient:
             response = await self.client.post(
                 f"{self.config.base_url}/exam-title",
                 headers=headers,
-                json=title_data.dict()
+                json=title_data.model_dump()
             )
             
             if response.status_code == 201:
@@ -590,7 +607,7 @@ class ExamPaperClient:
             response = await self.client.post(
                 f"{self.config.base_url}/exam-description",
                 headers=headers,
-                json=description_data.dict()
+                json=description_data.model_dump()
             )
             
             if response.status_code == 201:
@@ -612,7 +629,7 @@ class ExamPaperClient:
             response = await self.client.post(
                 f"{self.config.base_url}/instruction",
                 headers=headers,
-                json=instruction_data.dict()
+                json=instruction_data.model_dump()
             )
             
             if response.status_code == 201:
@@ -634,7 +651,7 @@ class ExamPaperClient:
             response = await self.client.post(
                 f"{self.config.base_url}/module",
                 headers=headers,
-                json=module_data.dict()
+                json=module_data.model_dump()
             )
             
             if response.status_code == 201:
@@ -656,7 +673,7 @@ class ExamPaperClient:
             response = await self.client.post(
                 f"{self.config.base_url}/course",
                 headers=headers,
-                json=course_data.dict()
+                json=course_data.model_dump()
             )
             
             if response.status_code == 201:
@@ -678,7 +695,7 @@ class ExamPaperClient:
             response = await self.client.post(
                 f"{self.config.base_url}/exam-paper",
                 headers=headers,
-                json=exam_paper_data.dict()
+                json=exam_paper_data.model_dump()
             )
             
             if response.status_code == 201:
@@ -721,7 +738,7 @@ class QuestionClient:
             response = await self.client.post(
                 f"{self.config.base_url}/question-set",
                 headers=headers,
-                json=question_set_data.dict()
+                json=question_set_data.model_dump()
             )
             
             if response.status_code == 201:
@@ -743,7 +760,7 @@ class QuestionClient:
             response = await self.client.post(
                 f"{self.config.base_url}/questions/main",
                 headers=headers,
-                json=question_data.dict()
+                json=question_data.model_dump()
             )
             
             if response.status_code == 201:
@@ -765,7 +782,7 @@ class QuestionClient:
             response = await self.client.post(
                 f"{self.config.base_url}/questions/sub",
                 headers=headers,
-                json=question_data.dict()
+                json=question_data.model_dump()
             )
             
             if response.status_code == 201:
@@ -812,7 +829,7 @@ class QuestionClient:
         """Create multiple sub-questions for a main question"""
         try:
             headers = await self.auth_client.get_headers()
-            sub_questions_data = [sq.dict() for sq in sub_questions]
+            sub_questions_data = [sq.model_dump() for sq in sub_questions]
             
             response = await self.client.post(
                 f"{self.config.base_url}/questions/{main_question_id}/sub-questions/bulk",
@@ -1009,7 +1026,7 @@ class ExamPaperInserter:
         exam_paper_data: ExamPaperCreate,
         question_set_data: Optional[QuestionSetCreate] = None,
         main_questions_data: Optional[List[MainQuestionCreate]] = None,
-        sub_questions_data: Optional[List[SubQuestionCreate]] = None
+        main_questions_sub_qs: Optional[Dict[int, List[SubQuestionCreate]]] = None
     ) -> Dict[str, Any]:
         """
         Create complete exam paper with questions
@@ -1064,6 +1081,7 @@ class ExamPaperInserter:
                     return result
             
             # Create main questions
+            created_main_questions = []
             if main_questions_data:
                 for main_q_data in main_questions_data:
                     # Set exam paper ID and question set ID
@@ -1074,31 +1092,36 @@ class ExamPaperInserter:
                     main_question = await self.question_client.create_main_question(main_q_data)
                     if main_question:
                         result['main_questions'].append(main_question)
+                        created_main_questions.append(main_question)
                         self.created_entities[f'main_question_{main_question["id"]}'] = main_question
                     else:
                         result['errors'].append(f"Failed to create main question: {main_q_data.question_number}")
             
             # Create sub-questions
-            if sub_questions_data:
-                # Group sub-questions by parent ID
-                sub_questions_by_parent = {}
-                for sub_q_data in sub_questions_data:
-                    parent_id = sub_q_data.parent_id
-                    if parent_id not in sub_questions_by_parent:
-                        sub_questions_by_parent[parent_id] = []
-                    sub_questions_by_parent[parent_id].append(sub_q_data)
-                
-                # Create sub-questions for each parent
-                for parent_id, sub_questions in sub_questions_by_parent.items():
-                    created = await self.question_client.create_multiple_sub_questions(
-                        parent_id, sub_questions
-                    )
-                    if created:
-                        result['sub_questions'].extend(created)
-                        for sq in created:
-                            self.created_entities[f'sub_question_{sq["id"]}'] = sq
-                    else:
-                        result['errors'].append(f"Failed to create sub-questions for parent: {parent_id}")
+            if main_questions_sub_qs and created_main_questions:
+                # Map sub-questions to their parent main questions
+                sub_q_index = 0
+                for i, main_question in enumerate(created_main_questions):
+                    parent_sub_questions = []
+                    
+                    # Get sub-questions for this main question from the mapping
+                    if i in main_questions_sub_qs:
+                        parent_sub_questions = main_questions_sub_qs[i]
+                        # Set the parent ID for each sub-question
+                        for sub_q in parent_sub_questions:
+                            sub_q.parent_id = main_question['id']
+                    
+                    # Create sub-questions for this main question
+                    if parent_sub_questions:
+                        created = await self.question_client.create_multiple_sub_questions(
+                            main_question['id'], parent_sub_questions
+                        )
+                        if created:
+                            result['sub_questions'].extend(created)
+                            for sq in created:
+                                self.created_entities[f'sub_question_{sq["id"]}'] = sq
+                        else:
+                            result['errors'].append(f"Failed to create sub-questions for parent: {main_question['id']}")
             
             result['success'] = len(result['errors']) == 0
             return result
@@ -1151,8 +1174,8 @@ def create_sample_exam_paper() -> Dict[str, Any]:
             "institution": {
                 "name": "University of Technology",
                 "description": "Leading technology university",
-                "category": "University",
-                "institution_type": "Public",
+                "category": "UNIVERSITY",
+                "institution_type": "PUBLIC",
                 "location": "Nairobi"
             },
             "modules": [
@@ -1177,7 +1200,7 @@ def create_sample_exam_paper() -> Dict[str, Any]:
         "questions": {
          "question_sets": [
             {
-            "title": "Question One",
+            "title": "QUESTION_ONE",
             "main_questions": [
                 {
                     "text": {
@@ -1409,7 +1432,7 @@ async def main():
     
     # Configuration
     config = APIConfig(
-        base_url="http://localhost:8000/api/v1",
+        base_url="http://fastapi.localhost/api/v1",
         timeout=30
     )
     
@@ -1422,8 +1445,10 @@ async def main():
         print("-" * 30)
         
         # Get credentials (in real use, get from secure source)
-        email = input("Enter email: ")
-        password = input("Enter password: ")
+        # email = input("Enter email: ")
+        # password = input("Enter password: ")
+        email = "david@techgrids.com"
+        password = "##Jipanoran2020"
         
         auth_success = await inserter.authenticate(email, password)
         if not auth_success:
@@ -1487,15 +1512,47 @@ async def main():
             **prerequisites_ids
         )
         
-        question_set_data = QuestionSetCreate(**sample_data["question_set"])
-        main_questions_data = [MainQuestionCreate(**mq) for mq in sample_data["main_questions"]]
-        sub_questions_data = [SubQuestionCreate(**sq) for sq in sample_data["sub_questions"]]
+        # Extract question set data from the new format
+        question_set_info = sample_data["questions"]["question_sets"][0]
+        question_set_data = QuestionSetCreate(title=question_set_info["title"])
+        
+        # Prepare main questions and track their sub-questions
+        main_questions_data = []
+        main_questions_sub_qs = {}  # Track sub-questions for each main question
+        
+        for i, main_q in enumerate(question_set_info["main_questions"]):
+            # Create main question without sub-questions initially
+            main_q_data = {
+                "text": main_q["text"],
+                "marks": main_q["marks"],
+                "numbering_style": main_q["numbering_style"],
+                "question_number": main_q["question_number"],
+                "exam_paper_id": None,  # Will be set in create_exam_paper_with_questions
+                "question_set_id": None  # Will be set in create_exam_paper_with_questions
+            }
+            main_question_create = MainQuestionCreate(**main_q_data)
+            main_questions_data.append(main_question_create)
+            
+            # Track sub-questions for this main question
+            sub_questions_for_main = []
+            for j, sub_q in enumerate(main_q.get("sub_questions", [])):
+                sub_q_data = {
+                    "text": sub_q["text"],
+                    "marks": sub_q["marks"],
+                    "numbering_style": sub_q["numbering_style"],
+                    "question_number": sub_q["question_number"],
+                    "parent_id": None  # Will be set after main question is created
+                }
+                sub_questions_for_main.append(SubQuestionCreate(**sub_q_data))
+            
+            if sub_questions_for_main:
+                main_questions_sub_qs[i] = sub_questions_for_main
         
         result = await inserter.create_exam_paper_with_questions(
             exam_paper_data=exam_paper_data,
             question_set_data=question_set_data,
             main_questions_data=main_questions_data,
-            sub_questions_data=sub_questions_data
+            main_questions_sub_qs=main_questions_sub_qs
         )
         
         if result['success']:
