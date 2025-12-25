@@ -982,6 +982,34 @@ class QuestionClient:
                 data = response.json()["data"]
                 logger.info(f"Created main question: {question_data.question_number}")
                 return data
+            elif response.status_code == 409:
+                logger.warning(f"Main question '{question_data.question_number}' already exists, fetching existing...")
+                # Search for existing question
+                params = {
+                    "q": question_data.question_number,
+                    "question_type": "main",
+                    "limit": 1
+                }
+                if question_data.exam_paper_id:
+                    params["exam_paper_id"] = str(question_data.exam_paper_id)
+                if question_data.question_set_id:
+                    params["question_set_id"] = str(question_data.question_set_id)
+                
+                get_response = await self.client.get(
+                    f"{self.config.base_url}/questions/search",
+                    headers=headers,
+                    params=params
+                )
+                
+                if get_response.status_code == 200:
+                    data = get_response.json().get("data", {})
+                    items = data.get("items", []) if isinstance(data, dict) else data
+                    if items:
+                         logger.info(f"Found existing main question: {items[0]['id']}")
+                         return items[0]
+                
+                logger.error("Could not find existing main question despite 409")
+                return None
             else:
                 logger.error(f"Failed to create main question: {response.status_code} - {response.text}")
                 return None
@@ -1028,8 +1056,11 @@ class QuestionClient:
             if response.status_code == 200:
                 logger.info(f"Added question set to exam paper")
                 return True
+            elif response.status_code == 409:
+                logger.info("Question set already added to exam paper")
+                return True
             else:
-                logger.error(f"Failed to add question set: {response.status_code}")
+                logger.error(f"Failed to add question set: {response.status_code} - {response.text}")
                 return False
                 
         except Exception as e:
