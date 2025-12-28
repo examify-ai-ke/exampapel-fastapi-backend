@@ -1,8 +1,10 @@
 from uuid import UUID
 from typing import List, Optional, Any, Dict
 import enum
+import hashlib
 from sqlalchemy.future import select
-from sqlalchemy import func, cast, String
+from sqlalchemy import func, cast, String, and_
+from sqlalchemy.exc import IntegrityError
 from sqlmodel.ext.asyncio.session import AsyncSession
 from app.models.user_model import User
 from app.schemas.exam_paper_builder_schema import CompleteExamPaperCreate
@@ -98,6 +100,16 @@ class ExamPaperBuilderService:
         # Some schemas might require generic instantiation
         obj_in = schema_create(**create_data)
         return await crud_instance.create(db_session=db, obj_in=obj_in, created_by_id=user_id)
+
+    async def _get_existing_exam_paper(
+        self,
+        db: AsyncSession,
+        hash_code: str
+    ) -> Optional[ExamPaper]:
+        """Fetch existing exam paper by hash_code"""
+        query = select(ExamPaper).where(ExamPaper.hash_code == hash_code)
+        result = await db.execute(query)
+        return result.scalars().first()
 
     async def create_complete_exam_paper(
         self,
@@ -244,16 +256,44 @@ class ExamPaperBuilderService:
         # Check by some uniqueness (e.g. course + year + title) logic is complex.
         # Let's trust crud.create or catch error.
         
+        # Calculate expected hash_code to check for duplicates
+        # Logic must match ExamPaper.set_hash_code validator
+        exam_date_str = ep_data.exam_date.strftime('%Y-%m-%d') if ep_data.exam_date else 'no-date'
+        hash_input = (
+            f"{exam_title.id}-{ep_data.year_of_exam}-{institution.id}-{exam_description.id}-"
+            f"{exam_date_str}-{ep_data.exam_duration}"
+        )
+        expected_hash_code = hashlib.sha256(hash_input.encode()).hexdigest()
+
         try:
+            # We don't perform a pre-check query here because we rely on the DB constraint (optimized)
+            # and only fetch if there is a collision.
             exam_paper = await crud_exam_paper.create(db_session=db, obj_in=exam_paper_in, created_by_id=user_id)
+        except (HTTPException, IntegrityError) as e:
+            # Check if it's a 409 or IntegrityError
+            is_conflict = isinstance(e, IntegrityError) or (isinstance(e, HTTPException) and e.status_code == 409)
+            
+            if is_conflict:
+                logger.warning(f"Exam paper conflict detected for hash {expected_hash_code}. Fetching existing exam paper...")
+                exam_paper = await self._get_existing_exam_paper(db, expected_hash_code)
+                
+                if not exam_paper:
+                     logger.error(f"Could not find existing exam paper despite collision error. Hash checked: {expected_hash_code}")
+                     # Fallback to course/year check just in case hash logic differs slightly?
+                     # Let's try course/year as fallback
+                     # query = select(ExamPaper).where(and_(ExamPaper.course_id == course.id, ExamPaper.year_of_exam == ep_data.year_of_exam))
+                     # result = await db.execute(query)
+                     # exam_paper = result.scalars().first()
+                     
+                     if not exam_paper:
+                         raise HTTPException(status_code=409, detail=f"Exam paper already exists (Hash Collision) but could not be retrieved: {str(e)}")
+                
+                logger.info(f"✅ Found and using existing exam paper: {exam_paper.id}")
+            else:
+                 logger.error(f"Failed to create exam paper: {e}")
+                 raise e
         except Exception as e:
-            # If duplicate, we might want to fetch it.
-            # But the 'hash_code' is unique.
-            # It's hard to reconstruct hash_code exactly without logic.
-            # Let's assume for this builder we want new ones or fail.
-            # Or better, search by identifying fields?
-            # Let's log and re-raise for now.
-            logger.error(f"Failed to create exam paper: {e}")
+            logger.error(f"Unexpected error creating exam paper: {e}")
             raise HTTPException(status_code=400, detail=f"Could not create exam paper: {str(e)}")
 
         # 9. Questions
