@@ -124,7 +124,7 @@ class Question(BaseUUIDModel, QuestionBase, table=True):
     Main questions have question_set_id and exam_paper_id.
     Sub-questions have parent_id pointing to their main question.
     """
-    slug: Optional[str] = Field(default=None, unique=False)
+    slug: Optional[str] = Field(default=None, unique=True)
     
     # For main questions - link to question set and exam paper
     question_set_id: UUID | None = Field(default=None, foreign_key="QuestionSet.id")
@@ -191,26 +191,37 @@ class Question(BaseUUIDModel, QuestionBase, table=True):
         if value:
             return value
             
+        base_slug = ""
         text = values.get("text", {})
-        string_to_slugify = ""
+        
+        # 1. Try to get slug from text content
         if isinstance(text, dict):
             for block in text.get("blocks", []):
                 if "text" in block.get("data", {}):
-                    string_to_slugify = block["data"]["text"]
+                    base_slug = block["data"]["text"]
                     break
         
-        # If we have text to slugify, use it
-        if string_to_slugify:
-            return generate_slug_for_question_text(string_to_slugify)
+        # 2. If we have text, slugify it
+        generated_slug = ""
+        if base_slug:
+            generated_slug = generate_slug_for_question_text(base_slug)
+        else:
+            # 3. Fallback to question number
+            question_number = values.get("question_number", "")
+            if question_number:
+                generated_slug = generate_slug(f"question-{question_number}")
+            else:
+                # 4. Final fallback - generate a random slug
+                import uuid
+                generated_slug = generate_slug(f"question-{str(uuid.uuid4())[:8]}")
         
-        # Fallback to question number if no text available
-        question_number = values.get("question_number", "")
-        if question_number:
-            return generate_slug(f"question-{question_number}")
-        
-        # Final fallback - generate a random slug
-        import uuid
-        return generate_slug(f"question-{str(uuid.uuid4())[:8]}")
+        # Append exam_paper_id prefix if available for uniqueness
+        exam_paper_id = values.get("exam_paper_id")
+        if exam_paper_id:
+            # Add strict prefix/suffix for uniqueness within exam paper context
+            generated_slug = f"{generated_slug}-{str(exam_paper_id)[:6]}"
+            
+        return generated_slug
     
     @property
     def is_main_question(self) -> bool:

@@ -154,8 +154,8 @@ class ExamPaperRead(ExamPaperBase):
     title: Optional["ExamTitleReadForExamPaperRead"] = None
     description: Optional["ExamDescriptionReadForExamPaper"] = None
     modules: Optional[List[ModuleReadForExamPaper]] = []
-    created_by_id: UUID
-    institution: InstitutionReadForExamPaper
+    created_by_id: Optional[UUID] = None
+    institution: Optional[InstitutionReadForExamPaper] = None
     # hash_code: Optional[str]
     course:Optional[CourseReadForExamPaper]
     question_sets: Optional[List[QuestionSetReadForExamPaperRead]] = []

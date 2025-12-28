@@ -261,6 +261,18 @@ class ExamPaperBuilderService:
                 )
             
             for mq_data in qs_data.main_questions:
+                # Check if Main Question already exists
+                existing_mq = await crud_question.get_existing_main_question(
+                    db_session=db,
+                    exam_paper_id=exam_paper.id,
+                    question_set_id=qs.id,
+                    question_number=mq_data.question_number
+                )
+                
+                if existing_mq:
+                    logger.info(f"Skipping main question {mq_data.question_number} (already exists). Skipping its sub-questions as well.")
+                    continue
+
                 # Create Main Question
                 mq_in = MainQuestionCreate(
                     text=mq_data.text,

@@ -78,6 +78,24 @@ class CRUDQuestion(CRUDBase[Question, QuestionCreate, QuestionUpdate]):
         )
 
     # Query methods for different question types
+    async def get_existing_main_question(
+        self,
+        *,
+        exam_paper_id: UUID,
+        question_set_id: UUID,
+        question_number: str,
+        db_session: AsyncSession | None = None
+    ) -> Optional[Question]:
+        """Check if a main question already exists"""
+        db_session = db_session or super().get_db().session
+        query = select(Question).where(
+            Question.exam_paper_id == exam_paper_id,
+            Question.question_set_id == question_set_id,
+            Question.question_number == question_number
+        )
+        result = await db_session.execute(query)
+        return result.scalars().first()
+
     async def get_main_questions(
         self, 
         *,
