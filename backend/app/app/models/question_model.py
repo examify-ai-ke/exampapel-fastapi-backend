@@ -215,11 +215,16 @@ class Question(BaseUUIDModel, QuestionBase, table=True):
                 import uuid
                 generated_slug = generate_slug(f"question-{str(uuid.uuid4())[:8]}")
         
-        # Append exam_paper_id prefix if available for uniqueness
+        # Append context prefix/suffix for uniqueness
         exam_paper_id = values.get("exam_paper_id")
+        parent_id = values.get("parent_id")
+        
         if exam_paper_id:
-            # Add strict prefix/suffix for uniqueness within exam paper context
+            # Main questions: use exam_paper_id
             generated_slug = f"{generated_slug}-{str(exam_paper_id)[:6]}"
+        elif parent_id:
+            # Sub-questions: use parent_id (since they don't have exam_paper_id directly)
+            generated_slug = f"{generated_slug}-{str(parent_id)[:6]}"
             
         return generated_slug
     
