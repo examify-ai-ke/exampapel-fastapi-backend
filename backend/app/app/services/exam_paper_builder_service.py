@@ -2,7 +2,7 @@ from uuid import UUID
 from typing import List, Optional, Any, Dict
 import enum
 from sqlalchemy.future import select
-from sqlalchemy import func
+from sqlalchemy import func, cast, String
 from sqlmodel.ext.asyncio.session import AsyncSession
 from app.models.user_model import User
 from app.schemas.exam_paper_builder_schema import CompleteExamPaperCreate
@@ -61,10 +61,22 @@ class ExamPaperBuilderService:
         
         column = getattr(model_class, lookup_field)
         
-        if isinstance(name, str):
+        if isinstance(name, enum.Enum):
+            # Direct comparison for Enum members
+            query = select(model_class).where(column == name)
+        elif isinstance(name, str):
             # Case-insensitive lookup for string names to match what inserter.py does
             # and to handle models that normalize casing (like ExamDescription.name)
-            query = select(model_class).where(func.lower(column) == name.lower())
+            
+            # Safe check: if column type is Enum, we can't use lower() on it directly in PG without cast
+            # casting to String is safe for both String and Enum types.
+            if not name:
+                 # Empty string - likely invalid for lookup if not handled before.
+                 # But we can let query run or return None.
+                 # If we run query, cast(..).lower() == "" might find empty descriptions?
+                 pass
+
+            query = select(model_class).where(func.lower(cast(column, String)) == name.lower())
         else:
             query = select(model_class).where(column == name)
             
@@ -110,24 +122,39 @@ class ExamPaperBuilderService:
         programme = None
         if prog_data:
              prog_lookup = prog_data.name
-             # Handle Enum: If pydantic parsed it as Enum, get name.
-             if isinstance(prog_lookup, enum.Enum):
-                 prog_lookup = prog_lookup.name
-             # If it's a string that matches an enum value (e.g. "Bachelors/Undergraduate"), find the name (e.g. "BACHELORS")
-             elif isinstance(prog_lookup, str):
-                 # Try to find the enum member by value
-                 from app.models.programme_model import ProgrammeTypes
-                 for member in ProgrammeTypes:
-                     if member.value == prog_lookup:
-                         prog_lookup = member
-                         break
+             
+             # If empty string, skip lookup/creation
+             if isinstance(prog_lookup, str) and not prog_lookup.strip():
+                 # Log warning?
+                 prog_lookup = None
                  
-             programme = await self._get_or_create_by_name(
-                db, Programme, crud_programme, ProgrammeCreate,
-                prog_lookup,
-                prog_data.model_dump(), # Include name for creation
-                user_id
-            )
+             if prog_lookup:
+                 # Handle Enum: If pydantic parsed it as Enum, KEEP IT AS ENUM.
+                 # if isinstance(prog_lookup, enum.Enum):
+                 #     prog_lookup = prog_lookup.name <--- REMOVED THIS LINE
+                 
+                 # If it's a string that matches an enum value (e.g. "Bachelors/Undergraduate"), find the name (e.g. "BACHELORS")
+                 if isinstance(prog_lookup, str):
+                     # Try to find the enum member by value
+                     from app.models.programme_model import ProgrammeTypes
+                     for member in ProgrammeTypes:
+                         if member.value == prog_lookup:
+                             prog_lookup = member
+                             break
+                     # If still string, it might be the Name of the enum (e.g. "BACHELORS")?
+                     # Try mapping name to member?
+                     if isinstance(prog_lookup, str):
+                         try:
+                             prog_lookup = ProgrammeTypes[prog_lookup]
+                         except KeyError:
+                             pass
+                     
+                 programme = await self._get_or_create_by_name(
+                    db, Programme, crud_programme, ProgrammeCreate,
+                    prog_lookup,
+                    prog_data.model_dump(), # Include name for creation
+                    user_id
+                )
             
         # 3. Exam Title
         title_data = prereqs.exam_title
@@ -261,16 +288,58 @@ class ExamPaperBuilderService:
                 )
             
             for mq_data in qs_data.main_questions:
-                # Check if Main Question already exists
-                existing_mq = await crud_question.get_existing_main_question(
-                    db_session=db,
-                    exam_paper_id=exam_paper.id,
-                    question_set_id=qs.id,
-                    question_number=mq_data.question_number
-                )
+                # Generate expected slug for Main Question logic replication
+                # Logic: slugify(text) or question-{number}, then append exam_paper_id
+                
+                # Import helper needed
+                from app.utils.slugify_string import generate_slug, generate_slug_for_question_text
+                import uuid
+                
+                # Helper to generate slug locally (matching model logic)
+                def _generate_expected_slug(text_data, number, context_id):
+                    base_slug = ""
+                    if text_data and hasattr(text_data, "model_dump"):
+                         # It's a schema object, dump it
+                         text_dict = text_data.model_dump(mode='json')
+                    elif isinstance(text_data, dict):
+                         text_dict = text_data
+                    else:
+                         text_dict = {}
+
+                    if text_dict:
+                         for block in text_dict.get("blocks", []):
+                             if "text" in block.get("data", {}):
+                                 base_slug = block["data"]["text"]
+                                 break
+                    
+                    if base_slug:
+                        gen_slug = generate_slug_for_question_text(base_slug)
+                    elif number:
+                        gen_slug = generate_slug(f"question-{number}")
+                    else:
+                        gen_slug = generate_slug(f"question-{str(uuid.uuid4())[:8]}")
+                        
+                    if context_id:
+                        gen_slug = f"{gen_slug}-{str(context_id)[:6]}"
+                    return gen_slug
+
+                expected_mq_slug = _generate_expected_slug(mq_data.text, mq_data.question_number, exam_paper.id)
+
+                # Check if Main Question already exists BY SLUG
+                existing_mq = await crud_question.get_by_slug(db_session=db, slug=expected_mq_slug)
+                
+                # Fallback to structural check if slug check misses (e.g. text changed slightly) or to be safe?
+                # User asked to check by slug.
+                if not existing_mq:
+                     existing_mq = await crud_question.get_existing_main_question(
+                        db_session=db,
+                        exam_paper_id=exam_paper.id,
+                        question_set_id=qs.id,
+                        question_number=mq_data.question_number
+                    )
                 
                 if existing_mq:
-                    logger.info(f"Skipping main question {mq_data.question_number} (already exists). Skipping its sub-questions as well.")
+                    logger.info(f"Skipping main question {mq_data.question_number} (already exists with slug {expected_mq_slug}). Skipping its sub-questions as well.")
                     continue
 
                 # Create Main Question
@@ -287,6 +356,14 @@ class ExamPaperBuilderService:
                 
                 # Create Sub Questions
                 for sq_data in mq_data.sub_questions:
+                    # Check sub-question existence by slug (using parent_id context)
+                    expected_sq_slug = _generate_expected_slug(sq_data.text, sq_data.question_number, main_q.id)
+                    existing_sq = await crud_question.get_by_slug(db_session=db, slug=expected_sq_slug)
+                    
+                    if existing_sq:
+                         logger.info(f"Skipping sub-question {sq_data.question_number} (already exists with slug {expected_sq_slug}).")
+                         continue
+
                     sq_in = SubQuestionCreate(
                         text=sq_data.text,
                         marks=sq_data.marks,

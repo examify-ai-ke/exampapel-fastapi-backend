@@ -96,6 +96,12 @@ class CRUDQuestion(CRUDBase[Question, QuestionCreate, QuestionUpdate]):
         result = await db_session.execute(query)
         return result.scalars().first()
 
+    async def get_by_slug(self, slug: str, db_session: AsyncSession | None = None) -> Optional[Question]:
+        db_session = db_session or super().get_db().session
+        query = select(Question).where(Question.slug == slug)
+        response = await db_session.execute(query)
+        return response.scalars().first()
+
     async def get_main_questions(
         self, 
         *,

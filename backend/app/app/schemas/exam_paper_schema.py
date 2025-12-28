@@ -84,7 +84,7 @@ class ModuleReadForExamPaper(BaseModel):
 
 class InstructionCreate(BaseModel):
     name: str
-    slug:Optional[str]
+    slug: Optional[str] = None
     class Config:
         from_attributes = True
 

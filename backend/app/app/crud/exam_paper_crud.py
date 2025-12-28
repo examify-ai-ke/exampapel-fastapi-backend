@@ -71,6 +71,53 @@ class CRUDExamPaper(CRUDBase[ExamPaper, ExamPaperCreate, ExamPaperUpdate]):
                     # Log but don't re-raise to avoid masking the original error
                     print(f"Error closing session: {e}")
 
+    async def create(
+        self,
+        *,
+        obj_in: ExamPaperCreate,
+        created_by_id: UUID | str | None = None,
+        db_session: AsyncSession | None = None,
+    ) -> ExamPaper:
+        db_session = db_session or super().get_db().session
+        # Convert to dict
+        if hasattr(obj_in, "model_dump"):
+            obj_in_data = obj_in.model_dump()
+        else:
+            obj_in_data = dict(obj_in)
+            
+        # Extract relationship IDs
+        module_ids = obj_in_data.pop("module_ids", [])
+        instruction_ids = obj_in_data.pop("instruction_ids", [])
+        
+        # Create DB object
+        db_obj = self.model.model_validate(obj_in_data)
+        if created_by_id:
+            db_obj.created_by_id = created_by_id
+
+        # Attach modules
+        if module_ids:
+             stmt = select(Module).where(Module.id.in_(module_ids))
+             result = await db_session.execute(stmt)
+             modules = result.unique().scalars().all()
+             db_obj.modules.extend(modules)
+
+        # Attach instructions
+        if instruction_ids:
+             stmt = select(ExamInstruction).where(ExamInstruction.id.in_(instruction_ids))
+             result = await db_session.execute(stmt)
+             instructions = result.unique().scalars().all()
+             db_obj.instructions.extend(instructions)
+
+        try:
+            db_session.add(db_obj)
+            await db_session.commit()
+        except SQLAlchemyError as e:
+            await db_session.rollback()
+            raise HTTPException(status_code=409, detail=f"Resource already exists or error: {str(e)}")
+        
+        await db_session.refresh(db_obj)
+        return db_obj
+
     async def get_count_of_exampapers(
         self,
         *,
