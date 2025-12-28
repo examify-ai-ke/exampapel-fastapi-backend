@@ -28,6 +28,7 @@ from app.api.v1.endpoints import (
     detailed_statistics,
     health,  # Add health endpoints
     audit_logs,  # Add audit logs endpoints
+    exam_paper_builder,
 )
 
 api_router = APIRouter()
@@ -88,4 +89,8 @@ api_router.include_router(
 # Audit logs endpoints (admin only)
 api_router.include_router(
     audit_logs.router, prefix="/audit-logs", tags=["audit-logs"]
+)
+
+api_router.include_router(
+    exam_paper_builder.router, prefix="/exam-paper-builder", tags=["exam-paper-builder"]
 )

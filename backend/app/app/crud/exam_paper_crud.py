@@ -306,11 +306,11 @@ class CRUDExamPaper(CRUDBase[ExamPaper, ExamPaperCreate, ExamPaperUpdate]):
 
         # Create link
         link = ExamPaperQuestionLink(
-            exam_paper_id=exam_paper_id, question_set_id=question_set_id
+            exam_id=exam_paper_id, question_set_id=question_set_id
         )
         db_session.add(link)
         await db_session.commit()
-        return {"message": "Successfully linked question set wiht exam: "+{exam_paper_id}}
+        return {"message": f"Successfully linked question set wiht exam: {exam_paper_id}"}
 
     async def update_exam_paper_slug(
         self,
