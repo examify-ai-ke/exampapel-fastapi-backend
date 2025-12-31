@@ -392,7 +392,27 @@ class ExamPaperBuilderService:
                     exam_paper_id=exam_paper.id
                 )
                 
-                main_q = await crud_question.create(db_session=db, obj_in=mq_in, created_by_id=user_id)
+                try:
+                    main_q = await crud_question.create(db_session=db, obj_in=mq_in, created_by_id=user_id)
+                except (HTTPException, IntegrityError) as e:
+                     # Check conflict
+                     is_conflict = isinstance(e, IntegrityError) or (isinstance(e, HTTPException) and e.status_code == 409)
+                     if is_conflict:
+                         logger.warning(f"Main Question {mq_data.question_number} already exists (409). Fetching existing...")
+                         existing_mq_db = await crud_question.get_existing_main_question(
+                            db_session=db,
+                            exam_paper_id=exam_paper.id,
+                            question_set_id=qs.id,
+                            question_number=mq_data.question_number
+                        )
+                         if existing_mq_db:
+                             logger.info(f"Using existing main question {existing_mq_db.id}")
+                             main_q = existing_mq_db
+                         else:
+                             logger.error(f"Failed to find existing main question despite 409: {e}")
+                             continue # Or raise? If we can't find it, we can't add subquestions. Skip is safer.
+                     else:
+                         raise e
                 
                 # Create Sub Questions
                 for sq_data in mq_data.sub_questions:
@@ -412,7 +432,18 @@ class ExamPaperBuilderService:
                         parent_id=main_q.id
                         # exam_paper_id removed as it is not in SubQuestionCreate schema
                     )
-                    await crud_question.create(db_session=db, obj_in=sq_in, created_by_id=user_id)
+                    try:
+                        await crud_question.create(db_session=db, obj_in=sq_in, created_by_id=user_id)
+                    except (HTTPException, IntegrityError) as e:
+                        is_conflict = isinstance(e, IntegrityError) or (isinstance(e, HTTPException) and e.status_code == 409)
+                        if is_conflict:
+                            logger.warning(f"Sub-question {sq_data.question_number} already exists (409). Skipping.")
+                            continue
+                        else:
+                            logger.error(f"Error creating sub-question: {e}")
+                            # Don't break the whole flow for one sub-question failure? 
+                            # raise e
+                            continue
 
         await db.refresh(exam_paper)
         return exam_paper
