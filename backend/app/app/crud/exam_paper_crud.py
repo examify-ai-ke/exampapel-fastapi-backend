@@ -370,14 +370,25 @@ class CRUDExamPaper(CRUDBase[ExamPaper, ExamPaperCreate, ExamPaperUpdate]):
         
         db_session = db_session or super().get_db().session
         
+        # Reload the exam paper to ensure all relationships are loaded
+        # This fixes the issue where passed exam_paper might have missing relationships
+        stmt = select(ExamPaper).where(ExamPaper.id == exam_paper.id)
+        result = await db_session.execute(stmt)
+        exam_paper = result.unique().scalar_one()
+
         # Build slug from loaded relationships
         year = exam_paper.year_of_exam or "unknown"
         exam_description = exam_paper.description.name if exam_paper.description else "no-desc"
         institution_name = exam_paper.institution.name if exam_paper.institution else "no-inst"
         course_name = exam_paper.course.name if exam_paper.course else "no-course"
         title_name = exam_paper.title.name if exam_paper.title else "no-title"
-        exam_date = exam_paper.exam_date.strftime("%Y-%m-%d") if exam_paper.exam_date else "no-date"
-        exam_module = exam_paper.modules[0].name if exam_paper.modules else "-"
+        # exam_module = exam_paper.modules[0].name if exam_paper.modules else "-"
+        # Simplified module handling - just take first if exists, else ignore or standard fallback
+        if exam_paper.modules:
+             exam_module = exam_paper.modules[0].name
+        else:
+             exam_module = "-"
+             
         hash_suffix = exam_paper.hash_code[:12] if exam_paper.hash_code else "temp"
         
         slug_string = f"{year}-{exam_description}-{institution_name}-{course_name}-{exam_module}-{hash_suffix}"

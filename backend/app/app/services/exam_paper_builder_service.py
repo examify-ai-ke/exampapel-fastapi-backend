@@ -270,7 +270,7 @@ class ExamPaperBuilderService:
             # and only fetch if there is a collision.
             raw_exam_paper = await crud_exam_paper.create(db_session=db, obj_in=exam_paper_in, created_by_id=user_id)
             # Update slug with relationship data
-            exam_paper = await crud_exam_paper.update_exam_paper_slug(exam_paper=raw_exam_paper)
+            exam_paper = await crud_exam_paper.update_exam_paper_slug(exam_paper=raw_exam_paper, db_session=db)
 
         except (HTTPException, IntegrityError) as e:
             # Check if it's a 409 or IntegrityError
