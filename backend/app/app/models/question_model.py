@@ -185,14 +185,19 @@ class Question(BaseUUIDModel, QuestionBase, table=True):
         }
     )
     
-    @validator("slug", pre=True, always=True)
-    def set_slug(cls, value, values):
-        # If slug is already provided and not None, use it
-        if value:
-            return value
+    @model_validator(mode="before")
+    @classmethod
+    def set_slug(cls, data: Any) -> Any:
+        # If not a dict, return as is (could be validation from ORM object)
+        if not isinstance(data, dict):
+            return data
+            
+        # If slug is already provided and not None, return data
+        if data.get("slug"):
+            return data
             
         base_slug = ""
-        text = values.get("text", {})
+        text = data.get("text", {})
         
         # 1. Try to get slug from text content
         if isinstance(text, dict):
@@ -207,7 +212,7 @@ class Question(BaseUUIDModel, QuestionBase, table=True):
             generated_slug = generate_slug_for_question_text(base_slug)
         else:
             # 3. Fallback to question number
-            question_number = values.get("question_number", "")
+            question_number = data.get("question_number", "")
             if question_number:
                 generated_slug = generate_slug(f"question-{question_number}")
             else:
@@ -216,8 +221,8 @@ class Question(BaseUUIDModel, QuestionBase, table=True):
                 generated_slug = generate_slug(f"question-{str(uuid.uuid4())[:8]}")
         
         # Append context prefix/suffix for uniqueness
-        exam_paper_id = values.get("exam_paper_id")
-        parent_id = values.get("parent_id")
+        exam_paper_id = data.get("exam_paper_id")
+        parent_id = data.get("parent_id")
         
         if exam_paper_id:
             # Main questions: use exam_paper_id
@@ -226,7 +231,8 @@ class Question(BaseUUIDModel, QuestionBase, table=True):
             # Sub-questions: use parent_id (since they don't have exam_paper_id directly)
             generated_slug = f"{generated_slug}-{str(parent_id)[:6]}"
             
-        return generated_slug
+        data["slug"] = generated_slug
+        return data
     
     @property
     def is_main_question(self) -> bool:

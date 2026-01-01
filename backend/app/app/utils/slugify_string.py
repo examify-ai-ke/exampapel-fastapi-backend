@@ -15,6 +15,6 @@ def generate_slug(name:str) -> str:
     return slug
 
 
-def generate_slug_for_question_text(title: str, max_length: int = 100) -> str:
+def generate_slug_for_question_text(title: str, max_length: int = 65) -> str:
     slug = slugify(text=title,max_length=max_length, word_boundary=True, save_order=True)
     return slug
