@@ -96,9 +96,9 @@ async def get_institution_list(
         selectinload(Institution.created_by).load_only(
             User.id, User.first_name, User.last_name, User.email
         ),
-        selectinload(Institution.faculties).load_only(Faculty.id),
+        selectinload(Institution.faculties).selectinload(Faculty.departments),
         selectinload(Institution.exam_papers),
-        selectinload(Institution.campuses).load_only(Campus.id),
+        selectinload(Institution.campuses).selectinload(Campus.address),
     )
     # Add text search if search parameter is provided
     if search_term:
@@ -245,8 +245,8 @@ async def advanced_search_institutions(
             selectinload(Institution.created_by).load_only(
                 User.id, User.first_name, User.last_name, User.email
             ),
-            selectinload(Institution.faculties).load_only(Faculty.id, Faculty.name),
-            selectinload(Institution.campuses).load_only(Campus.id, Campus.name),
+            selectinload(Institution.faculties).selectinload(Faculty.departments),
+            selectinload(Institution.campuses).selectinload(Campus.address),
             selectinload(Institution.exam_papers).load_only(ExamPaper.id),
         )
     )
