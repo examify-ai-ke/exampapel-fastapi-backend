@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     API_V1_STR: str = f"/api/{API_VERSION}"
     # API_V1_STR: str = "/admin/api"
     PROJECT_NAME: str
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 8 # 8 hours
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 # 24 hours
     REFRESH_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 100  # 100 days
     OPENAI_API_KEY: str
     DATABASE_USER: str

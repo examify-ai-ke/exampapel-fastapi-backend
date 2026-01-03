@@ -56,10 +56,30 @@ class ExamPaperBuilderService:
         lookup_field: str = "name"
     ) -> Any:
         """Generic helper to get by name or create"""
+        from app.utils.slugify_string import generate_slug
+        
         # specialized check for names that might need sanitization or specific queries
         # For now assume 'name' column exists and is unique-ish or we just want first match
         # 1. Check if exists
         print(f"DEBUG: Checking for {model_class.__name__} with {lookup_field}='{name}' (Type: {type(name)})")
+
+        # Priority 1: Check by Slug if available (Most robust for uniqueness)
+        if hasattr(model_class, "slug") and isinstance(name, str) and lookup_field == "name":
+            # Only try slug check if we are looking up by name and the model has a slug field
+            try:
+                msg_slug = generate_slug(name)
+                # Ensure we aren't checking against a field that doesnt exist or isn't "slug" 
+                # (though verify check implicitly does checks model_class which we know matches)
+                query_slug = select(model_class).where(model_class.slug == msg_slug)
+                result_slug = await db.execute(query_slug)
+                instance_slug = result_slug.scalars().first()
+                if instance_slug:
+                     print(f"DEBUG: Found existing {model_class.__name__} by slug '{msg_slug}': {instance_slug.id}")
+                     return instance_slug
+            except Exception as e:
+                # Fallback to name check if slug generation/query fails unexpectedly
+                print(f"DEBUG: Slug check failed: {e}")
+                pass
         
         column = getattr(model_class, lookup_field)
         
