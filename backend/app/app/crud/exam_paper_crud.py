@@ -257,31 +257,35 @@ class CRUDExamPaper(CRUDBase[ExamPaper, ExamPaperCreate, ExamPaperUpdate]):
             # Handle many-to-many relationships separately
             if "instruction_ids" in update_dict:
                 instruction_ids = update_dict.pop("instruction_ids")
-                # Clear existing instructions
-                exam_paper.instructions.clear()
+                
+                if instruction_ids is not None:
+                    # Clear existing instructions
+                    exam_paper.instructions.clear()
 
-                # Fetch and add new instructions
-                if instruction_ids:
-                    stmt = select(ExamInstruction).filter(ExamInstruction.id.in_(instruction_ids))
-                    results = await db_session.execute(stmt)
-                    instructions = results.unique().scalars().all()
-                    if len(instructions) != len(instruction_ids):
-                        raise ValueError("Some instruction IDs are invalid")
-                    exam_paper.instructions.extend(instructions)
+                    # Fetch and add new instructions
+                    if instruction_ids:
+                        stmt = select(ExamInstruction).filter(ExamInstruction.id.in_(instruction_ids))
+                        results = await db_session.execute(stmt)
+                        instructions = results.unique().scalars().all()
+                        if len(instructions) != len(instruction_ids):
+                            raise ValueError("Some instruction IDs are invalid")
+                        exam_paper.instructions.extend(instructions)
 
             if "module_ids" in update_dict:
                 module_ids = update_dict.pop("module_ids")
-                # Clear existing modules
-                exam_paper.modules.clear()
+                
+                if module_ids is not None:
+                    # Clear existing modules
+                    exam_paper.modules.clear()
 
-                # Fetch and add new modules
-                if module_ids:
-                    mdl_stmt = select(Module).filter(Module.id.in_(module_ids))
-                    results = await db_session.execute(mdl_stmt)
-                    modules = results.unique().scalars().all()
-                    if len(modules) != len(module_ids):
-                        raise ValueError("Some Exam Module IDs are invalid")
-                    exam_paper.modules.extend(modules)
+                    # Fetch and add new modules
+                    if module_ids:
+                        mdl_stmt = select(Module).filter(Module.id.in_(module_ids))
+                        results = await db_session.execute(mdl_stmt)
+                        modules = results.unique().scalars().all()
+                        if len(modules) != len(module_ids):
+                            raise ValueError("Some Exam Module IDs are invalid")
+                        exam_paper.modules.extend(modules)
             # Update other attributes
             for key, value in update_dict.items():
                 setattr(exam_paper, key, value)
@@ -391,7 +395,7 @@ class CRUDExamPaper(CRUDBase[ExamPaper, ExamPaperCreate, ExamPaperUpdate]):
              
         hash_suffix = exam_paper.hash_code[:12] if exam_paper.hash_code else "temp"
         
-        slug_string = f"{year}-{exam_description}-{institution_name}-{course_name}-{exam_module}-{hash_suffix}"
+        slug_string = f"{year}-{exam_description}-{course_name}-{exam_module}-{institution_name}-{hash_suffix}"
         exam_paper.slug = generate_slug(slug_string)
         
         db_session.add(exam_paper)

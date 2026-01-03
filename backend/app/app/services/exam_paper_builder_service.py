@@ -304,9 +304,29 @@ class ExamPaperBuilderService:
             # Create Question Set
             # Convert title string to Enum if possible
             qs_title = qs_data.title
-            try:
+            if qs_data.title=="Question 1":
+                qs_title = "Question One"
+            elif qs_data.title=="Question 2":
+                qs_title = "Question Two"
+            elif qs_data.title=="Question 3":
+                qs_title = "Question Three"
+            elif qs_data.title=="Question 4":
+                qs_title = "Question Four"
+            elif qs_data.title=="Question 5":
+                qs_title = "Question Five"
+            elif qs_data.title=="Question 6":
+                qs_title = "Question Six"
+            elif qs_data.title=="Question 7":
+                qs_title = "Question Seven"
+            elif qs_data.title=="Question 8":
+                qs_title = "Question Eight"
+            elif qs_data.title=="Question 9":
+                qs_title = "Question Nine"
+            elif qs_data.title=="Question 10":
+                qs_title = "Question Ten"
+            try:              
                 # Try to map string to Enum member
-                qs_title = QuestionSetTitleEnum(qs_data.title)
+                qs_title = QuestionSetTitleEnum(qs_title)
             except ValueError:
                 # Fallback to string if not a valid enum value (though model might reject it later)
                 pass

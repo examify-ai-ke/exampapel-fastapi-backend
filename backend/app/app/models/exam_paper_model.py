@@ -229,7 +229,7 @@ class ExamPaper(BaseUUIDModel,ExamPaperBase, table=True):
         exam_description = self.description.name if self.description else "No-Description"
         exam_module = (
             self.modules[0].name
-            if self.modules and len(self.modules) == 1
+            if self.modules and len(self.modules) >= 1
             else (
                 None
                 if self.modules is None
@@ -239,7 +239,7 @@ class ExamPaper(BaseUUIDModel,ExamPaperBase, table=True):
         
 
         # Combine attributes to create a unique identifying name
-        return f"{year} {exam_description} - {institution_name} - {course_name} - {exam_module if exam_module else '-' if exam_module == None else exam_module} - {title_name} - {exam_date}"
+        return f"{year}-{exam_description} - {course_name} - {exam_module if exam_module else '-' if exam_module == None else exam_module} - {title_name} - {institution_name} - {exam_date}"
 
     def _generate_hash(self) -> str:
         """Helper method to generate hash from exam paper attributes"""
