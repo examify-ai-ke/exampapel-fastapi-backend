@@ -1,14 +1,15 @@
-from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
+from fastapi_mail import FastMail, MessageSchema, ConnectionConfig, MessageType
+from pydantic import EmailStr, BaseModel
 from app.core.config import settings
 from pathlib import Path
 from jinja2 import Environment, select_autoescape, FileSystemLoader
 import logging
 from starlette.responses import JSONResponse
-
+from pydantic import SecretStr
 # Configure email settings with correct field names
 email_config = ConnectionConfig(
     MAIL_USERNAME=settings.MAIL_SMTP_USERNAME,
-    MAIL_PASSWORD=settings.MAIL_SMTP_PASSWORD,
+    MAIL_PASSWORD=SecretStr(settings.MAIL_SMTP_PASSWORD),
     MAIL_FROM=settings.MAIL_FROM,
     MAIL_PORT=settings.MAIL_SMTP_PORT,
     MAIL_SERVER=settings.MAIL_SMTP_SERVER,

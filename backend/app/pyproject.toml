@@ -13,6 +13,7 @@ dependencies = [
     "sqlmodel>=0.0.24",
     "cryptography>=41.0.7",
     "bcrypt>=4.1.1",
+    "fastapi-mail==1.5.0",
     "SQLAlchemy-Utils>=0.41.1",
     "SQLAlchemy>=2.0.40",
     "fastapi-cache2>=0.2.1",
@@ -32,17 +33,15 @@ dependencies = [
     "requests>=2.31.0",
     "wheel>=0.42.0",
     "setuptools>=69.0.2",
-
     "fastapi-limiter>=0.1.5",
     "pyjwt[crypto]>=2.8.0",
     "python-slugify>=8.0.4",
-    "pydantic>=2.11.3",
+    "pydantic[email]>=2.5",
     "pydantic-extra-types>=2.7.0",
     "pydantic-core>=2.18.2",
     "starlette-admin[sqlmodel]>=0.14.1",
-    "fastapi-mail>=1.4.2",
     "pydantic-settings>=2.0.0",
-
+    "email-validator>=2.1.0",
     "boto3>=1.37.31",
     "psycopg[binary]>=3.2.6",
     "python-dotenv>=0.9.9",
@@ -52,7 +51,6 @@ dependencies = [
     "rich>=14.2.0",
     "weasyprint>=67.0",
     "jinja2>=3.1.6",
-
 ]
 readme = "README.md"
 

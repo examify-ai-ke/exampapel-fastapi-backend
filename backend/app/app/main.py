@@ -25,7 +25,6 @@ from fastapi_cache.backends.redis import RedisBackend
 from fastapi_limiter import FastAPILimiter
 from fastapi_limiter.depends import WebSocketRateLimiter
 from jwt import DecodeError, ExpiredSignatureError, MissingRequiredClaimError
-
 from sqlalchemy.pool import NullPool, AsyncAdaptedQueuePool
 from fastapi_cache.backends.inmemory import InMemoryBackend
 
