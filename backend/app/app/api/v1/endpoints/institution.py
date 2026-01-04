@@ -91,7 +91,7 @@ async def get_institution_list(
     """
     # Ultra-optimized query - minimal data loading for maximum performance
     query = select(Institution).options(
-        selectinload(Institution.logo),
+        selectinload(Institution.logo).selectinload(ImageMedia.media),
         selectinload(Institution.address),
         selectinload(Institution.created_by).load_only(
             User.id, User.first_name, User.last_name, User.email
@@ -240,7 +240,7 @@ async def advanced_search_institutions(
     query = (
         select(Institution)
         .options(
-            selectinload(Institution.logo),
+            selectinload(Institution.logo).selectinload(ImageMedia.media),
             selectinload(Institution.address),
             selectinload(Institution.created_by).load_only(
                 User.id, User.first_name, User.last_name, User.email
@@ -386,7 +386,7 @@ async def get_institution_by_id(
             selectinload(Institution.faculties).selectinload(Faculty.departments),
             selectinload(Institution.campuses).selectinload(Campus.address),
             selectinload(Institution.exam_papers),
-            selectinload(Institution.logo),
+            selectinload(Institution.logo).selectinload(ImageMedia.media),
             selectinload(Institution.created_by),
             selectinload(Institution.address),
         ],
@@ -511,7 +511,7 @@ async def update_institution(
             selectinload(Institution.faculties).selectinload(Faculty.departments),
             selectinload(Institution.campuses).selectinload(Campus.address),
             selectinload(Institution.exam_papers),
-            selectinload(Institution.logo),
+            selectinload(Institution.logo).selectinload(ImageMedia.media),
             selectinload(Institution.created_by),
             selectinload(Institution.address),
         ],
