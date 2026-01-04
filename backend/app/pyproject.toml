@@ -1,12 +1,80 @@
-[tool.poetry]
+[project]
 name = "app"
 version = "0.1.0"
 description = "Exampapel-API"
-authors = ["jonra1993 <jon_ra@hotmail.es>"]
+authors = [
+    { name = "jonra1993", email = "jon_ra@hotmail.es" }
+]
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "alembic>=1.15.2",
+    "asyncpg>=0.29.0",
+    "fastapi>=0.115.12",
+    "sqlmodel>=0.0.24",
+    "cryptography>=41.0.7",
+    "bcrypt>=4.1.1",
+    "SQLAlchemy-Utils>=0.41.1",
+    "SQLAlchemy>=2.0.40",
+    "fastapi-cache2>=0.2.1",
+    "minio>=7.2.0",
+    "Pillow>=10.1.0",
+    "watchfiles>=0.21.0",
+    "asyncer==0.0.5",
+    "httpx>=0.25.2",
+    "pandas>=2.1.4",
+    "openpyxl>=3.1.2",
+    "redis>=4.5.1",
+    "fastapi-async-sqlalchemy>=0.6.0",
+    "oso>=0.27.0",
+    "celery>=5.3.6",
+    "celery-sqlalchemy-scheduler>=0.3.0",
+    "psycopg2-binary>=2.9.10",
+    "requests>=2.31.0",
+    "wheel>=0.42.0",
+    "setuptools>=69.0.2",
+
+    "fastapi-limiter>=0.1.5",
+    "pyjwt[crypto]>=2.8.0",
+    "python-slugify>=8.0.4",
+    "pydantic>=2.11.3",
+    "pydantic-extra-types>=2.7.0",
+    "pydantic-core>=2.18.2",
+    "starlette-admin[sqlmodel]>=0.14.1",
+    "fastapi-mail>=1.4.2",
+    "pydantic-settings>=2.0.0",
+
+    "boto3>=1.37.31",
+    "psycopg[binary]>=3.2.6",
+    "python-dotenv>=0.9.9",
+    "fastapi-pagination==0.13.0a3",
+    "fastapi-sqla>=3.4.8",
+    "psycopg-binary>=3.2.6",
+    "rich>=14.2.0",
+    "weasyprint>=67.0",
+    "jinja2>=3.1.6",
+
+]
+readme = "README.md"
+
+[dependency-groups]
+dev = [
+    "black>=23.1.0",
+    "ruff>=0.0.256",
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.1",
+    "mypy>=1.5.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
 
 [tool.black]
 line-length = 88
-target-version = [ "py310", "py311" ]
+target-version = [ "py312" ]
 exclude = "((.eggs | .git | .pytest_cache | build | dist))"
 
 [tool.ruff]
@@ -36,63 +104,3 @@ warn_return_any = true
 warn_unused_configs = true
 ignore_missing_imports = true
 exclude = ["alembic", "__pycache__"]
-
-
-[tool.poetry.dependencies]
-python = ">=3.12,<3.13"
-alembic = "^1.15.2"
-asyncpg = "^0.29.0"
-fastapi = "^0.115.12"
-sqlmodel = "^0.0.24"
-cryptography = "^41.0.7"
-bcrypt = "^4.1.1"
-SQLAlchemy-Utils = "^0.41.1"
-SQLAlchemy = "^2.0.40"
-fastapi-cache2 = "^0.2.1"
-minio = "^7.2.0"
-Pillow = "^10.1.0"
-watchfiles = "^0.21.0"
-asyncer = "0.0.5"
-httpx = "^0.25.2"
-pandas = "^2.1.4"
-openpyxl = "^3.1.2"
-redis = "^4.5.1"
-fastapi-async-sqlalchemy = "^0.6.0"
-oso = "^0.27.0"
-celery = "^5.3.6"
-celery-sqlalchemy-scheduler = "^0.3.0"
-psycopg2-binary = "^2.9.10"
-
-requests = "^2.31.0"
-wheel = "^0.42.0"
-setuptools = "^69.0.2"
-langchain = "^0.0.348"
-openai = "^1.3.8"
-fastapi-limiter = "^0.1.5"
-pyjwt = {extras = ["crypto"], version = "^2.8.0"}
-python-slugify = "^8.0.4"
-pydantic = "^2.11.3"
-pydantic-extra-types = "^2.7.0"
-pydantic-core = "^2.18.2"
-starlette-admin = {extras = ["sqlmodel"], version = "^0.14.1"}
-fastapi-mail = "^1.4.2"
-boto3 = "^1.37.31"
-
-psycopg = {extras = ["binary"], version = "^3.2.6"}
-dotenv = "^0.9.9"
-fastapi-pagination = "0.13.0a3"
-fastapi-sqla = "^3.4.8"
-psycopg-binary = "^3.2.6"
-rich = "^14.2.0"
- 
-
-[tool.poetry.group.dev.dependencies]
-black = "^23.1.0"
-ruff = "^0.0.256"
-pytest = "^7.4.0"
-pytest-asyncio = "^0.21.1"
-mypy = "^1.5.0"
-
-[build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"

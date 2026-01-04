@@ -12,7 +12,7 @@ help: ## Show this help
 
 install: ## Install dependencies
 	@echo "📦 Installing dependencies..."
-	cd backend/app && poetry install --with dev
+	cd backend/app && uv sync
 
 run: ## Start development server
 	@echo "🚀 Starting Examify API development server..."
@@ -30,21 +30,21 @@ stop: ## Stop development server
 
 format: ## Format code
 	@echo "🎨 Formatting code..."
-	cd backend/app && poetry run black .
-	cd backend/app && poetry run ruff --fix .
+	cd backend/app && uv run black .
+	cd backend/app && uv run ruff check --fix .
 
 lint: ## Check code quality
 	@echo "🔍 Checking code quality..."
-	cd backend/app && poetry run black --check .
-	cd backend/app && poetry run ruff check .
-	cd backend/app && poetry run mypy . || true
+	cd backend/app && uv run black --check .
+	cd backend/app && uv run ruff check .
+	cd backend/app && uv run mypy . || true
 
 ##@ Testing
 
 test: ## Run tests (requires running containers)
 	@echo "🧪 Running tests..."
 	@echo "⚠️  Make sure containers are running: make run-bg"
-	cd backend/app && poetry run pytest -v
+	cd backend/app && uv run pytest -v
 
 test-local: ## Run tests with local test environment
 	@echo "🧪 Setting up and running tests locally..."
@@ -53,19 +53,19 @@ test-local: ## Run tests with local test environment
 	@echo "⏳ Waiting for services to be ready..."
 	@sleep 10
 	@echo "🧪 Running tests..."
-	@cd backend/app && poetry run pytest -v || true
+	@cd backend/app && uv run pytest -v || true
 	@echo "🧹 Cleaning up test services..."
 	@docker compose -f docker-compose-test.yml down
 
 test-cov: ## Run tests with coverage
 	@echo "🧪 Running tests with coverage..."
 	@echo "⚠️  Make sure containers are running: make run-bg"
-	cd backend/app && poetry run pytest --cov=app --cov-report=html -v
+	cd backend/app && uv run pytest --cov=app --cov-report=html -v
 
 test-quick: ## Run tests quickly (stop on first failure)
 	@echo "⚡ Running quick tests..."
 	@echo "⚠️  Make sure containers are running: make run-bg"
-	cd backend/app && poetry run pytest -v -x
+	cd backend/app && uv run pytest -v -x
 
 ##@ Database
 
@@ -130,14 +130,14 @@ ci-test: ## Run tests like CI does (with fresh containers)
 		REDIS_PORT="6379" \
 		ACCESS_TOKEN_EXPIRE_MINUTES="60" \
 		OPENAI_API_KEY="test-key" \
-		poetry run pytest -v --tb=short || true
+		uv run pytest -v --tb=short || true
 	@echo "🧹 Cleaning up test environment..."
 	@docker compose -f docker-compose-test.yml down -v
 
 check-env: ## Check if environment is properly set up
 	@echo "🔍 Checking Examify API environment setup..."
-	@echo "📦 Poetry:"
-	@cd backend/app && poetry --version || echo "❌ Poetry not found"
+	@echo "📦 UV:"
+	@cd backend/app && uv --version || echo "❌ UV not found"
 	@echo "🐳 Docker:"
 	@docker --version || echo "❌ Docker not found"
 	@echo "📋 Environment file:"

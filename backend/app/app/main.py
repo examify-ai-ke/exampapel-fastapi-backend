@@ -25,8 +25,7 @@ from fastapi_cache.backends.redis import RedisBackend
 from fastapi_limiter import FastAPILimiter
 from fastapi_limiter.depends import WebSocketRateLimiter
 from jwt import DecodeError, ExpiredSignatureError, MissingRequiredClaimError
-from langchain.chat_models import ChatOpenAI
-from langchain.schema import HumanMessage
+
 from sqlalchemy.pool import NullPool, AsyncAdaptedQueuePool
 from fastapi_cache.backends.inmemory import InMemoryBackend
 
@@ -256,8 +255,8 @@ app = FastAPI(
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
     lifespan=lifespan,
     contact={
-        "name": "Examify Development Team",
-        "email": "support@examify.com",
+        "name": "ExamPapel Development Team",
+        "email": "support@exampapel.com",
     },
     license_info={
         "name": "MIT License",
@@ -269,7 +268,7 @@ app = FastAPI(
             "description": "Development server"
         },
         {
-            "url": "https://api.examify.com",
+            "url": "https://api.exampapel.com",
             "description": "Production server"
         }
     ],
@@ -514,7 +513,7 @@ async def root():
             "🔬 Researchers: Analyze examination trends over time"
         ],
         "support": {
-            "email": "support@examify.com",
+            "email": "support@exampapel.com",
             "documentation": f"http://fastapi.localhost{settings.API_V1_STR}/docs"
         },
         "system_info": {
@@ -527,76 +526,7 @@ async def root():
     }
 
 
-@app.websocket("/chat/{user_id}")
-async def websocket_endpoint(websocket: WebSocket, user_id: UUID):
-    session_id = str(uuid4())
-    key: str = f"user_id:{user_id}:session:{session_id}"
-    await websocket.accept()
-    redis_client = await get_redis_client()
-    ws_ratelimit = WebSocketRateLimiter(times=200, hours=24)
-    chat = ChatOpenAI(temperature=0, openai_api_key=settings.OPENAI_API_KEY)
-    chat_history = []
 
-    async with db():
-        user = await crud.user.get_by_id_active(id=user_id)
-        if user is not None:
-            await redis_client.set(key, str(websocket))
-
-    active_connection = await redis_client.get(key)
-    if active_connection is None:
-        await websocket.send_text(f"Error: User ID '{user_id}' not found or inactive.")
-        await websocket.close()
-    else:
-        while True:
-            try:
-                # Receive and send back the client message
-                data = await websocket.receive_json()
-                await ws_ratelimit(websocket)
-                user_message = IUserMessage.model_validate(data)
-                user_message.user_id = user_id
-
-                resp = IChatResponse(
-                    sender="you",
-                    message=user_message.message,
-                    type="stream",
-                    message_id=str(uuid7()),
-                    id=str(uuid7()),
-                )
-                await websocket.send_json(resp.dict())
-
-                # # Construct a response
-                start_resp = IChatResponse(
-                    sender="bot", message="", type="start", message_id="", id=""
-                )
-                await websocket.send_json(start_resp.dict())
-
-                result = chat([HumanMessage(content=resp.message)])
-                chat_history.append((user_message.message, result.content))
-
-                end_resp = IChatResponse(
-                    sender="bot",
-                    message=result.content,
-                    type="end",
-                    message_id=str(uuid7()),
-                    id=str(uuid7()),
-                )
-                await websocket.send_json(end_resp.dict())
-            except WebSocketDisconnect:
-                logging.info("websocket disconnect")
-                break
-            except Exception as e:
-                logging.error(e)
-                resp = IChatResponse(
-                    message_id="",
-                    id="",
-                    sender="bot",
-                    message="Sorry, something went wrong. Your user limit of api usages has been reached or check your API key.",
-                    type="error",
-                )
-                await websocket.send_json(resp.dict())
-
-        # Remove the live connection from Redis
-        await redis_client.delete(key)
 
 
 # Add health check router
