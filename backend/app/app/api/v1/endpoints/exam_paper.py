@@ -21,7 +21,11 @@ from fastapi import (
     Response,
     UploadFile,
     status,
+    BackgroundTasks,
 )
+from fastapi.responses import FileResponse
+from app.services.pdf_service import PDFService
+from app.models.image_media_model import ImageMedia
 from app import crud
 from app.api import deps
 from app.models.exam_paper_model import ExamPaper, ExamInstruction, ExamPaperQuestionLink, ExamTitle, ExamDescription
@@ -467,7 +471,54 @@ async def get_exam_paper_by_slug(
 
     return create_response(data=exampaper_full)
 
+@router.get("/{exampaper_id}/download-pdf")
+async def download_exam_paper_pdf(
+    exampaper_id: UUID,
+    background_tasks: BackgroundTasks,
+    db_session: AsyncSession = Depends(deps.get_db),
+) -> FileResponse:
+    """
+    Generates and downloads a PDF for the exam paper.
+    """
+    # Load all relationships required for the PDF
+    options = [
+        selectinload(ExamPaper.course),
+        selectinload(ExamPaper.description),
+        selectinload(ExamPaper.institution).selectinload(Institution.logo).selectinload(ImageMedia.media),
+        selectinload(ExamPaper.institution).selectinload(Institution.address),
+        selectinload(ExamPaper.title),
+        selectinload(ExamPaper.modules),
+        selectinload(ExamPaper.instructions),
+        selectinload(ExamPaper.question_sets)
+        .selectinload(QuestionSet.questions.and_(Question.question_set_id.is_not(None)))
+        .selectinload(Question.children),
+        selectinload(ExamPaper.question_sets)
+        .selectinload(QuestionSet.questions.and_(Question.question_set_id.is_not(None)))
+        .selectinload(Question.answers),
+    ]
 
+    exampaper = await crud.exam_paper.get(
+        id=exampaper_id, db_session=db_session, options=options
+    )
+    
+    if not exampaper:
+        raise IdNotFoundException(ExamPaper, exampaper_id)
+
+    # Generate PDF
+    try:
+        pdf_path = PDFService.generate_exam_paper_pdf(exampaper)
+    except Exception as e:
+        print(f"Error generating PDF: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to generate PDF: {str(e)}")
+
+    # Schedule file removal
+    background_tasks.add_task(PDFService.remove_file_after_delay, pdf_path, delay=1800)
+
+    return FileResponse(
+        path=pdf_path, 
+        filename=f"{exampaper.slug}.pdf", 
+        media_type="application/pdf"
+    )
 @router.post("")
 async def create_exam_paper(
     exampaper: ExamPaperCreate,

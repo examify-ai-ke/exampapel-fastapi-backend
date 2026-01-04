@@ -78,9 +78,7 @@ from app.core.startup import startup_tasks, mark_initialized
 from app.schemas.common_schema import IChatResponse, IUserMessage
 from app.utils.fastapi_globals import GlobalsMiddleware, g
 from app.utils.uuid6 import uuid7
-# from transformers import pipeline
-from app.health import router as health_router
-# from transformers import pipeline
+# from app.health import router as health_router
 from fastapi_pagination import add_pagination, pagination_ctx
 
 # Configure logging
@@ -94,13 +92,7 @@ logger = logging.getLogger(__name__)
 
 # Add these settings at the top of the file
 # Configure Hugging Face to use a persistent cache directory
-# os.environ["TRANSFORMERS_CACHE"] = "/code/models"
-# LOAD_ML_MODELS = os.environ.get("LOAD_ML_MODELS", "true").lower() == "true"
 
-# # Create a dummy sentiment model for when ML is disabled
-# class DummySentimentModel:
-#     def __call__(self, texts):
-#         return [{"label": "POSITIVE", "score": 0.9} for _ in texts]
 
 
 async def user_id_identifier(request: Request):
@@ -168,14 +160,7 @@ async def lifespan(app: FastAPI):
     
     await FastAPILimiter.init(redis_client, identifier=user_id_identifier)
 
-    # Load a pre-trained sentiment analysis model as a dictionary to an easy cleanup
-    # models: dict[str, Any] = {
-    #     "sentiment_model": pipeline(
-    #         "sentiment-analysis",
-    #         model="distilbert-base-uncased-finetuned-sst-2-english",
-    #     ),
-    # }
-    # g.set_default("sentiment_model", models["sentiment_model"])
+
     
     # Initialize database and run startup tasks
     try:
@@ -197,7 +182,7 @@ async def lifespan(app: FastAPI):
     if settings.ENABLE_REDIS_CACHE:
         await FastAPICache.clear()
     await FastAPILimiter.close()
-    # models.clear()
+
     g.cleanup()
     gc.collect()
     logger.info("FastAPI shutdown completed!")

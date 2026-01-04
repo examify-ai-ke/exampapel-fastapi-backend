@@ -1,9 +1,9 @@
-FROM tiangolo/uvicorn-gunicorn-fastapi:python3.11-slim
+FROM python:3.12-slim
 ENV PYTHONUNBUFFERED=1
 ENV PIP_DEFAULT_TIMEOUT=100
 WORKDIR /code
-# Install Poetry
-RUN apt clean && apt update && apt install curl -y
+# Install Poetry and system dependencies for WeasyPrint
+RUN apt clean && apt update && apt install curl libpango-1.0-0 libpangoft2-1.0-0 libcairo2 libgdk-pixbuf-2.0-0 libffi-dev shared-mime-info -y
 RUN curl -sSL https://install.python-poetry.org | POETRY_HOME=/opt/poetry python && \
     cd /usr/local/bin && \
     ln -s /opt/poetry/bin/poetry && \
