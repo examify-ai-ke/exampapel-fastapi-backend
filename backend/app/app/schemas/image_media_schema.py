@@ -19,6 +19,9 @@ class IImageMediaUpdate(ImageMediaBase):
 class IImageMediaRead(BaseModel):
     media: IMediaRead | None
 
+    class Config:
+        from_attributes = True
+
 
 # Todo make it compatible with pydantic v2
 class IImageMediaReadCombined(ImageMediaBase):

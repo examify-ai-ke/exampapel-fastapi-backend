@@ -84,7 +84,7 @@ async def log_security_event(event_type: str, user_id: str, email: str, details:
         logging.debug(log_message)
 
 
-@router.post("", dependencies=[Depends(RateLimiter(times=5, minutes=15))], response_model=IPostResponseBase[Token])
+@router.post("", dependencies=[Depends(RateLimiter(times=20, minutes=1))], response_model=IPostResponseBase[Token])
 async def login(
     login_data: LoginRequest,
     meta_data: IMetaGeneral = Depends(deps.get_general_meta),
