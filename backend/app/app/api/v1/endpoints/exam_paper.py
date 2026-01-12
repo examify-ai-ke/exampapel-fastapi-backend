@@ -1,4 +1,5 @@
 from uuid import UUID
+import re
 from typing import Dict
 from app.api.celery_task import print_hero
 from app.utils.exceptions import IdNotFoundException, NameNotFoundException
@@ -162,6 +163,18 @@ async def search_exam_papers(
         
         # Combine all search conditions
         search_conditions.extend(direct_conditions + related_conditions)
+
+        # Add normalized search conditions
+        q_alphanum = re.sub(r'[^a-zA-Z0-9]', '', q_clean)
+        
+        normalized_related_conditions = [
+            # Search in course
+            func.regexp_replace(Course.name, '[^a-zA-Z0-9]', '', 'g').ilike(f"%{q_alphanum}%"),
+            func.regexp_replace(Course.course_acronym, '[^a-zA-Z0-9]', '', 'g').ilike(f"%{q_alphanum}%"),
+            # Search in institution
+            func.regexp_replace(Institution.name, '[^a-zA-Z0-9]', '', 'g').ilike(f"%{q_alphanum}%"),
+        ]
+        search_conditions.extend(normalized_related_conditions)
     
     # Apply filters
     filters = []
@@ -298,12 +311,15 @@ async def get_exam_paper_search_suggestions(
     q_clean = q.strip().lower()
     
     # Course name suggestions
+    q_alphanum = re.sub(r'[^a-zA-Z0-9]', '', q_clean)
     course_query = (
         select(Course.name, Course.course_acronym)
         .where(
             or_(
                 Course.name.ilike(f"%{q_clean}%"),
-                Course.course_acronym.ilike(f"%{q_clean}%")
+                Course.course_acronym.ilike(f"%{q_clean}%"),
+                func.regexp_replace(Course.name, '[^a-zA-Z0-9]', '', 'g').ilike(f"%{q_alphanum}%"),
+                func.regexp_replace(Course.course_acronym, '[^a-zA-Z0-9]', '', 'g').ilike(f"%{q_alphanum}%"),
             )
         )
         .limit(5)
@@ -319,7 +335,12 @@ async def get_exam_paper_search_suggestions(
     # Institution name suggestions
     institution_query = (
         select(Institution.name)
-        .where(Institution.name.ilike(f"%{q_clean}%"))
+        .where(
+            or_(
+                Institution.name.ilike(f"%{q_clean}%"),
+                func.regexp_replace(Institution.name, '[^a-zA-Z0-9]', '', 'g').ilike(f"%{q_alphanum}%")
+            )
+        )
         .limit(5)
     )
     institution_result = await db_session.execute(institution_query)

@@ -1,4 +1,6 @@
 from uuid import UUID
+import re
+from sqlalchemy import or_, func
 from app.api.celery_task import print_hero
 from app.utils.exceptions import IdNotFoundException, NameNotFoundException
 from app.schemas.user_schema import IUserRead
@@ -56,7 +58,13 @@ async def search_exam_titles(
     """
     Search exam titles by name
     """
-    query = select(ExamTitle).where(col(ExamTitle.name).ilike(f"%{q}%"))
+    q_alphanum = re.sub(r'[^a-zA-Z0-9]', '', q)
+    query = select(ExamTitle).where(
+        or_(
+            col(ExamTitle.name).ilike(f"%{q}%"),
+            func.regexp_replace(col(ExamTitle.name), '[^a-zA-Z0-9]', '', 'g').ilike(f"%{q_alphanum}%")
+        )
+    )
     results = await crud.exam_title.get_multi_paginated_ordered(
         db_session=db_session, skip=skip, limit=limit, query=query
     )

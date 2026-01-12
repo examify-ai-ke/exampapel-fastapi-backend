@@ -1,4 +1,6 @@
 from uuid import UUID
+import re
+from sqlalchemy import or_, func
 from app.api.celery_task import print_hero
 from app.utils.exceptions import IdNotFoundException, NameNotFoundException
 from app.schemas.user_schema import IUserRead
@@ -117,9 +119,11 @@ async def search_departments(
     )
     
     if q:
+        q_alphanum = re.sub(r'[^a-zA-Z0-9]', '', q)
         query = query.filter(
             or_(
                 Department.name.ilike(f"%{q}%"),
+                func.regexp_replace(Department.name, '[^a-zA-Z0-9]', '', 'g').ilike(f"%{q_alphanum}%"),
                 Department.description.ilike(f"%{q}%"),
                 Department.slug.ilike(f"%{q}%"),
             )

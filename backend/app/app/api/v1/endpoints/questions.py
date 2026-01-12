@@ -1,4 +1,5 @@
 from uuid import UUID
+import re
 from typing import Optional, Literal, Dict
 from app.utils.search_utils import SearchQueryBuilder, SearchResultProcessor
 from app.api.celery_task import print_hero
@@ -183,6 +184,15 @@ async def search_questions(
         ]
         
         search_conditions.append(or_(*text_conditions))
+        
+        # Add normalized search conditions
+        q_alphanum = re.sub(r'[^a-zA-Z0-9]', '', q_clean)
+        normalized_conditions = [
+            func.regexp_replace(Question.slug, '[^a-zA-Z0-9]', '', 'g').ilike(f"%{q_alphanum}%"),
+            func.regexp_replace(Question.question_number, '[^a-zA-Z0-9]', '', 'g').ilike(f"%{q_alphanum}%"),
+            func.regexp_replace(func.cast(Question.text, Text), '[^a-zA-Z0-9]', '', 'g').ilike(f"%{q_alphanum}%"),
+        ]
+        search_conditions.append(or_(*normalized_conditions))
     
     # Build filter conditions
     filter_conditions = []
@@ -347,10 +357,17 @@ async def get_question_search_suggestions(
     suggestions = []
     q_clean = q.strip().lower()
     
+    q_alphanum = re.sub(r'[^a-zA-Z0-9]', '', q_clean)
+    
     # Question number suggestions
     number_query = (
         select(Question.question_number)
-        .where(Question.question_number.ilike(f"%{q_clean}%"))
+        .where(
+            or_(
+                Question.question_number.ilike(f"%{q_clean}%"),
+                func.regexp_replace(Question.question_number, '[^a-zA-Z0-9]', '', 'g').ilike(f"%{q_alphanum}%")
+            )
+        )
         .distinct()
         .limit(5)
     )
@@ -373,7 +390,12 @@ async def get_question_search_suggestions(
     # Question slug suggestions
     slug_query = (
         select(Question.slug)
-        .where(Question.slug.ilike(f"%{q_clean}%"))
+        .where(
+            or_(
+                Question.slug.ilike(f"%{q_clean}%"),
+                func.regexp_replace(Question.slug, '[^a-zA-Z0-9]', '', 'g').ilike(f"%{q_alphanum}%")
+            )
+        )
         .distinct()
         .limit(5)
     )

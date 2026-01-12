@@ -1,5 +1,7 @@
 from typing import Optional
+import re
 from uuid import UUID
+from sqlalchemy import func
 from app.api.celery_task import print_hero
 from app.utils.exceptions import IdNotFoundException, NameNotFoundException
 from app.schemas.user_schema import IUserRead
@@ -108,12 +110,15 @@ async def search_modules(
     )
     
     if q:
+        q_alphanum = re.sub(r'[^a-zA-Z0-9]', '', q)
         query = query.filter(
             or_(
                 Module.name.ilike(f"%{q}%"),
                 Module.unit_code.ilike(f"%{q}%"),
                 Module.description.ilike(f"%{q}%"),
                 Module.slug.ilike(f"%{q}%"),
+                func.regexp_replace(Module.name, '[^a-zA-Z0-9]', '', 'g').ilike(f"%{q_alphanum}%"),
+                func.regexp_replace(Module.unit_code, '[^a-zA-Z0-9]', '', 'g').ilike(f"%{q_alphanum}%"),
             )
         )
     

@@ -1,4 +1,6 @@
 from uuid import UUID
+import re
+from sqlalchemy import func
 from app.api.celery_task import print_hero
 from app.utils.exceptions import IdNotFoundException, NameNotFoundException
 from app.schemas.user_schema import IUserRead
@@ -106,11 +108,13 @@ async def search_faculties(
     )
     
     if q:
+        q_alphanum = re.sub(r'[^a-zA-Z0-9]', '', q)
         query = query.filter(
             or_(
                 Faculty.name.ilike(f"%{q}%"),
                 Faculty.description.ilike(f"%{q}%"),
                 Faculty.slug.ilike(f"%{q}%"),
+                func.regexp_replace(Faculty.name, '[^a-zA-Z0-9]', '', 'g').ilike(f"%{q_alphanum}%"),
             )
         )
     

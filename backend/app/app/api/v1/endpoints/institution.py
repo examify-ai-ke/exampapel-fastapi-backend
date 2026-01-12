@@ -1,4 +1,5 @@
 from uuid import UUID
+import re
 from typing import Dict, List
 from sqlalchemy import or_, and_, func
 from app.models.image_media_model import ImageMedia
@@ -102,10 +103,15 @@ async def get_institution_list(
     )
     # Add text search if search parameter is provided
     if search_term:
+        # Create alphanumeric only version of query for strict matching ignoring punctuation
+        search_term_alphanum = re.sub(r'[^a-zA-Z0-9]', '', search_term)
+
         query = query.filter(
             # Text fields
             or_(
                 Institution.name.ilike(f"%{search_term}%"),
+                # Normalized name match (ignores punctuation like apostrophes)
+                func.regexp_replace(Institution.name, '[^a-zA-Z0-9]', '', 'g').ilike(f"%{search_term_alphanum}%"),
                 Institution.description.ilike(f"%{search_term}%"),
                 Institution.slug.ilike(f"%{search_term}%"),
                 Institution.location.ilike(f"%{search_term}%"),
@@ -185,12 +191,17 @@ async def advanced_search_institutions(
     
     if q and q.strip():
         q_clean = q.strip()
+        # Create alphanumeric only version of query for strict matching ignoring punctuation
+        q_alphanum = re.sub(r'[^a-zA-Z0-9]', '', q_clean)
         
         # Multi-field search with different weights
         text_conditions = [
             # High priority fields
             Institution.name.ilike(f"%{q_clean}%"),
             Institution.slug.ilike(f"%{q_clean}%"),
+            # Normalized name match (ignores punctuation like apostrophes)
+            func.regexp_replace(Institution.name, '[^a-zA-Z0-9]', '', 'g').ilike(f"%{q_alphanum}%"),
+
             # Medium priority fields
             Institution.description.ilike(f"%{q_clean}%"),
             Institution.location.ilike(f"%{q_clean}%"),
