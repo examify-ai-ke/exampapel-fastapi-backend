@@ -84,7 +84,7 @@ async def get_institution_list(
     ),
     location: str = Query(default=None, description="Filter by location"),
     tags: list[str] = Query(default=None, description="Filter by tags"),
-    order_by: str = Query(default="created_at"),
+    order_by: str = Query(default="updated_at"),
     order: IOrderEnum = Query(default=IOrderEnum.descendent),
 ) -> IGetResponsePaginated[InstitutionRead]:
     """
@@ -162,13 +162,13 @@ async def advanced_search_institutions(
     established_year_from: int = Query(default=None, description="Filter institutions established from this year"),
     established_year_to: int = Query(default=None, description="Filter institutions established to this year"),
     has_exam_papers: bool = Query(default=None, description="Filter institutions with/without exam papers"),
-    sort_by: str = Query(default="relevance", description="Sort by: relevance, name, established_year, exam_count"),
+    sort_by: str = Query(default="relevance", description="Sort by: relevance, name, established_year, exam_count, question_count"),
     sort_order: str = Query(default="desc", description="Sort order: asc, desc"),
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=20, ge=1, le=100),
     highlight: bool = Query(default=False, description="Enable search term highlighting"),
     db_session: AsyncSession = Depends(deps.get_db),
-) -> IGetResponsePaginated:
+) -> IGetResponsePaginated[InstitutionReadSimple]:
     """
     Advanced search for institutions with comprehensive filtering and sorting.
     
@@ -276,8 +276,14 @@ async def advanced_search_institutions(
     elif sort_by == "established_year":
         sort_field = Institution.established_year
     elif sort_by == "exam_count":
-        # This would require a subquery for accurate sorting
-        sort_field = Institution.created_at  # Fallback
+        # Sort by number of exam papers
+        query = query.outerjoin(Institution.exam_papers).group_by(Institution.id)
+        sort_field = func.count(ExamPaper.id)
+    elif sort_by == "question_count":
+        # Sort by number of questions (via exam papers)
+        from app.models.question_model import Question
+        query = query.outerjoin(Institution.exam_papers).outerjoin(ExamPaper.questions).group_by(Institution.id)
+        sort_field = func.count(Question.id)
     else:  # relevance or default
         sort_field = Institution.created_at
     

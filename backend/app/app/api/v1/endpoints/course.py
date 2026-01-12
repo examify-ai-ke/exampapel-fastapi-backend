@@ -96,7 +96,7 @@ async def search_courses(
     department_id: UUID = Query(default=None, description="Filter by department ID (via programme)"),
     institution_id: UUID = Query(default=None, description="Filter by institution ID (via programme→department→faculty)"),
     course_acronym: str = Query(default=None, description="Filter by course acronym"),
-    sort_by: str = Query(default="name", description="Sort by: name, created_at"),
+    sort_by: str = Query(default="name", description="Sort by: name, created_at, exam_paper_count"),
     sort_order: str = Query(default="asc", description="Sort order: asc, desc"),
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=20, ge=1, le=100),
@@ -157,7 +157,13 @@ async def search_courses(
     if course_acronym:
         query = query.filter(Course.course_acronym.ilike(f"%{course_acronym}%"))
     
-    sort_field = Course.name if sort_by == "name" else Course.created_at
+    if sort_by == "exam_paper_count":
+        from app.models.exam_paper_model import ExamPaper
+        query = query.outerjoin(Course.exam_papers).group_by(Course.id)
+        sort_field = func.count(ExamPaper.id)
+    else:
+        sort_field = Course.name if sort_by == "name" else Course.created_at
+        
     query = query.order_by(sort_field.asc() if sort_order == "asc" else sort_field.desc())
     
     courses = await crud.course.get_multi_paginated_ordered(

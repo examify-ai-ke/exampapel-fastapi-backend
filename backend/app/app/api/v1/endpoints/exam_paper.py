@@ -105,7 +105,7 @@ async def search_exam_papers(
     duration_min: int = Query(default=None, description="Minimum exam duration in minutes"),
     duration_max: int = Query(default=None, description="Maximum exam duration in minutes"),
     tags: str = Query(default=None, description="Filter by tags (comma-separated)"),
-    sort_by: str = Query(default="relevance", description="Sort by: relevance, date, duration, title"),
+    sort_by: str = Query(default="relevance", description="Sort by: relevance, date, duration, title, questions_count"),
     sort_order: str = Query(default="desc", description="Sort order: asc, desc"),
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=20, ge=1, le=100),
@@ -268,6 +268,10 @@ async def search_exam_papers(
     elif sort_by == "title":
         # Since identifying_name is a property, we'll sort by year_of_exam instead
         sort_field = ExamPaper.year_of_exam
+    elif sort_by == "questions_count":
+        # Join with questions and group by exam paper to count
+        query = query.outerjoin(ExamPaper.questions).group_by(ExamPaper.id)
+        sort_field = func.count(Question.id)
     else:  # relevance or default
         # For relevance, we'll sort by created_at desc as a proxy
         sort_field = ExamPaper.created_at
