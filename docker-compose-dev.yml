@@ -97,7 +97,7 @@ services:
       # MINIO_BROWSER_REDIRECT_URL: http://stash.localhost
       MINIO_BUCKET_NAME: ${S3_BUCKET_NAME}
       MINIO_URL: ${MINIO_URL}
-      MINIO_SECURE: False
+      MINIO_SECURE: "False"
       MINIO_ADDRESS: ':9000'
       # MINIO_ACCESS_KEY: HLWUPhDTtg4ZeEygSEuE
       # MINIO_SECRET_KEY: FBvuDyJbVOHbJ6XrTwNavnUqy0d1vLgqEksIw3SW

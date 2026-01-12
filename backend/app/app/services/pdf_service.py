@@ -6,9 +6,13 @@ from weasyprint import HTML
 from app.models.exam_paper_model import ExamPaper
 from app.core.config import settings
 
+from app.utils.editorjs_renderer import render_editorjs
+
 # Setup Jinja2 environment
 TEMPLATE_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "templates")
 env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
+env.filters["render_editorjs"] = render_editorjs
+
 
 class PDFService:
     @staticmethod
