@@ -4,6 +4,7 @@ from pydantic import model_validator
 from .media_schema import IMediaRead, IMediaReadForInstituion
 from app.utils.partial import optional
 from pydantic import BaseModel
+from uuid import UUID
 
 # Image Media
 class IImageMediaCreate(ImageMediaBase):
@@ -16,6 +17,8 @@ class IImageMediaUpdate(ImageMediaBase):
     pass
 
 
+# Reverting to nested structure because Frontend expects 'media' key for Institution logos.
+# This ensures uniformity (User profile will also be nested).
 class IImageMediaRead(BaseModel):
     media: IMediaRead | None
 

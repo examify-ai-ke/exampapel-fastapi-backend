@@ -920,7 +920,7 @@ async def upload_my_image(
             content_type=image_file.content_type,
         )
         print("data_file:", data_file)
-        media = IMediaCreate(title=title, description=description, path=data_file.url)
+        media = IMediaCreate(title=title, description=description, path=data_file.file_name)
         user = await crud.user.update_photo(
             user=current_user,
             image=media,

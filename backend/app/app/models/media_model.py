@@ -22,6 +22,9 @@ class Media(BaseUUIDModel, MediaBase, table=True):
         try:
             minio: MinioClient = api.deps.minio_auth()
             # Generate URL that expires in 7 days (refreshed on each request)
+            if self.path and (self.path.startswith("http://") or self.path.startswith("https://")):
+                return self.path
+                
             url = minio.presigned_get_object(
                 bucket_name=settings.S3_BUCKET_NAME, 
                 object_name=self.path,
