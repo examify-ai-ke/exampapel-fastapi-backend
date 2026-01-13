@@ -272,17 +272,41 @@ async def search_questions(
         selectinload(Question.created_by).load_only(
             User.id, User.first_name, User.last_name, User.email
         ),
-        # Load answers count for context
-        selectinload(Question.answers).load_only(
-            Answer.id, Answer.likes, Answer.dislikes, Answer.reviewed
+        # Load answers with all required fields for AnswerReadForQuestion
+        selectinload(Question.answers).options(
+            selectinload(Answer.created_by).load_only(
+                User.id, User.first_name, User.last_name, User.email
+            )
+        ).load_only(
+            Answer.id, 
+            Answer.text,
+            Answer.likes, 
+            Answer.dislikes, 
+            Answer.reviewed,
+            Answer.auto_answer,
+            Answer.created_at,
+            Answer.created_by_id,
+            Answer.parent_id
         ),
     ]
     
     # Conditionally load children based on include_children parameter
     if include_children:
         options.append(
-            selectinload(Question.children).selectinload(Question.answers).load_only(
-                Answer.id, Answer.likes, Answer.dislikes, Answer.reviewed
+            selectinload(Question.children).selectinload(Question.answers).options(
+                selectinload(Answer.created_by).load_only(
+                    User.id, User.first_name, User.last_name, User.email
+                )
+            ).load_only(
+                Answer.id, 
+                Answer.text,
+                Answer.likes, 
+                Answer.dislikes, 
+                Answer.reviewed,
+                Answer.auto_answer,
+                Answer.created_at,
+                Answer.created_by_id,
+                Answer.parent_id
             )
         )
     
