@@ -75,20 +75,27 @@ class CRUDComment(CRUDBase[Comment, CommentCreate, CommentUpdate]):
             order_by = "created_at"
 
         # Build the query with filtering and ordering
+        # Eager load user and image, and reples with their user and image
+        from sqlalchemy.orm import selectinload
+        from app.models.user_model import User
+        
+        query = select(Comment).where(
+            and_(
+                Comment.answer_id == answer_id,
+                Comment.parent_id == None  # Only get top-level comments
+            )
+        ).options(
+            selectinload(Comment.created_by).selectinload(User.image),
+            selectinload(Comment.replies).options(
+                selectinload(Comment.created_by).selectinload(User.image)
+            )
+        )
+        
         if order == IOrderEnum.ascendent:
-            query = select(Comment).where(
-                and_(
-                    Comment.answer_id == answer_id,
-                    Comment.parent_id == None  # Only get top-level comments
-                )
-            ).order_by(columns[order_by].asc())
+            query = query.order_by(columns[order_by].asc())
         else:
-            query = select(Comment).where(
-                and_(
-                    Comment.answer_id == answer_id,
-                    Comment.parent_id == None  # Only get top-level comments
-                )
-            ).order_by(columns[order_by].desc())
+            # Default to descending
+            query = query.order_by(columns[order_by].desc())
 
         # Return paginated results
         return await paginate(db_session, query, params)

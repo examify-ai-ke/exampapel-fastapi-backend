@@ -56,6 +56,8 @@ class CommentUpdate(CommentBase):
     id: UUID
 
 
+from app.schemas.user_schema import IUserReadWithoutGroups
+
 class CommentReplyRead(BaseModel):
     id: UUID
     text: CommentTextSchema
@@ -63,6 +65,8 @@ class CommentReplyRead(BaseModel):
     dislikes: int = 0
     created_by_id: Optional[UUID] = None
     created_at: datetime
+    created_by: Optional[IUserReadWithoutGroups] = None
+    
     class Config:
         from_attributes = True
         arbitrary_types_allowed = True
@@ -74,6 +78,7 @@ class CommentRead(CommentBase):
     dislikes: int = 0
     created_by_id: Optional[UUID] = None
     created_at: datetime
+    created_by: Optional[IUserReadWithoutGroups] = None
     
     # Make replies Optional[List] with default=None instead of relying on the relationship
     # replies: Optional[List[CommentReplyRead]] = []
