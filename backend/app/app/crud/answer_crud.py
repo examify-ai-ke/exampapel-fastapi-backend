@@ -311,6 +311,20 @@ class CRUDAnswer(CRUDBase[Answer, AnswerCreate, AnswerUpdate]):
                 detail=f"Answer with id {answer_id} not found"
             )
         
+        # If marking as reviewed, unmark all other answers for this question first
+        if reviewed:
+            from sqlalchemy import update as sa_update
+            
+            # Unmark all other answers for this question
+            stmt = (
+                sa_update(Answer)
+                .where(Answer.question_id == answer.question_id)
+                .where(Answer.id != answer_id)
+                .where(Answer.reviewed == True)
+                .values(reviewed=False)
+            )
+            await db_session.execute(stmt)
+        
         answer.reviewed = reviewed
         db_session.add(answer)
         await db_session.commit()

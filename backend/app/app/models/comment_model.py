@@ -10,6 +10,18 @@ class CommentBase(SQLModel):
         default_factory={}, sa_column=Column(JSONB, nullable=True)
     )
 
+# Like/Dislike tracking table for comments
+from sqlalchemy import UniqueConstraint
+class CommentVote(BaseUUIDModel, table=True):
+    """Track user votes (likes/dislikes) on comments"""
+    comment_id: UUID = Field(foreign_key="Comment.id", nullable=False)
+    user_id: UUID = Field(foreign_key="User.id", nullable=False)
+    vote_type: str = Field(nullable=False)  # "like" or "dislike"
+    
+    __table_args__ = (
+        UniqueConstraint("comment_id", "user_id", name="_comment_user_vote_uc"),
+    )
+
 
 class Comment(BaseUUIDModel, CommentBase, table=True):
     likes: int = Field(default=0)

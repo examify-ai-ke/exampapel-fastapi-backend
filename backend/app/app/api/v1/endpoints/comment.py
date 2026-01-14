@@ -321,44 +321,34 @@ async def delete_comment(
     return create_response(data=comment)
 
 
-@router.post("/{comment_id}/like", response_model=IPutResponseBase[CommentRead])
+@router.post("/{comment_id}/like", response_model=IPostResponseBase[CommentRead])
 async def like_comment(
     comment_id: UUID,
     current_user: User = Depends(deps.get_current_user()),
     db_session: AsyncSession = Depends(deps.get_db),
-) -> IPutResponseBase[CommentRead]:
+) -> IPostResponseBase[CommentRead]:
     """
-    Likes a comment
+    Toggle like for a comment
     """
-    comment = await crud.comment.get(id=comment_id, db_session=db_session)
-    if not comment:
-        raise IdNotFoundException(Comment, comment_id)
-    
-    # This would need to be implemented in the CRUD
-    updated_comment = await crud.comment.like_comment(
-        comment=comment, db_session=db_session
+    comment = await crud.comment.toggle_comment_like(
+        comment_id=comment_id, user_id=current_user.id, db_session=db_session
     )
-    return create_response(data=updated_comment)
+    return create_response(data=comment)
 
 
-@router.post("/{comment_id}/dislike", response_model=IPutResponseBase[CommentRead])
+@router.post("/{comment_id}/dislike", response_model=IPostResponseBase[CommentRead])
 async def dislike_comment(
     comment_id: UUID,
     current_user: User = Depends(deps.get_current_user()),
     db_session: AsyncSession = Depends(deps.get_db),
-) -> IPutResponseBase[CommentRead]:
+) -> IPostResponseBase[CommentRead]:
     """
-    Dislikes a comment
+    Toggle dislike for a comment
     """
-    comment = await crud.comment.get(id=comment_id, db_session=db_session)
-    if not comment:
-        raise IdNotFoundException(Comment, comment_id)
-    
-    # This would need to be implemented in the CRUD
-    updated_comment = await crud.comment.dislike_comment(
-        comment=comment, db_session=db_session
+    comment = await crud.comment.toggle_comment_dislike(
+        comment_id=comment_id, user_id=current_user.id, db_session=db_session
     )
-    return create_response(data=updated_comment)
+    return create_response(data=comment)
 
 
 @router.get("/count/{answer_id}", response_model=IGetResponseBase[CommentCountSchema])

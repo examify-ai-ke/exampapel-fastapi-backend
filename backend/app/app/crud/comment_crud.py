@@ -136,29 +136,109 @@ class CRUDComment(CRUDBase[Comment, CommentCreate, CommentUpdate]):
         return await paginate(db_session, query, params)
 
 
-    async def like_comment(
+    async def toggle_comment_like(
         self,
         *,
-        comment: Comment,
+        comment_id: UUID,
+        user_id: UUID,
         db_session: AsyncSession | None = None,
     ) -> Comment:
-        """Increase the like count of a comment"""
+        """Toggle like for a comment"""
+        from app.models.comment_model import CommentVote
+        
         db_session = db_session or super().get_db().session
-        comment.likes += 1
+        
+        comment = await self.get(id=comment_id, db_session=db_session)
+        if not comment:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Comment with id {comment_id} not found"
+            )
+        
+        # Check if user has already voted
+        vote_query = select(CommentVote).where(
+            and_(
+                CommentVote.comment_id == comment_id,
+                CommentVote.user_id == user_id
+            )
+        )
+        vote_result = await db_session.execute(vote_query)
+        existing_vote = vote_result.scalar_one_or_none()
+        
+        if existing_vote:
+            if existing_vote.vote_type == "like":
+                # Unlike - remove the vote
+                await db_session.delete(existing_vote)
+                comment.likes = max(0, comment.likes - 1)
+            else:
+                # Change from dislike to like
+                existing_vote.vote_type = "like"
+                comment.dislikes = max(0, comment.dislikes - 1)
+                comment.likes += 1
+        else:
+            # New like
+            new_vote = CommentVote(
+                comment_id=comment_id,
+                user_id=user_id,
+                vote_type="like"
+            )
+            db_session.add(new_vote)
+            comment.likes += 1
+        
         db_session.add(comment)
         await db_session.commit()
         await db_session.refresh(comment)
         return comment
 
-    async def dislike_comment(
+    async def toggle_comment_dislike(
         self,
         *,
-        comment: Comment,
+        comment_id: UUID,
+        user_id: UUID,
         db_session: AsyncSession | None = None,
     ) -> Comment:
-        """Increase the dislike count of a comment"""
+        """Toggle dislike for a comment"""
+        from app.models.comment_model import CommentVote
+        
         db_session = db_session or super().get_db().session
-        comment.dislikes += 1
+        
+        comment = await self.get(id=comment_id, db_session=db_session)
+        if not comment:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Comment with id {comment_id} not found"
+            )
+        
+        # Check if user has already voted
+        vote_query = select(CommentVote).where(
+            and_(
+                CommentVote.comment_id == comment_id,
+                CommentVote.user_id == user_id
+            )
+        )
+        vote_result = await db_session.execute(vote_query)
+        existing_vote = vote_result.scalar_one_or_none()
+        
+        if existing_vote:
+            if existing_vote.vote_type == "dislike":
+                # Undislike - remove the vote
+                await db_session.delete(existing_vote)
+                comment.dislikes = max(0, comment.dislikes - 1)
+            else:
+                # Change from like to dislike
+                existing_vote.vote_type = "dislike"
+                comment.likes = max(0, comment.likes - 1)
+                comment.dislikes += 1
+        else:
+            # New dislike
+            new_vote = CommentVote(
+                comment_id=comment_id,
+                user_id=user_id,
+                vote_type="dislike"
+            )
+            db_session.add(new_vote)
+            comment.dislikes += 1
+        
         db_session.add(comment)
         await db_session.commit()
         await db_session.refresh(comment)
