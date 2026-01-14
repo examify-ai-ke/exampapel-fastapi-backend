@@ -183,7 +183,7 @@ async def update_comment_reply(
         )
 
     # Check authorization and time limit
-    is_admin_or_manager = any(role.role_name in [IRoleEnum.admin, IRoleEnum.manager] for role in current_user.roles)
+    is_admin_or_manager = current_user.role and current_user.role.name in [IRoleEnum.admin, IRoleEnum.manager]
 
     if current_user.id != current_reply.created_by_id and not is_admin_or_manager:
         raise HTTPException(
@@ -227,7 +227,7 @@ async def delete_comment_reply(
         )
     
     # Check authorization and time limit
-    is_admin_or_manager = any(role.role_name in [IRoleEnum.admin, IRoleEnum.manager] for role in current_user.roles)
+    is_admin_or_manager = current_user.role and current_user.role.name in [IRoleEnum.admin, IRoleEnum.manager]
 
     if current_user.id != current_reply.created_by_id and not is_admin_or_manager:
         raise HTTPException(
@@ -263,7 +263,7 @@ async def update_comment(
         raise IdNotFoundException(Comment, comment_id)
     
     # Check authorization and time limit
-    is_admin_or_manager = any(role.role_name in [IRoleEnum.admin, IRoleEnum.manager] for role in current_user.roles)
+    is_admin_or_manager = current_user.role and current_user.role.name in [IRoleEnum.admin, IRoleEnum.manager]
     
     if current_user.id != current_comment.created_by_id and not is_admin_or_manager:
         raise HTTPException(
@@ -300,7 +300,7 @@ async def delete_comment(
         raise IdNotFoundException(Comment, comment_id)
     
     # Check authorization and time limit
-    is_admin_or_manager = any(role.role_name in [IRoleEnum.admin, IRoleEnum.manager] for role in current_user.roles)
+    is_admin_or_manager = current_user.role and current_user.role.name in [IRoleEnum.admin, IRoleEnum.manager]
 
     if current_user.id != current_comment.created_by_id and not is_admin_or_manager:
         raise HTTPException(
