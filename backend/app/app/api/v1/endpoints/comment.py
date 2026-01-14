@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -131,6 +132,122 @@ async def create_comment_reply(
     return create_response(data=new_reply)
 
 
+@router.get("/reply/{parent_id}", response_model=IGetResponsePaginated[CommentRead])
+async def get_comment_replies(
+    parent_id: UUID,
+    skip: int = Query(default=0, ge=0),
+    limit: int = Query(default=50, ge=1),
+    order_by: str = Query(default="created_at", description="Field to order by"),
+    order: IOrderEnum = Query(default=IOrderEnum.ascendent, description="Ascending or descending order"),
+    db_session: AsyncSession = Depends(deps.get_db),
+) -> IGetResponsePaginated[CommentRead]:
+    """
+    Gets a paginated list of replies for a specific comment
+    """
+    # Check if parent comment exists
+    parent_comment = await crud.comment.get(id=parent_id, db_session=db_session)
+    if not parent_comment:
+        raise IdNotFoundException(Comment, parent_id)
+        
+
+    replies = await crud.comment.get_replies_by_parent(
+        parent_id=parent_id,
+        skip=skip,
+        limit=limit,
+        order_by=order_by,
+        order=order,
+        db_session=db_session
+    )
+    return create_response(data=replies)
+
+
+@router.put("/reply/{reply_id}", response_model=IPutResponseBase[CommentRead])
+async def update_comment_reply(
+    reply_id: UUID,
+    comment: CommentUpdate,
+    current_user: User = Depends(deps.get_current_user()),
+    db_session: AsyncSession = Depends(deps.get_db),
+) -> IPutResponseBase[CommentRead]:
+    """
+    Updates a reply by its id
+    """
+    current_reply = await crud.comment.get(id=reply_id, db_session=db_session)
+    if not current_reply:
+        raise IdNotFoundException(Comment, reply_id)
+    
+    # Ensure it is a reply
+    if not current_reply.parent_id:
+         raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This endpoint is for updating replies only. Use PUT /comments/{id} for top-level comments.",
+        )
+
+    # Check authorization and time limit
+    is_admin_or_manager = any(role.role_name in [IRoleEnum.admin, IRoleEnum.manager] for role in current_user.roles)
+
+    if current_user.id != current_reply.created_by_id and not is_admin_or_manager:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not authorized to update this reply",
+        )
+    
+    if not is_admin_or_manager:
+        # Check time limit (6 hours)
+        time_diff = datetime.now(timezone.utc) - current_reply.created_at
+        if time_diff.total_seconds() > 6 * 3600:
+             raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You cannot update a reply after 6 hours",
+            )
+    
+    comment_updated = await crud.comment.update(
+        obj_current=current_reply, obj_new=comment, db_session=db_session
+    )
+    return create_response(data=comment_updated)
+
+
+@router.delete("/reply/{reply_id}", response_model=IDeleteResponseBase[CommentRead])
+async def delete_comment_reply(
+    reply_id: UUID,
+    current_user: User = Depends(deps.get_current_user()),
+    db_session: AsyncSession = Depends(deps.get_db),
+) -> IDeleteResponseBase[CommentRead]:
+    """
+    Deletes a reply by its id
+    """
+    current_reply = await crud.comment.get(id=reply_id, db_session=db_session)
+    if not current_reply:
+         raise IdNotFoundException(Comment, reply_id)
+
+    # Ensure it is a reply
+    if not current_reply.parent_id:
+         raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This endpoint is for deleting replies only. Use DELETE /comments/{id} for top-level comments.",
+        )
+    
+    # Check authorization and time limit
+    is_admin_or_manager = any(role.role_name in [IRoleEnum.admin, IRoleEnum.manager] for role in current_user.roles)
+
+    if current_user.id != current_reply.created_by_id and not is_admin_or_manager:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not authorized to delete this reply",
+        )
+    
+    if not is_admin_or_manager:
+        # Check time limit (6 hours)
+        time_diff = datetime.now(timezone.utc) - current_reply.created_at
+        if time_diff.total_seconds() > 6 * 3600:
+             raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You cannot delete a reply after 6 hours",
+            )
+    
+    comment = await crud.comment.remove(id=reply_id, db_session=db_session)
+    return create_response(data=comment)
+
+
 @router.put("/{comment_id}", response_model=IPutResponseBase[CommentRead])
 async def update_comment(
     comment_id: UUID,
@@ -145,14 +262,23 @@ async def update_comment(
     if not current_comment:
         raise IdNotFoundException(Comment, comment_id)
     
-    # Check if the user is authorized to update this comment
-    if current_user.id != current_comment.created_by_id and not any(
-        role.role_name in [IRoleEnum.admin, IRoleEnum.manager] for role in current_user.roles
-    ):
+    # Check authorization and time limit
+    is_admin_or_manager = any(role.role_name in [IRoleEnum.admin, IRoleEnum.manager] for role in current_user.roles)
+    
+    if current_user.id != current_comment.created_by_id and not is_admin_or_manager:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You are not authorized to update this comment",
         )
+    
+    if not is_admin_or_manager:
+        # Check time limit (6 hours)
+        time_diff = datetime.now(timezone.utc) - current_comment.created_at
+        if time_diff.total_seconds() > 6 * 3600:
+             raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You cannot update a comment after 6 hours",
+            )
     
     comment_updated = await crud.comment.update(
         obj_current=current_comment, obj_new=comment, db_session=db_session
@@ -173,14 +299,23 @@ async def delete_comment(
     if not current_comment:
         raise IdNotFoundException(Comment, comment_id)
     
-    # Check if the user is authorized to delete this comment
-    if current_user.id != current_comment.created_by_id and not any(
-        role.role_name in [IRoleEnum.admin, IRoleEnum.manager] for role in current_user.roles
-    ):
+    # Check authorization and time limit
+    is_admin_or_manager = any(role.role_name in [IRoleEnum.admin, IRoleEnum.manager] for role in current_user.roles)
+
+    if current_user.id != current_comment.created_by_id and not is_admin_or_manager:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="You are not authorized to delete this comment",
         )
+    
+    if not is_admin_or_manager:
+        # Check time limit (6 hours)
+        time_diff = datetime.now(timezone.utc) - current_comment.created_at
+        if time_diff.total_seconds() > 6 * 3600:
+             raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You cannot delete a comment after 6 hours",
+            )
     
     comment = await crud.comment.remove(id=comment_id, db_session=db_session)
     return create_response(data=comment)

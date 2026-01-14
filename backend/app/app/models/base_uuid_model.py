@@ -2,7 +2,7 @@ from uuid import UUID
 from app.utils.uuid6 import uuid7
 from sqlmodel import SQLModel as _SQLModel, Field
 from sqlalchemy.orm import declared_attr
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 # id: implements proposal uuid7 draft4
@@ -20,6 +20,11 @@ class BaseUUIDModel(SQLModel):
         nullable=False,
     )
     updated_at: datetime | None = Field(
-        default_factory=datetime.utcnow, sa_column_kwargs={"onupdate": datetime.utcnow, }
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column_kwargs={
+            "onupdate": lambda: datetime.now(timezone.utc),
+        },
     )
-    created_at: datetime | None = Field(default_factory=datetime.utcnow)
+    created_at: datetime | None = Field(
+        default_factory=lambda: datetime.now(timezone.utc)
+    )

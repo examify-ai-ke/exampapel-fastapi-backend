@@ -100,6 +100,42 @@ class CRUDComment(CRUDBase[Comment, CommentCreate, CommentUpdate]):
         # Return paginated results
         return await paginate(db_session, query, params)
 
+    async def get_replies_by_parent(
+        self,
+        *,
+        parent_id: UUID,
+        skip: int = 0,
+        limit: int = 50,
+        order_by: str | None = None,
+        order: IOrderEnum | None = IOrderEnum.ascendent, # Default replies to oldest first usually
+        db_session: AsyncSession | None = None,
+    ) -> Page[Comment]:
+        """
+        Get paginated replies for a specific comment
+        """
+        db_session = db_session or super().get_db().session
+        params = Params(page=skip // limit + 1, size=limit)
+
+        columns = self.model.__table__.columns
+        if order_by is None or order_by not in columns:
+            order_by = "created_at"
+
+        from sqlalchemy.orm import selectinload
+        from app.models.user_model import User
+
+        query = select(Comment).where(Comment.parent_id == parent_id)\
+            .options(
+                selectinload(Comment.created_by).selectinload(User.image)
+            )
+
+        if order == IOrderEnum.ascendent:
+            query = query.order_by(columns[order_by].asc())
+        else:
+            query = query.order_by(columns[order_by].desc())
+
+        return await paginate(db_session, query, params)
+
+
     async def like_comment(
         self,
         *,
