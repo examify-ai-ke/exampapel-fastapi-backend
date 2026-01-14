@@ -92,7 +92,7 @@ class AnswerReadMinimal(BaseModel):
     """Minimal answer schema for nested relationships"""
     id: UUID
     text: Optional[Dict[str, Any]] = None
-    question_id: UUID
+    question_id: Optional[UUID] = None
     likes: Optional[int] = 0
     dislikes: Optional[int] = 0
     reviewed: bool = False
@@ -113,7 +113,7 @@ class AnswerRead(BaseModel):
     """Full answer schema for API responses"""
     id: UUID
     text: Optional[Dict[str, Any]] = None
-    question_id: UUID
+    question_id: Optional[UUID] = None
     likes: Optional[int] = 0
     dislikes: Optional[int] = 0
     reviewed: bool = False
