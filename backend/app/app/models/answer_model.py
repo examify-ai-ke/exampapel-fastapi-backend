@@ -76,3 +76,11 @@ class Answer(BaseUUIDModel,AnswerBase, table=True):
             "cascade": "all, delete-orphan",
         },
     )
+
+    votes: List["AnswerVote"] = Relationship(
+        sa_relationship_kwargs={
+            "lazy": "selectin",
+            "cascade": "all, delete-orphan",
+            "foreign_keys": "[AnswerVote.answer_id]",
+        },
+    )
