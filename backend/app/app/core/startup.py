@@ -118,6 +118,7 @@ async def initialize_database() -> None:
         
         logger.info("🔧 Proceeding with database initialization...")
         
+        # We nolonger need to initialize the db with data here
         async with SessionLocal() as session:
             await run_init_db(session)
             

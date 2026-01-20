@@ -29,7 +29,7 @@ from sqlalchemy.pool import NullPool, AsyncAdaptedQueuePool
 from fastapi_cache.backends.inmemory import InMemoryBackend
 
 
-from app import crud
+# from app import crud
 from app.api.deps import get_redis_client
 from app.api.v1.api import api_router as api_router_v1
 
@@ -77,7 +77,7 @@ from app.schemas.common_schema import IChatResponse, IUserMessage
 from app.utils.fastapi_globals import GlobalsMiddleware, g
 from app.utils.uuid6 import uuid7
 # from app.health import router as health_router
-from fastapi_pagination import add_pagination, pagination_ctx
+# from fastapi_pagination import add_pagination, pagination_ctx
 
 # Configure logging
 logging.basicConfig(

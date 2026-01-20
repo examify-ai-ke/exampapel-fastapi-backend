@@ -18,13 +18,14 @@ services:
       - examify_reverse_proxy:storage.localhost
 
   examify_database:
-    image: bitnami/postgresql
+    image:  docker.io/bitnami/postgresql:latest
     restart: always
     container_name: examify_database
     env_file: ".env"
     user: root
     volumes:
       - examify_db_data:/bitnami/postgresql
+      # - ./examify_postgres_data:/bitnami/postgresql
       - ./create-dbs.sql:/docker-entrypoint-initdb.d/create-dbs.sql
     ports:
       - 5454:5432 # Remove this on production

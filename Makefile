@@ -39,6 +39,14 @@ lint: ## Check code quality
 	cd backend/app && uv run ruff check .
 	cd backend/app && uv run mypy . || true
 
+build-dev: ## Build Docker images
+	@echo "🐳 Building Development Docker images..."
+	docker compose -f docker-compose-dev.yml build
+
+build-prod: ## Build production Docker images
+	@echo "🐳 Building production Docker images..."
+	docker compose -f docker-compose.yml build
+
 ##@ Testing
 
 test: ## Run tests (requires running containers)
