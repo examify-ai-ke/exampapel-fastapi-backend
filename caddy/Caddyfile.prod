@@ -1,0 +1,57 @@
+# Production Caddyfile for api.exampapel.com
+# Automatic HTTPS with Let's Encrypt
+
+# API Domain - Backend Services
+api.exampapel.com {
+    # Enable automatic HTTPS
+    tls {
+        protocols tls1.2 tls1.3
+    }
+
+    # Security headers
+    header {
+        # Enable HSTS
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        # Prevent clickjacking
+        X-Frame-Options "DENY"
+        # Prevent MIME type sniffing
+        X-Content-Type-Options "nosniff"
+        # Enable XSS protection
+        X-XSS-Protection "1; mode=block"
+        # Referrer policy
+        Referrer-Policy "strict-origin-when-cross-origin"
+        # Remove server header
+        -Server
+    }
+
+    # API routes - proxy to FastAPI backend
+    reverse_proxy examify_backend_prod:8000 {
+        # Health check
+        health_uri /api/v1/health
+        health_interval 30s
+        health_timeout 10s
+
+        # Headers
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+
+    # Logging
+    log {
+        output file /data/logs/api.log {
+            roll_size 100mb
+            roll_keep 10
+        }
+        format json
+    }
+
+    # Enable compression
+    encode gzip zstd
+}
+
+# Health check endpoint (accessible via HTTP on port 80)
+:80 {
+    respond /health 200
+}
