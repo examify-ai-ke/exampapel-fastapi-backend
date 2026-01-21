@@ -153,6 +153,9 @@ check-env: ## Check if environment is properly set up
 	@echo "🗄️  Examify containers:"
 	@docker ps | grep -E "(examify)" && echo "✅ Examify containers running" || echo "⚠️  Examify containers not running - use 'make run-bg'"
 
+clear-db: ## Clear database (development only)
+	@echo "🧹 Clearing database..."
+	docker compose -f docker-compose-dev.yml exec examify_api python app/clear_all_dummy.py
 
 backfill-slugs: ## Backfill missing slugs for existing records
 	@echo "🔄 Backfilling missing slugs..."
