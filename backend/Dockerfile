@@ -5,8 +5,8 @@ WORKDIR /code
 # Install UV
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 
-# Install system dependencies
-RUN apt clean && apt update && apt install curl libpango-1.0-0 libpangoft2-1.0-0 libcairo2 libgdk-pixbuf-2.0-0 libffi-dev shared-mime-info -y
+# Install system dependencies (including PostgreSQL client for database restore)
+RUN apt clean && apt update && apt install curl libpango-1.0-0 libpangoft2-1.0-0 libcairo2 libgdk-pixbuf-2.0-0 libffi-dev shared-mime-info postgresql-client -y
 
 # Install dependencies
 ENV UV_COMPILE_BYTECODE=1
@@ -27,7 +27,10 @@ ENV PATH="/venv/bin:$PATH"
 # Copy the application
 COPY app /code/
 
-
+# Copy database backup file for automatic initialization
+# This file will be used to auto-populate the database on first run
+# Note: Make sure exams_fastapi_db_clean_backup.dump exists in the parent directory before building
+COPY ../exams_fastapi_db_clean_backup.dump /code/
 
 
 # Install boto3 for AWS S3 integration

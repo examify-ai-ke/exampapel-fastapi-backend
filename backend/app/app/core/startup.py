@@ -10,6 +10,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from sqlalchemy import select, text
 
 from app.core.config import settings, ModeEnum
+from app.core.db_restore import initialize_from_backup
 from app.db.init_db import run_init_db
 from app.db.session import SessionLocal
 from app.models.user_model import User
@@ -104,21 +105,40 @@ async def initialize_database() -> None:
     Initialize the database with initial data if needed.
     This function is called during FastAPI startup.
     
+    Initialization process:
+    1. First, attempt to restore from backup file if database is completely empty
+    2. If backup restore succeeds, initialization is complete
+    3. If no backup or restore fails, fall back to normal initialization (if configured)
+    
     Only runs if:
-    1. We're in development mode
-    2. The database is empty (no data in key tables)
+    - We're in development mode
+    - The database is empty (no tables or no data in key tables)
     """
     try:
         logger.info("🚀 Starting database initialization check...")
+        
+        # STEP 1: Try to initialize from backup file first
+        # This only runs if database is completely empty (no tables)
+        logger.info("📦 Step 1: Checking for database backup file...")
+        backup_restored = await initialize_from_backup()
+        
+        if backup_restored:
+            logger.info("✅ Database initialized successfully from backup file!")
+            logger.info("⏭️  Skipping normal initialization since backup was restored")
+            return
+        
+        # STEP 2: If no backup or backup failed, check if we should run normal initialization
+        logger.info("📝 Step 2: Checking if normal initialization is needed...")
         
         # Check if we should initialize
         if not await should_initialize_database():
             logger.info("⏭️  Database initialization skipped")
             return
         
-        logger.info("🔧 Proceeding with database initialization...")
+        logger.info("🔧 Proceeding with normal database initialization...")
         
-        # We nolonger need to initialize the db with data here
+        # We no longer need to initialize the db with data here
+        # You can enable this if you have a run_init_db function
         # async with SessionLocal() as session:
         #     await run_init_db(session)
             

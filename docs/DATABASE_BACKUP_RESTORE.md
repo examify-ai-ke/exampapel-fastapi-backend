@@ -32,6 +32,88 @@ PGPASSWORD=postgres_exams1 psql -h localhost -p 5454 -U postgres -d exams_fastap
 
 ---
 
+## 🎉 Automatic Database Initialization (NEW!)
+
+**The application now automatically initializes the database from backup files on first run!**
+
+### How It Works
+
+1. **On First App Startup:**
+   - The app checks if the database is completely empty (no tables)
+   - If empty, it looks for a backup file in the project root
+   - If found, it automatically restores the database from the backup
+   - No manual intervention needed!
+
+2. **On Subsequent Startups:**
+   - The app detects that tables already exist
+   - **No restoration happens** - your data is safe
+   - Works even with app reloads during development
+
+### Backup File Priority
+
+The app searches for backup files in this order:
+
+1. `exams_fastapi_db_clean_backup.dump` (in project root) ✅ **Preferred**
+2. `exams_fastapi_db_clean_backup.sql` (in project root)
+3. `backups/latest.dump`
+4. `backups/latest.sql`
+
+### First-Time Setup (Development)
+
+**Scenario 1: Fresh Database**
+```bash
+# 1. Make sure your backup file is in the project root
+ls exams_fastapi_db_clean_backup.dump
+
+# 2. Start the app - database will auto-initialize!
+cd backend/app
+uvicorn app.main:app --reload
+```
+
+**Scenario 2: Existing Database**
+```bash
+# Database already has data - nothing happens
+# The app will detect existing tables and skip initialization
+uvicorn app.main:app --reload
+```
+
+### Production Deployment
+
+For production deployment, simply:
+
+1. **Place the backup file** in your project root before starting the app
+2. **Start the application** - it will auto-initialize on first run
+3. **Remove the backup file** (optional, for security)
+
+```bash
+# Production deployment example
+cp exams_fastapi_db_clean_backup.dump /path/to/production/app/
+cd /path/to/production/app/backend/app
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+# Database automatically initialized on first run!
+```
+
+### Logs to Watch
+
+When the app starts with an empty database, you'll see:
+
+```
+🔍 Checking if database needs initialization from backup...
+🆕 Database is empty - will attempt to restore from backup
+📦 Restoring database from: exams_fastapi_db_clean_backup.dump
+✅ Database initialization completed successfully!
+📊 Restored 36 tables with 1234 total records
+```
+
+On subsequent runs:
+```
+🔍 Checking if database needs initialization from backup...
+📊 Database already has tables - skipping backup restore
+Database contains 36 tables with 1234 total records
+```
+
+---
+
 ## Backup Formats
 
 ### Custom Format (`.dump`) - **Recommended**
