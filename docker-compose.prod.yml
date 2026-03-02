@@ -47,6 +47,14 @@ services:
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
     expose:
       - 8000
+    env_file:
+      - .env
+    environment:
+      - MODE=production
+      - DATABASE_HOST=examify_database
+      - DATABASE_PORT=5432
+      - REDIS_HOST=examify_redis
+      - REDIS_PORT=6379
     depends_on:
       examify_database:
         condition: service_healthy
@@ -67,6 +75,14 @@ services:
     container_name: examify_celery_worker_prod
     restart: always
     command: celery -A app.core.celery worker -l info --concurrency=2
+    env_file:
+      - .env
+    environment:
+      - MODE=production
+      - DATABASE_HOST=examify_database
+      - DATABASE_PORT=5432
+      - REDIS_HOST=examify_redis
+      - REDIS_PORT=6379
     depends_on:
       examify_database:
         condition: service_healthy
@@ -86,6 +102,14 @@ services:
     container_name: examify_celery_beat_prod
     restart: always
     command: celery -A app.core.celery beat -l info -S celery_sqlalchemy_scheduler.schedulers:DatabaseScheduler
+    env_file:
+      - .env
+    environment:
+      - MODE=production
+      - DATABASE_HOST=examify_database
+      - DATABASE_PORT=5432
+      - REDIS_HOST=examify_redis
+      - REDIS_PORT=6379
     depends_on:
       examify_database:
         condition: service_healthy
