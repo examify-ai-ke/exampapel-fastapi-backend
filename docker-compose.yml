@@ -20,7 +20,7 @@ services:
   
   ## You need to set your external database credentials in .env file or uncomment below lines to run database as container  (No recommended because db needs persitence)
   examify_database:
-    image: bitnami/postgresql:latest
+    image: docker.io/bitnami/postgresql:latest
     restart: always
     container_name: examify_database
     env_file: ".env"
