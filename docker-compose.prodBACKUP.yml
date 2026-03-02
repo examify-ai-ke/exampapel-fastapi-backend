@@ -4,32 +4,45 @@
 # - Containerized PostgreSQL with persistence
 # - Redis for caching
 # - Celery workers for background tasks
+# - Caddy reverse proxy with automatic HTTPS
 
 services:
-  # PostgreSQL Database
+  # PostgreSQL Database - Production Configuration
   examify_database:
     image: docker.io/bitnami/postgresql:18
     container_name: examify_database_prod
     restart: always
+    environment:
+      POSTGRES_USER: ${DATABASE_USER}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+      POSTGRES_DB: ${DATABASE_NAME}
+      # Celery database
+      POSTGRES_MULTIPLE_DATABASES: ${DATABASE_CELERY_NAME}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      # Database initialization script
       - ./create-dbs.sql:/docker-entrypoint-initdb.d/01-create-dbs.sql:ro
-    # Healthcheck variables are pulling straight from Dokploy env injection!
+    networks:
+      - examify_network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $$DATABASE_USER -d $$DATABASE_NAME"]
+      test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USER} -d ${DATABASE_NAME}"]
       interval: 10s
       timeout: 5s
       retries: 5
+    # Don't expose port in production - only accessible within network
+    # ports:
+    #   - "5432:5432"
 
   # Redis Cache
   examify_redis:
     image: redis:7-alpine
     container_name: examify_redis_prod
     restart: always
-    # Dokploy env variables are expanded here!
-    command: /bin/sh -c 'redis-server --requirepass "$$REDIS_PASSWORD" --maxmemory 256mb --maxmemory-policy allkeys-lru'
+    command: redis-server --requirepass ${REDIS_PASSWORD} --maxmemory 256mb --maxmemory-policy allkeys-lru
     volumes:
       - redis_data:/data
+    networks:
+      - examify_network
     healthcheck:
       test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
       interval: 10s
@@ -44,8 +57,17 @@ services:
     container_name: examify_backend_prod
     restart: always
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
-    expose:
-      - 8000
+    environment:
+      - MODE=production
+      - DATABASE_HOST=examify_database
+      - DATABASE_PORT=5432
+      - REDIS_HOST=examify_redis
+      - REDIS_PORT=6379
+      - BACKEND_CORS_ORIGINS=["https://exampapel.com","https://www.exampapel.com"]
+    env_file:
+      - .env.production
+    networks:
+      - examify_network
     depends_on:
       examify_database:
         condition: service_healthy
@@ -57,6 +79,8 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    # No volume mounts in production - code is in the image
+    # No port exposure - accessed through reverse proxy
 
   # Celery Worker
   examify_celery_worker:
@@ -66,6 +90,16 @@ services:
     container_name: examify_celery_worker_prod
     restart: always
     command: celery -A app.core.celery worker -l info --concurrency=2
+    environment:
+      - MODE=production
+      - DATABASE_HOST=examify_database
+      - DATABASE_PORT=5432
+      - REDIS_HOST=examify_redis
+      - REDIS_PORT=6379
+    env_file:
+      - .env.production
+    networks:
+      - examify_network
     depends_on:
       examify_database:
         condition: service_healthy
@@ -85,14 +119,56 @@ services:
     container_name: examify_celery_beat_prod
     restart: always
     command: celery -A app.core.celery beat -l info -S celery_sqlalchemy_scheduler.schedulers:DatabaseScheduler
+    environment:
+      - MODE=production
+      - DATABASE_HOST=examify_database
+      - DATABASE_PORT=5432
+      - REDIS_HOST=examify_redis
+      - REDIS_PORT=6379
+    env_file:
+      - .env.production
+    networks:
+      - examify_network
     depends_on:
       examify_database:
         condition: service_healthy
       examify_redis:
         condition: service_healthy
 
+  # Caddy Reverse Proxy - Handles HTTPS and routing
+  examify_reverse_proxy:
+    image: caddy:2-alpine
+    container_name: examify_caddy_prod
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./caddy/Caddyfile.prod:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - examify_network
+    depends_on:
+      - examify_backend
+    environment:
+      - DOMAIN=api.exampapel.com
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  examify_network:
+    driver: bridge
+
 volumes:
   postgres_data:
     driver: local
   redis_data:
+    driver: local
+  caddy_data:
+    driver: local
+  caddy_config:
     driver: local
