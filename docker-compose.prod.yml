@@ -1,9 +1,4 @@
-# Production Docker Compose Configuration
-# This file is optimized for production deployment with:
-# - Separate domains: api.exampapel.com (backend only, frontend separate)
-# - Containerized PostgreSQL with persistence
-# - Redis for caching
-# - Celery workers for background tasks
+version: '3.8'
 
 services:
   # PostgreSQL Database

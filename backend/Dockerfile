@@ -30,8 +30,9 @@ COPY app /code/
 # Copy database backup file for automatic initialization
 # This file will be used to auto-populate the database on first run
 # Note: Make sure exams_fastapi_db_clean_backup.dump exists in the parent directory before building
-COPY ../exams_fastapi_db_clean_backup.dump /code/
+#COPY ../exams_fastapi_db_clean_backup.dump /code/
 
+COPY exams_fastapi_db_clean_backup.dump /code/
 
 # Install boto3 for AWS S3 integration
 # RUN pip install boto3
