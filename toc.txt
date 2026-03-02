@@ -1,0 +1,293 @@
+;
+; Archive created at 2026-01-21 13:26:08 EAT
+;     dbname: exams_fastapi_db
+;     TOC Entries: 282
+;     Compression: gzip
+;     Dump Version: 1.16-0
+;     Format: CUSTOM
+;     Integer: 4 bytes
+;     Offset: 8 bytes
+;     Dumped from database version: 18.1
+;     Dumped by pg_dump version: 18.1 (Ubuntu 18.1-1.pgdg24.04+2)
+;
+;
+; Selected TOC Entries:
+;
+2; 3079 35034 EXTENSION - pg_trgm 
+3889; 0 0 COMMENT - EXTENSION pg_trgm 
+921; 1247 35116 TYPE public auditactiontype postgres
+924; 1247 35160 TYPE public authprovider postgres
+927; 1247 35172 TYPE public igenderenum postgres
+930; 1247 35180 TYPE public institutioncategory postgres
+933; 1247 35194 TYPE public institutiontype postgres
+936; 1247 35202 TYPE public programmetypes postgres
+939; 1247 35222 TYPE public questionsettitleenum postgres
+220; 1259 35243 TABLE public ActivityLog postgres
+221; 1259 35253 TABLE public Address postgres
+222; 1259 35261 TABLE public Answer postgres
+223; 1259 35271 TABLE public AnswerVote postgres
+224; 1259 35280 TABLE public AuditLog postgres
+225; 1259 35288 TABLE public Campus postgres
+226; 1259 35296 TABLE public Comment postgres
+227; 1259 35305 TABLE public CommentVote postgres
+228; 1259 35316 TABLE public Course postgres
+229; 1259 35324 TABLE public CourseModuleLink postgres
+230; 1259 35330 TABLE public Department postgres
+231; 1259 35338 TABLE public ExamDescription postgres
+232; 1259 35345 TABLE public ExamInstruction postgres
+233; 1259 35353 TABLE public ExamPaper postgres
+234; 1259 35360 TABLE public ExamPaperQuestionLink postgres
+235; 1259 35366 TABLE public ExamTitle postgres
+236; 1259 35373 TABLE public Faculty postgres
+237; 1259 35380 TABLE public Group postgres
+238; 1259 35388 TABLE public Hero postgres
+239; 1259 35396 TABLE public ImageMedia postgres
+240; 1259 35402 TABLE public Institution postgres
+241; 1259 35409 TABLE public InstitutionFacultyLink postgres
+242; 1259 35415 TABLE public InstructionExamsLink postgres
+243; 1259 35421 TABLE public LinkGroupUser postgres
+244; 1259 35427 TABLE public Media postgres
+245; 1259 35433 TABLE public Module postgres
+246; 1259 35441 TABLE public ModuleExamsLink postgres
+247; 1259 35447 TABLE public Programme postgres
+248; 1259 35454 TABLE public ProgrammeDepartmentLink postgres
+249; 1259 35460 TABLE public Question postgres
+250; 1259 35469 TABLE public QuestionSet postgres
+251; 1259 35476 TABLE public Role postgres
+252; 1259 35484 TABLE public Team postgres
+253; 1259 35492 TABLE public User postgres
+254; 1259 35508 TABLE public UserFollow postgres
+255; 1259 35515 TABLE public alembic_version postgres
+3847; 0 35243 TABLE DATA public ActivityLog postgres
+3848; 0 35253 TABLE DATA public Address postgres
+3849; 0 35261 TABLE DATA public Answer postgres
+3850; 0 35271 TABLE DATA public AnswerVote postgres
+3851; 0 35280 TABLE DATA public AuditLog postgres
+3852; 0 35288 TABLE DATA public Campus postgres
+3853; 0 35296 TABLE DATA public Comment postgres
+3854; 0 35305 TABLE DATA public CommentVote postgres
+3855; 0 35316 TABLE DATA public Course postgres
+3856; 0 35324 TABLE DATA public CourseModuleLink postgres
+3857; 0 35330 TABLE DATA public Department postgres
+3858; 0 35338 TABLE DATA public ExamDescription postgres
+3859; 0 35345 TABLE DATA public ExamInstruction postgres
+3860; 0 35353 TABLE DATA public ExamPaper postgres
+3861; 0 35360 TABLE DATA public ExamPaperQuestionLink postgres
+3862; 0 35366 TABLE DATA public ExamTitle postgres
+3863; 0 35373 TABLE DATA public Faculty postgres
+3864; 0 35380 TABLE DATA public Group postgres
+3865; 0 35388 TABLE DATA public Hero postgres
+3866; 0 35396 TABLE DATA public ImageMedia postgres
+3867; 0 35402 TABLE DATA public Institution postgres
+3868; 0 35409 TABLE DATA public InstitutionFacultyLink postgres
+3869; 0 35415 TABLE DATA public InstructionExamsLink postgres
+3870; 0 35421 TABLE DATA public LinkGroupUser postgres
+3871; 0 35427 TABLE DATA public Media postgres
+3872; 0 35433 TABLE DATA public Module postgres
+3873; 0 35441 TABLE DATA public ModuleExamsLink postgres
+3874; 0 35447 TABLE DATA public Programme postgres
+3875; 0 35454 TABLE DATA public ProgrammeDepartmentLink postgres
+3876; 0 35460 TABLE DATA public Question postgres
+3877; 0 35469 TABLE DATA public QuestionSet postgres
+3878; 0 35476 TABLE DATA public Role postgres
+3879; 0 35484 TABLE DATA public Team postgres
+3880; 0 35492 TABLE DATA public User postgres
+3881; 0 35508 TABLE DATA public UserFollow postgres
+3882; 0 35515 TABLE DATA public alembic_version postgres
+3440; 2606 35548 CONSTRAINT public ActivityLog ActivityLog_pkey postgres
+3449; 2606 35550 CONSTRAINT public Address Address_pkey postgres
+3457; 2606 35552 CONSTRAINT public AnswerVote AnswerVote_pkey postgres
+3454; 2606 35554 CONSTRAINT public Answer Answer_pkey postgres
+3462; 2606 35556 CONSTRAINT public AuditLog AuditLog_pkey postgres
+3472; 2606 35558 CONSTRAINT public Campus Campus_pkey postgres
+3474; 2606 35560 CONSTRAINT public Campus Campus_slug_key postgres
+3480; 2606 35562 CONSTRAINT public CommentVote CommentVote_pkey postgres
+3477; 2606 35564 CONSTRAINT public Comment Comment_pkey postgres
+3491; 2606 35566 CONSTRAINT public CourseModuleLink CourseModuleLink_pkey postgres
+3484; 2606 35568 CONSTRAINT public Course Course_name_key postgres
+3486; 2606 35570 CONSTRAINT public Course Course_pkey postgres
+3488; 2606 35572 CONSTRAINT public Course Course_slug_key postgres
+3494; 2606 35574 CONSTRAINT public Department Department_name_key postgres
+3496; 2606 35576 CONSTRAINT public Department Department_pkey postgres
+3498; 2606 35578 CONSTRAINT public Department Department_slug_key postgres
+3501; 2606 35580 CONSTRAINT public ExamDescription ExamDescription_name_key postgres
+3503; 2606 35582 CONSTRAINT public ExamDescription ExamDescription_pkey postgres
+3505; 2606 35584 CONSTRAINT public ExamDescription ExamDescription_slug_key postgres
+3508; 2606 35586 CONSTRAINT public ExamInstruction ExamInstruction_name_key postgres
+3510; 2606 35588 CONSTRAINT public ExamInstruction ExamInstruction_pkey postgres
+3512; 2606 35590 CONSTRAINT public ExamInstruction ExamInstruction_slug_key postgres
+3520; 2606 35592 CONSTRAINT public ExamPaperQuestionLink ExamPaperQuestionLink_pkey postgres
+3515; 2606 35594 CONSTRAINT public ExamPaper ExamPaper_hash_code_key postgres
+3517; 2606 35596 CONSTRAINT public ExamPaper ExamPaper_pkey postgres
+3525; 2606 35598 CONSTRAINT public ExamTitle ExamTitle_name_key postgres
+3527; 2606 35600 CONSTRAINT public ExamTitle ExamTitle_pkey postgres
+3529; 2606 35602 CONSTRAINT public ExamTitle ExamTitle_slug_key postgres
+3532; 2606 35604 CONSTRAINT public Faculty Faculty_name_key postgres
+3534; 2606 35606 CONSTRAINT public Faculty Faculty_pkey postgres
+3536; 2606 35608 CONSTRAINT public Faculty Faculty_slug_key postgres
+3541; 2606 35610 CONSTRAINT public Group Group_pkey postgres
+3544; 2606 35612 CONSTRAINT public Hero Hero_pkey postgres
+3549; 2606 35614 CONSTRAINT public ImageMedia ImageMedia_pkey postgres
+3568; 2606 35616 CONSTRAINT public InstitutionFacultyLink InstitutionFacultyLink_pkey postgres
+3552; 2606 35618 CONSTRAINT public Institution Institution_name_key postgres
+3554; 2606 35620 CONSTRAINT public Institution Institution_pkey postgres
+3556; 2606 35622 CONSTRAINT public Institution Institution_slug_key postgres
+3571; 2606 35624 CONSTRAINT public InstructionExamsLink InstructionExamsLink_pkey postgres
+3574; 2606 35626 CONSTRAINT public LinkGroupUser LinkGroupUser_pkey postgres
+3577; 2606 35628 CONSTRAINT public Media Media_pkey postgres
+3592; 2606 35630 CONSTRAINT public ModuleExamsLink ModuleExamsLink_pkey postgres
+3580; 2606 35632 CONSTRAINT public Module Module_name_key postgres
+3582; 2606 35634 CONSTRAINT public Module Module_pkey postgres
+3584; 2606 35636 CONSTRAINT public Module Module_slug_key postgres
+3586; 2606 35638 CONSTRAINT public Module Module_unit_code_key postgres
+3602; 2606 35640 CONSTRAINT public ProgrammeDepartmentLink ProgrammeDepartmentLink_pkey postgres
+3595; 2606 35642 CONSTRAINT public Programme Programme_name_key postgres
+3597; 2606 35644 CONSTRAINT public Programme Programme_pkey postgres
+3599; 2606 35646 CONSTRAINT public Programme Programme_slug_key postgres
+3612; 2606 35648 CONSTRAINT public QuestionSet QuestionSet_pkey postgres
+3614; 2606 35650 CONSTRAINT public QuestionSet QuestionSet_slug_key postgres
+3616; 2606 35652 CONSTRAINT public QuestionSet QuestionSet_title_key postgres
+3605; 2606 35654 CONSTRAINT public Question Question_pkey postgres
+3607; 2606 35656 CONSTRAINT public Question Question_slug_key postgres
+3619; 2606 35658 CONSTRAINT public Role Role_pkey postgres
+3622; 2606 35660 CONSTRAINT public Team Team_pkey postgres
+3631; 2606 35662 CONSTRAINT public UserFollow UserFollow_pkey postgres
+3626; 2606 35664 CONSTRAINT public User User_pkey postgres
+3459; 2606 35666 CONSTRAINT public AnswerVote _answer_user_vote_uc postgres
+3482; 2606 35668 CONSTRAINT public CommentVote _comment_user_vote_uc postgres
+3522; 2606 35670 CONSTRAINT public ExamPaperQuestionLink _exam_paper_question_set_uc postgres
+3609; 2606 35672 CONSTRAINT public Question _questions_order_per_question_set_uc postgres
+3634; 2606 35674 CONSTRAINT public alembic_version alembic_version_pkc postgres
+3450; 1259 35675 INDEX public idx_address_campus_id postgres
+3451; 1259 35676 INDEX public idx_address_institution_id postgres
+3537; 1259 35677 INDEX public idx_faculty_name postgres
+3538; 1259 35678 INDEX public idx_faculty_slug postgres
+3557; 1259 35679 INDEX public idx_institution_category postgres
+3558; 1259 35680 INDEX public idx_institution_created_at postgres
+3559; 1259 35681 INDEX public idx_institution_created_by_id postgres
+3560; 1259 35682 INDEX public idx_institution_image_id postgres
+3561; 1259 35683 INDEX public idx_institution_name postgres
+3562; 1259 35684 INDEX public idx_institution_slug postgres
+3563; 1259 35685 INDEX public idx_institution_tags postgres
+3564; 1259 35686 INDEX public idx_institution_type postgres
+3441; 1259 35687 INDEX public ix_ActivityLog_endpoint postgres
+3442; 1259 35688 INDEX public ix_ActivityLog_id postgres
+3443; 1259 35689 INDEX public ix_ActivityLog_request_id postgres
+3444; 1259 35690 INDEX public ix_ActivityLog_user_id postgres
+3452; 1259 35691 INDEX public ix_Address_id postgres
+3460; 1259 35692 INDEX public ix_AnswerVote_id postgres
+3455; 1259 35693 INDEX public ix_Answer_id postgres
+3463; 1259 35694 INDEX public ix_AuditLog_action postgres
+3464; 1259 35695 INDEX public ix_AuditLog_email postgres
+3465; 1259 35696 INDEX public ix_AuditLog_id postgres
+3466; 1259 35697 INDEX public ix_AuditLog_resource_type postgres
+3467; 1259 35698 INDEX public ix_AuditLog_user_id postgres
+3475; 1259 35699 INDEX public ix_Campus_id postgres
+3478; 1259 35700 INDEX public ix_Comment_id postgres
+3492; 1259 35701 INDEX public ix_CourseModuleLink_id postgres
+3489; 1259 35702 INDEX public ix_Course_id postgres
+3499; 1259 35703 INDEX public ix_Department_id postgres
+3506; 1259 35704 INDEX public ix_ExamDescription_id postgres
+3513; 1259 35705 INDEX public ix_ExamInstruction_id postgres
+3523; 1259 35706 INDEX public ix_ExamPaperQuestionLink_id postgres
+3518; 1259 35707 INDEX public ix_ExamPaper_id postgres
+3530; 1259 35708 INDEX public ix_ExamTitle_id postgres
+3539; 1259 35709 INDEX public ix_Faculty_id postgres
+3542; 1259 35710 INDEX public ix_Group_id postgres
+3545; 1259 35711 INDEX public ix_Hero_age postgres
+3546; 1259 35712 INDEX public ix_Hero_id postgres
+3547; 1259 35713 INDEX public ix_Hero_name postgres
+3550; 1259 35714 INDEX public ix_ImageMedia_id postgres
+3569; 1259 35715 INDEX public ix_InstitutionFacultyLink_id postgres
+3565; 1259 35716 INDEX public ix_Institution_created_by_id postgres
+3566; 1259 35717 INDEX public ix_Institution_id postgres
+3572; 1259 35718 INDEX public ix_InstructionExamsLink_id postgres
+3575; 1259 35719 INDEX public ix_LinkGroupUser_id postgres
+3578; 1259 35720 INDEX public ix_Media_id postgres
+3593; 1259 35721 INDEX public ix_ModuleExamsLink_id postgres
+3587; 1259 35722 INDEX public ix_Module_id postgres
+3603; 1259 35723 INDEX public ix_ProgrammeDepartmentLink_id postgres
+3600; 1259 35724 INDEX public ix_Programme_id postgres
+3617; 1259 35725 INDEX public ix_QuestionSet_id postgres
+3610; 1259 35726 INDEX public ix_Question_id postgres
+3620; 1259 35727 INDEX public ix_Role_id postgres
+3623; 1259 35728 INDEX public ix_Team_id postgres
+3624; 1259 35729 INDEX public ix_Team_name postgres
+3632; 1259 35730 INDEX public ix_UserFollow_id postgres
+3627; 1259 35731 INDEX public ix_User_email postgres
+3628; 1259 35732 INDEX public ix_User_hashed_password postgres
+3629; 1259 35733 INDEX public ix_User_id postgres
+3445; 1259 35734 INDEX public ix_activitylog_created_at postgres
+3446; 1259 35735 INDEX public ix_activitylog_status postgres
+3447; 1259 35736 INDEX public ix_activitylog_user_endpoint postgres
+3468; 1259 35737 INDEX public ix_auditlog_created_at postgres
+3469; 1259 35738 INDEX public ix_auditlog_resource postgres
+3470; 1259 35739 INDEX public ix_auditlog_user_action postgres
+3588; 1259 35740 INDEX public ix_module_description postgres
+3589; 1259 35741 INDEX public ix_module_name postgres
+3590; 1259 35742 INDEX public ix_module_unit_code postgres
+3635; 2606 35743 FK CONSTRAINT public ActivityLog ActivityLog_user_id_fkey postgres
+3636; 2606 35748 FK CONSTRAINT public Address Address_campus_id_fkey postgres
+3637; 2606 35753 FK CONSTRAINT public Address Address_institution_id_fkey postgres
+3641; 2606 35758 FK CONSTRAINT public AnswerVote AnswerVote_answer_id_fkey postgres
+3642; 2606 35763 FK CONSTRAINT public AnswerVote AnswerVote_user_id_fkey postgres
+3638; 2606 35768 FK CONSTRAINT public Answer Answer_created_by_id_fkey postgres
+3639; 2606 35773 FK CONSTRAINT public Answer Answer_parent_id_fkey postgres
+3640; 2606 35778 FK CONSTRAINT public Answer Answer_question_id_fkey postgres
+3643; 2606 35783 FK CONSTRAINT public AuditLog AuditLog_user_id_fkey postgres
+3644; 2606 35788 FK CONSTRAINT public Campus Campus_created_by_id_fkey postgres
+3645; 2606 35793 FK CONSTRAINT public Campus Campus_institution_id_fkey postgres
+3649; 2606 35798 FK CONSTRAINT public CommentVote CommentVote_comment_id_fkey postgres
+3650; 2606 35803 FK CONSTRAINT public CommentVote CommentVote_user_id_fkey postgres
+3646; 2606 35808 FK CONSTRAINT public Comment Comment_answer_id_fkey postgres
+3647; 2606 35813 FK CONSTRAINT public Comment Comment_created_by_id_fkey postgres
+3648; 2606 35818 FK CONSTRAINT public Comment Comment_parent_id_fkey postgres
+3655; 2606 35823 FK CONSTRAINT public CourseModuleLink CourseModuleLink_course_id_fkey postgres
+3656; 2606 35828 FK CONSTRAINT public CourseModuleLink CourseModuleLink_module_id_fkey postgres
+3651; 2606 35833 FK CONSTRAINT public Course Course_created_by_id_fkey postgres
+3652; 2606 35838 FK CONSTRAINT public Course Course_faculty_id_fkey postgres
+3653; 2606 35843 FK CONSTRAINT public Course Course_image_id_fkey postgres
+3654; 2606 35848 FK CONSTRAINT public Course Course_programme_id_fkey postgres
+3657; 2606 35853 FK CONSTRAINT public Department Department_created_by_id_fkey postgres
+3658; 2606 35858 FK CONSTRAINT public Department Department_faculty_id_fkey postgres
+3659; 2606 35863 FK CONSTRAINT public Department Department_image_id_fkey postgres
+3660; 2606 35868 FK CONSTRAINT public ExamDescription ExamDescription_created_by_id_fkey postgres
+3661; 2606 35873 FK CONSTRAINT public ExamInstruction ExamInstruction_created_by_id_fkey postgres
+3667; 2606 35878 FK CONSTRAINT public ExamPaperQuestionLink ExamPaperQuestionLink_exam_id_fkey postgres
+3668; 2606 35883 FK CONSTRAINT public ExamPaperQuestionLink ExamPaperQuestionLink_question_set_id_fkey postgres
+3662; 2606 35888 FK CONSTRAINT public ExamPaper ExamPaper_course_id_fkey postgres
+3663; 2606 35893 FK CONSTRAINT public ExamPaper ExamPaper_created_by_id_fkey postgres
+3664; 2606 35898 FK CONSTRAINT public ExamPaper ExamPaper_description_id_fkey postgres
+3665; 2606 35903 FK CONSTRAINT public ExamPaper ExamPaper_institution_id_fkey postgres
+3666; 2606 35908 FK CONSTRAINT public ExamPaper ExamPaper_title_id_fkey postgres
+3669; 2606 35913 FK CONSTRAINT public ExamTitle ExamTitle_created_by_id_fkey postgres
+3670; 2606 35918 FK CONSTRAINT public Faculty Faculty_created_by_id_fkey postgres
+3671; 2606 35923 FK CONSTRAINT public Faculty Faculty_image_id_fkey postgres
+3672; 2606 35928 FK CONSTRAINT public Group Group_created_by_id_fkey postgres
+3673; 2606 35933 FK CONSTRAINT public Hero Hero_created_by_id_fkey postgres
+3674; 2606 35938 FK CONSTRAINT public Hero Hero_team_id_fkey postgres
+3675; 2606 35943 FK CONSTRAINT public ImageMedia ImageMedia_media_id_fkey postgres
+3678; 2606 35948 FK CONSTRAINT public InstitutionFacultyLink InstitutionFacultyLink_faculty_id_fkey postgres
+3679; 2606 35953 FK CONSTRAINT public InstitutionFacultyLink InstitutionFacultyLink_institution_id_fkey postgres
+3676; 2606 35958 FK CONSTRAINT public Institution Institution_created_by_id_fkey postgres
+3677; 2606 35963 FK CONSTRAINT public Institution Institution_image_id_fkey postgres
+3680; 2606 35968 FK CONSTRAINT public InstructionExamsLink InstructionExamsLink_exam_id_fkey postgres
+3681; 2606 35973 FK CONSTRAINT public InstructionExamsLink InstructionExamsLink_instruction_id_fkey postgres
+3682; 2606 35978 FK CONSTRAINT public LinkGroupUser LinkGroupUser_group_id_fkey postgres
+3683; 2606 35983 FK CONSTRAINT public LinkGroupUser LinkGroupUser_user_id_fkey postgres
+3686; 2606 35988 FK CONSTRAINT public ModuleExamsLink ModuleExamsLink_exam_id_fkey postgres
+3687; 2606 35993 FK CONSTRAINT public ModuleExamsLink ModuleExamsLink_module_id_fkey postgres
+3684; 2606 35998 FK CONSTRAINT public Module Module_created_by_id_fkey postgres
+3685; 2606 36003 FK CONSTRAINT public Module Module_image_id_fkey postgres
+3690; 2606 36008 FK CONSTRAINT public ProgrammeDepartmentLink ProgrammeDepartmentLink_department_id_fkey postgres
+3691; 2606 36013 FK CONSTRAINT public ProgrammeDepartmentLink ProgrammeDepartmentLink_programme_id_fkey postgres
+3688; 2606 36018 FK CONSTRAINT public Programme Programme_created_by_id_fkey postgres
+3689; 2606 36023 FK CONSTRAINT public Programme Programme_image_id_fkey postgres
+3696; 2606 36028 FK CONSTRAINT public QuestionSet QuestionSet_created_by_id_fkey postgres
+3692; 2606 36033 FK CONSTRAINT public Question Question_created_by_id_fkey postgres
+3693; 2606 36038 FK CONSTRAINT public Question Question_exam_paper_id_fkey postgres
+3694; 2606 36043 FK CONSTRAINT public Question Question_parent_id_fkey postgres
+3695; 2606 36048 FK CONSTRAINT public Question Question_question_set_id_fkey postgres
+3697; 2606 36053 FK CONSTRAINT public Team Team_created_by_id_fkey postgres
+3698; 2606 36058 FK CONSTRAINT public User User_image_id_fkey postgres
+3699; 2606 36063 FK CONSTRAINT public User User_role_id_fkey postgres

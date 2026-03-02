@@ -373,7 +373,7 @@ app.add_middleware(SecurityHeadersMiddleware)
 # Add trusted host middleware (configure allowed hosts based on your deployment)
 if settings.MODE.value == "production":
     # In production, specify your actual domains
-    allowed_hosts = ["*.yourdomain.com", "yourdomain.com"]
+    allowed_hosts = ["*"]
     app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
 
 
