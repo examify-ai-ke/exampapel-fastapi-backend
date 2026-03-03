@@ -122,8 +122,17 @@ async def initialize_database() -> None:
             await lock_session.commit()
             
             try:
+                # STEP 0: After acquiring the lock, re-check if another worker already
+                # seeded the database while we were waiting. If so, bail out early.
+                logger.info("🔍 Step 0: Re-checking database state after acquiring lock...")
+                async with SessionLocal() as recheck_session:
+                    post_lock_status = await check_database_has_data(recheck_session)
+                    if any(post_lock_status.values()):
+                        logger.info("⏭️  Another worker already initialized the database — skipping")
+                        return
+
                 # STEP 1: Try to initialize from backup file first
-                # This only runs if database is completely empty (no tables)
+                # This runs if database has no data rows (handles truncated tables too)
                 logger.info("📦 Step 1: Checking for database backup file...")
                 backup_restored = await initialize_from_backup()
                 

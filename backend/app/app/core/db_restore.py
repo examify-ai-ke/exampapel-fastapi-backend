@@ -53,8 +53,11 @@ async def get_table_counts(session: AsyncSession) -> dict[str, int]:
     Returns:
         dict: Dictionary with table names as keys and row counts as values
     """
+    # Tables that are NOT application data (migration/system tables to exclude)
+    EXCLUDED_TABLES = {"alembic_version"}
+
     try:
-        # Get all table names
+        # Get all application table names (exclude migration/system tables)
         query = text("""
             SELECT tablename
             FROM pg_tables
@@ -63,7 +66,7 @@ async def get_table_counts(session: AsyncSession) -> dict[str, int]:
         """)
         
         result = await session.execute(query)
-        tables = [row[0] for row in result.fetchall()]
+        tables = [row[0] for row in result.fetchall() if row[0] not in EXCLUDED_TABLES]
         
         table_counts = {}
         for table in tables:
