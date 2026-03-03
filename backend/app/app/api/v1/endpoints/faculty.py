@@ -53,7 +53,7 @@ router = APIRouter()
 
 
 @router.get("")
-# @cache(expire=300)
+@cache(expire=300)
 async def get_faculty_list(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1),
@@ -80,7 +80,7 @@ async def get_faculty_list(
 
 
 @router.get("/search")
-# @cache(expire=180)
+@cache(expire=180)
 async def search_faculties(
     q: str = Query(default=None, description="Search query for faculties"),
     institution_id: UUID = Query(default=None, description="Filter by institution ID"),
@@ -151,7 +151,7 @@ async def get_faculty_list_order_by_created_at(
 
 
 @router.get("/get_by_id/{faculty_id}")
-# @cache(expire=600)
+@cache(expire=600)
 async def get_faculty_by_id(
     faculty_id: UUID,
     db_session: AsyncSession = Depends(deps.get_db),

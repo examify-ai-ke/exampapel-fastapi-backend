@@ -55,7 +55,7 @@ router = APIRouter()
 
 
 @router.get("")
-# @cache(expire=300)
+@cache(expire=300)
 async def get_module_list(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1),
@@ -82,7 +82,7 @@ async def get_module_list(
 
 
 @router.get("/search")
-# @cache(expire=180)
+@cache(expire=180)
 async def search_modules(
     q: str = Query(default=None, description="Search query for modules"),
     course_id: UUID = Query(default=None, description="Filter by course ID"),

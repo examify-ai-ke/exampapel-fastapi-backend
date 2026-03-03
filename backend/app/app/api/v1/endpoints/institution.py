@@ -70,7 +70,7 @@ router = APIRouter()
 
 
 @router.get("")
-# @cache(expire=300)
+@cache(expire=300)
 async def get_institution_list(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1),
@@ -151,7 +151,7 @@ async def get_institution_list(
 
 
 @router.get("/search/advanced")
-# @cache(expire=180)
+@cache(expire=180)
 async def advanced_search_institutions(
     q: str = Query(default=None, description="Search query for institutions"),
     institution_type: InstitutionType = Query(
@@ -301,7 +301,7 @@ async def advanced_search_institutions(
 
 
 @router.get("/search/suggestions")
-# @cache(expire=120)
+@cache(expire=120)
 async def get_institution_search_suggestions(
     q: str = Query(..., min_length=2, description="Search query for suggestions"),
     limit: int = Query(default=10, ge=1, le=20),
@@ -385,7 +385,7 @@ async def get_institution_list_order_by_created_at(
 
 
 @router.get("/get_by_id/{institution_id}")
-# @cache(expire=600)
+@cache(expire=600)
 async def get_institution_by_id(
     institution_id: UUID,
     db_session: AsyncSession = Depends(deps.get_db),
@@ -416,7 +416,7 @@ async def get_institution_by_id(
 
 
 @router.get("/get_by_slug/{institution_slug}")
-# @cache(expire=600)
+@cache(expire=600)
 async def get_institution_by_slug(
     institution_slug: str,
     db_session: AsyncSession = Depends(deps.get_db),
@@ -437,7 +437,7 @@ async def get_institution_by_slug(
 
 
 @router.get("/{institution_id}/exam-papers")
-# @cache(expire=300)
+@cache(expire=300)
 async def get_institution_exam_papers(
     institution_id: UUID,
     skip: int = Query(default=0, ge=0),

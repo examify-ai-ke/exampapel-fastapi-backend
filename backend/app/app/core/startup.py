@@ -117,39 +117,55 @@ async def initialize_database() -> None:
     try:
         logger.info("🚀 Starting database initialization check...")
         
-        # STEP 1: Try to initialize from backup file first
-        # This only runs if database is completely empty (no tables)
-        logger.info("📦 Step 1: Checking for database backup file...")
-        backup_restored = await initialize_from_backup()
-        
-        if backup_restored:
-            logger.info("✅ Database initialized successfully from backup file!")
-            logger.info("⏭️  Skipping normal initialization since backup was restored")
-            return
-        
-        # STEP 2: If no backup or backup failed, check if we should run normal initialization
-        logger.info("📝 Step 2: Checking if normal initialization is needed...")
-        
-        # Check if we should initialize
-        if not await should_initialize_database():
-            logger.info("⏭️  Database initialization skipped")
-            return
-        
-        logger.info("🔧 Proceeding with normal database initialization...")
-        
-        # We no longer need to initialize the db with data here
-        # You can enable this if you have a run_init_db function
-        # async with SessionLocal() as session:
-        #     await run_init_db(session)
+        # Use a session-level advisory lock to prevent concurrent initialization
+        # from multiple Uvicorn workers.
+        async with SessionLocal() as lock_session:
+            logger.info("🔒 Acquiring database initialization lock...")
             
-        logger.info("✅ Database initialization completed successfully!")
-        
-        # Log final state
-        async with SessionLocal() as session:
-            data_status = await check_database_has_data(session)
-            tables_with_data = sum(1 for has_data in data_status.values() if has_data)
-            logger.info(f"📊 Final state: {tables_with_data}/{len(data_status)} tables now have data")
-        
+            # Explicitly commit any pending transaction from prior reads before acquiring lock
+            await lock_session.commit()
+            await lock_session.execute(text("SELECT pg_advisory_lock(42424242)"))
+            await lock_session.commit()
+            
+            try:
+                # STEP 1: Try to initialize from backup file first
+                # This only runs if database is completely empty (no tables)
+                logger.info("📦 Step 1: Checking for database backup file...")
+                backup_restored = await initialize_from_backup()
+                
+                if backup_restored:
+                    logger.info("✅ Database initialized successfully from backup file!")
+                    logger.info("⏭️  Skipping normal initialization since backup was restored")
+                    return
+                
+                # STEP 2: If no backup or backup failed, check if we should run normal initialization
+                logger.info("📝 Step 2: Checking if normal initialization is needed...")
+                
+                # Check if we should initialize
+                if not await should_initialize_database():
+                    logger.info("⏭️  Database initialization skipped")
+                    return
+                
+                logger.info("🔧 Proceeding with normal database initialization...")
+                
+                # We no longer need to initialize the db with data here
+                # You can enable this if you have a run_init_db function
+                # async with SessionLocal() as session:
+                #     await run_init_db(session)
+                    
+                logger.info("✅ Database initialization completed successfully!")
+                
+                # Log final state
+                async with SessionLocal() as session:
+                    data_status = await check_database_has_data(session)
+                    tables_with_data = sum(1 for has_data in data_status.values() if has_data)
+                    logger.info(f"📊 Final state: {tables_with_data}/{len(data_status)} tables now have data")
+            
+            finally:
+                logger.info("🔓 Releasing database initialization lock...")
+                await lock_session.execute(text("SELECT pg_advisory_unlock(42424242)"))
+                await lock_session.commit()
+                
     except Exception as e:
         logger.error(f"❌ Database initialization failed: {e}")
         # In production, you might want to raise the exception to prevent startup
