@@ -150,7 +150,7 @@ class UserReadMinimal(BaseModel):
 # Main Question Read schema
 class QuestionRead(QuestionBase):
     id: UUID
-    slug: Optional[str] = None
+    slug: str | None = None
     marks: int | None
     created_at: datetime
     
@@ -209,7 +209,7 @@ class SubQuestionRead(QuestionRead):
 # For use in QuestionSet responses
 class QuestionReadForQuestionSet(QuestionBase):
     id: UUID
-    slug: Optional[str] = None
+    slug: str | None = None
     marks: int | None
     answers: Optional[List[AnswerReadForQuestion]] = []
     children: Optional[List[QuestionRead]] = []  # Sub-questions
@@ -228,7 +228,7 @@ class QuestionSetUpdate(QuestionSetBase):
 
 class QuestionSetRead(QuestionSetBase):
     id: UUID
-    slug: Optional[str] = None
+    slug: str | None = None
     questions_count: Optional[int] = 0
     # exam_papers_count: Optional[int] = 0
     # created_at: datetime
@@ -238,7 +238,7 @@ class QuestionSetRead(QuestionSetBase):
 
 class QuestionReadForQuestionSet(QuestionBase):
     id: UUID
-    slug: Optional[str] = None
+    slug: str | None = None
     # marks: int | None
     created_at: datetime
     question_set_id: Optional[UUID] = None
@@ -252,7 +252,7 @@ class QuestionReadForQuestionSet(QuestionBase):
 
 class SubQuestionReadSimple(QuestionBase):
     id: UUID
-    slug: Optional[str] = None
+    slug: str | None = None
     # marks: int | None
     created_at: datetime
     parent_id: Optional[UUID] = None
@@ -263,7 +263,7 @@ class SubQuestionReadSimple(QuestionBase):
 
 class MainQuestionReadForQuestionSet(QuestionBase):
     id: UUID
-    slug: Optional[str] = None
+    slug: str | None = None
     # marks: int | None
     created_at: datetime
     question_set_id: Optional[UUID] = None
@@ -276,7 +276,7 @@ class MainQuestionReadForQuestionSet(QuestionBase):
 
 class QuestionSetReadWithQuestions(QuestionSetBase):
     id: UUID
-    slug: Optional[str] = None
+    slug: str | None = None
     questions: Optional[List[MainQuestionReadForQuestionSet]] = []
     questions_count: Optional[int] = 0
     exam_papers_count: Optional[int] = 0
