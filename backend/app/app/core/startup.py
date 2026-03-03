@@ -54,20 +54,15 @@ async def check_database_has_data(session: AsyncSession) -> dict[str, bool]:
 async def should_initialize_database() -> bool:
     """
     Determine if database initialization should run based on:
-    1. Current environment mode
-    2. Database state (empty or has data)
+    1. Database state (empty or has data)
+    
+    Runs in ALL environments when the database is empty, so that
+    essential seed data (roles, superuser, etc.) is always created.
     
     Returns:
         bool: True if initialization should run, False otherwise
     """
-    # Check if we're in development mode
-    is_development = settings.MODE == ModeEnum.development
-    
-    if not is_development:
-        logger.info(f"Skipping database initialization - not in development mode (current: {settings.MODE.value})")
-        return False
-    
-    logger.info("Development mode detected - checking database state...")
+    logger.info(f"Environment: {settings.MODE.value} - checking database state...")
     
     try:
         async with SessionLocal() as session:
@@ -147,11 +142,9 @@ async def initialize_database() -> None:
                     return
                 
                 logger.info("🔧 Proceeding with normal database initialization...")
-                
-                # We no longer need to initialize the db with data here
-                # You can enable this if you have a run_init_db function
-                # async with SessionLocal() as session:
-                #     await run_init_db(session)
+
+                async with SessionLocal() as session:
+                    await run_init_db(session)
                     
                 logger.info("✅ Database initialization completed successfully!")
                 
