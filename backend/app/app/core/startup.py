@@ -55,15 +55,14 @@ async def should_initialize_database() -> bool:
     """
     Determine if database initialization should run based on:
     1. Database state (empty or has data)
-    
-    Runs in ALL environments when the database is empty, so that
-    essential seed data (roles, superuser, etc.) is always created.
-    
+
+    Runs in ALL environments — only skips if key tables already have data.
+
     Returns:
         bool: True if initialization should run, False otherwise
     """
     logger.info(f"Environment: {settings.MODE.value} - checking database state...")
-    
+
     try:
         async with SessionLocal() as session:
             # Check if database has data
@@ -142,9 +141,6 @@ async def initialize_database() -> None:
                     return
                 
                 logger.info("🔧 Proceeding with normal database initialization...")
-
-                async with SessionLocal() as session:
-                    await run_init_db(session)
                     
                 logger.info("✅ Database initialization completed successfully!")
                 

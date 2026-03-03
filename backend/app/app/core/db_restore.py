@@ -202,18 +202,15 @@ async def initialize_from_backup() -> bool:
         logger.info("🔍 Checking if database needs initialization from backup...")
         
         async with SessionLocal() as session:
-            # Check if database is empty
-            if not await is_database_empty(session):
-                logger.info("📊 Database already has tables - skipping backup restore")
-                
-                # Log current state for debugging
-                table_counts = await get_table_counts(session)
-                total_records = sum(table_counts.values())
-                logger.info(f"Database contains {len(table_counts)} tables with {total_records} total records")
-                
+            # Check if all tables are empty (covers both no-tables and truncated-tables cases)
+            table_counts = await get_table_counts(session)
+            total_records = sum(table_counts.values())
+            
+            if total_records > 0:
+                logger.info(f"📊 Database already has data ({total_records} records across {len(table_counts)} tables) - skipping backup restore")
                 return False
         
-        logger.info("🆕 Database is empty - will attempt to restore from backup")
+        logger.info("🆕 Database has no data - will attempt to restore from backup")
         
         # Find backup file
         backup_file = find_backup_file()
