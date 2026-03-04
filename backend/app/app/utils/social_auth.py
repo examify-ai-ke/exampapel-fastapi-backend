@@ -105,8 +105,52 @@ async def verify_social_token(provider: AuthProvider, token: str) -> Dict[str, A
             logging.error(f"Network error during GitHub token verification: {str(e)}")
             raise ValueError(f"Network error contacting GitHub: {str(e)}")
     
+    elif provider == AuthProvider.twitter:
+        try:
+            async with httpx.AsyncClient() as client:
+                logging.info(f"Verifying Twitter token...")
+                response = await client.get(
+                    "https://api.twitter.com/2/users/me",
+                    params={"user.fields": "confirmed_email,profile_image_url,username,name,verified", "expansions": "pinned_tweet_id"},
+                    headers={
+                        "Authorization": f"Bearer {token}"
+                    }
+                )
+                
+                logging.info(f"Twitter API response status: {response.status_code}")
+                
+                if response.status_code != 200:
+                    error_detail = response.text
+                    logging.error(f"Twitter token verification failed: {response.status_code} - {error_detail}")
+                    raise ValueError(f"Invalid Twitter token: {response.status_code} - {error_detail}")
+                
+                user_data_resp = response.json()
+                logging.info(f"Twitter user data received: {user_data_resp.get('data', {})}")
+                user_data = user_data_resp.get("data", {})
+                
+                twitter_id = user_data.get("id")
+                username = user_data.get("username")
+                name = user_data.get("name")
+                email = user_data.get("confirmed_email")
+                
+                if not email:
+                    # Treat email as optional for Twitter v2 and provide placeholder
+                    email = f"{twitter_id or username}@twitter.local"
+                    user_data["email_verified"] = False
+                else:
+                    user_data["email_verified"] = True
+                
+                user_data["email"] = email
+                
+                logging.info(f"Twitter user data received for: {username} with email: {email}")
+                return user_data
+                
+        except httpx.RequestError as e:
+            logging.error(f"Network error during Twitter token verification: {str(e)}")
+            raise ValueError(f"Network error contacting Twitter: {str(e)}")
+
     # Add more providers as needed
-    # elif provider == AuthProvider.FACEBOOK:
+    # elif provider == AuthProvider.facebook:
     #     ...
     
     raise ValueError(f"Unsupported provider: {provider}") 

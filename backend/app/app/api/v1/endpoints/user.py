@@ -603,8 +603,6 @@ async def verify_email(
         raise HTTPException(
             status_code=500, detail="An error occurred during email verification"
         )
-
-
 @router.post(
     "/social-auth/{provider}/callback", response_model=IPostResponseBase[Token]
 )
@@ -612,6 +610,7 @@ async def social_auth_callback(
     provider: AuthProvider,
     code: str = Body(..., embed=True),
     redirect_uri: str = Body(..., embed=True),
+    code_verifier: str | None = Body(None, embed=True),
     redis_client: Redis = Depends(deps.get_redis_client),
 ) -> IPostResponseBase[Token]:
     """
@@ -691,6 +690,56 @@ async def social_auth_callback(
                 logging.info(
                     f"Successfully exchanged GitHub code for token (length: {len(access_token)})"
                 )
+        elif provider == AuthProvider.twitter:
+            import httpx
+            import base64
+
+            if not code_verifier:
+                raise HTTPException(
+                    status_code=400, detail="code_verifier is required for Twitter OAuth 2.0"
+                )
+
+            # Twitter uses Basic Auth for confidential clients in the token request
+            auth_string = f"{settings.TWITTER_CLIENT_ID}:{settings.TWITTER_CLIENT_SECRET}"
+            auth_bytes = auth_string.encode('ascii')
+            base64_bytes = base64.b64encode(auth_bytes)
+            base64_string = base64_bytes.decode('ascii')
+
+            async with httpx.AsyncClient() as client:
+                token_response = await client.post(
+                    "https://api.twitter.com/2/oauth2/token",
+                    headers={
+                        "Content-Type": "application/x-www-form-urlencoded",
+                        "Authorization": f"Basic {base64_string}"
+                    },
+                    data={
+                        "code": code,
+                        "grant_type": "authorization_code",
+                        "client_id": settings.TWITTER_CLIENT_ID,
+                        "redirect_uri": redirect_uri,
+                        "code_verifier": code_verifier,
+                    },
+                )
+
+                if token_response.status_code != 200:
+                    error_data = token_response.json()
+                    logging.error(f"Twitter token exchange failed: {error_data}")
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Failed to exchange code with Twitter: {error_data.get('error_description', error_data.get('error'))}",
+                    )
+
+                tokens = token_response.json()
+                access_token = tokens.get("access_token")
+
+                if not access_token:
+                    raise HTTPException(
+                        status_code=400, detail="No token received from Twitter"
+                    )
+
+                logging.info(
+                    f"Successfully exchanged Twitter code for token (length: {len(access_token)})"
+                )
         else:
             raise HTTPException(
                 status_code=400,
@@ -737,6 +786,12 @@ async def social_auth_callback(
                 provider_user_id = str(
                     user_info["id"]
                 )  # GitHub uses 'id' instead of 'sub'
+            elif provider == AuthProvider.twitter:
+                first_name = user_info.get("name", "")
+                name_parts = first_name.split(" ", 1)
+                first_name = name_parts[0]
+                last_name = name_parts[1] if len(name_parts) > 1 else ""
+                provider_user_id = str(user_info.get("id", ""))
             else:
                 first_name = user_info.get("given_name", "") or user_info.get(
                     "name", ""
