@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import  Any, Optional
-from app.models.institution_model import InstitutionBase, InstitutionType, InstitutionCategory
+from app.models.institution_model import InstitutionBase, InstitutionType, InstitutionCategory,Institution
 # from app.models.team_model import TeamBase
 from app.utils.partial import optional
 from uuid import UUID
@@ -110,30 +110,37 @@ class ExamPaperReadForInstitution(ExamPaperBase):
         from_attributes = True  # Allows ORM-based data to be converted to Pydantic
 
 
-class InstitutionReadSimple(InstitutionBase):
+class InstitutionReadSimple(BaseModel):
     """Simplified schema for list/search endpoints without nested relationships"""
-    id: UUID
+    id: UUID   
     slug: Optional[str] = None
+    name: str
+    location: Optional[str] = None
+    description: Optional[str] = None
+    category: InstitutionCategory
     exams_count: int | None = 0
     campuses_count: int | None = 0
     faculties_count: int | None = 0
-    logo: IImageMediaRead | None = None
-    address: Optional[AddressRead] = None
-    category: InstitutionCategory
+    logo: IImageMediaRead | None = None  
+    address: Optional[AddressRead] = None    
     institution_type: Optional[InstitutionType] = None
     key: Optional[str] = None
     kuccps_institution_url: Optional[str] = None
     full_profile: Optional[str] = None
     parent_ministry: Optional[str] = None
     tags: Optional[list[str]] = []
-    
+
     class Config:
         from_attributes = True
 
 
-class InstitutionRead(InstitutionBase):
+class InstitutionRead(BaseModel):
     id: UUID  # ID is known after creation
     slug: Optional[str] = None
+    name: str  
+    location: Optional[str] = None
+    description: Optional[str] = None
+    category: InstitutionCategory
     faculties: list[FacultyReadForInstitution] | None = []
     campuses: list[CampusRead] | None = []
     exam_papers: Optional[list[ExamPaperReadForInstitution]] | None = []

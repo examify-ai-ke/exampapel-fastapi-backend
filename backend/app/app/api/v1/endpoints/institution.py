@@ -70,7 +70,7 @@ router = APIRouter()
 
 
 @router.get("")
-@cache(expire=300)
+# @cache(expire=300)
 async def get_institution_list(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=50, ge=1),

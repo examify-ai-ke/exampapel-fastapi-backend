@@ -186,7 +186,6 @@ class Institution(BaseUUIDModel, InstitutionBase, table=True):
     @property
     def exams_count(self) -> int:
         return len(self.exam_papers) if self.exam_papers else 0
-    
     @computed_field
     @property
     def campuses_count(self) -> int:
