@@ -156,6 +156,7 @@ class InstitutionRead(BaseModel):
     full_profile: Optional[str] = None
     parent_ministry: Optional[str] = None
     tags: Optional[list[str]] = []
+    
     class Config:
         from_attributes = True  # This allows the schema to work with ORM objects
 

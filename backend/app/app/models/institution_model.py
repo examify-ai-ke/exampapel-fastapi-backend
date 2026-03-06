@@ -122,7 +122,7 @@ class Institution(BaseUUIDModel, InstitutionBase, table=True):
     image_id: UUID | None = Field(default=None, foreign_key="ImageMedia.id")
     logo: Optional[ImageMedia] = Relationship(
         sa_relationship_kwargs={
-            "lazy": "joined",
+            "lazy": "selectin",
         }
     )
     created_by_id: UUID | None = Field(default=None, foreign_key="User.id", index=True)
@@ -144,7 +144,7 @@ class Institution(BaseUUIDModel, InstitutionBase, table=True):
     address: Optional[Address] = Relationship(
         back_populates="institution",
         sa_relationship_kwargs={
-            "lazy": "joined",  # Changed from "selectin" to optimize loading
+            "lazy": "selectin",  # Changed from "selectin" to optimize loading
         },
     )
 
