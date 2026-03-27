@@ -29,12 +29,16 @@ from app.api.v1.endpoints import (
     health,  # Add health endpoints
     audit_logs,  # Add audit logs endpoints
     exam_paper_builder,
+    contact,  # Add contact endpoints
 )
 
 api_router = APIRouter()
 
 # Health check endpoints (no authentication required)
 api_router.include_router(health.router, tags=["health"])
+
+# Contact form endpoint (no authentication required)
+api_router.include_router(contact.router, prefix="/contact", tags=["contact"])
 
 api_router.include_router(login.router, prefix="/login", tags=["login"])
 api_router.include_router(logout.router, prefix="/logout", tags=["logout"])

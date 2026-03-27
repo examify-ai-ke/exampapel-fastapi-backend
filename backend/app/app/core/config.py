@@ -175,6 +175,9 @@ class Settings(BaseSettings):
     TWITTER_CLIENT_SECRET: str = ""
     TWITTER_REDIRECT_URI: str = ""
 
+    # reCAPTCHA Settings
+    RECAPTCHA_SECRET_KEY: str = ""
+
     # GITHUB_CLIENT_ID: str = ""
     # GITHUB_CLIENT_SECRET: str = ""
     # GITHUB_REDIRECT_URI: str = ""
