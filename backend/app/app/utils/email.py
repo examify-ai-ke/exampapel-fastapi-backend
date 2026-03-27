@@ -40,7 +40,13 @@ async def verify_recaptcha(token: str) -> bool:
     Returns:
         bool: True if verification successful, False otherwise
     """
+    # Bypass reCAPTCHA in development mode for testing
+    if settings.is_development:
+        logging.info("Development mode: Skipping reCAPTCHA verification")
+        return True
+
     try:
+        logging.info(f"Verifying reCAPTCHA token (length: {len(token)})...")
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 "https://www.google.com/recaptcha/api/siteverify",
@@ -55,7 +61,15 @@ async def verify_recaptcha(token: str) -> bool:
                 logging.info("reCAPTCHA verification successful")
                 return True
             else:
-                logging.warning(f"reCAPTCHA verification failed: {result.get('error-codes', [])}")
+                error_codes = result.get('error-codes', [])
+                logging.warning(f"reCAPTCHA verification failed: {error_codes}")
+                # Provide helpful error messages
+                if 'invalid-input-response' in error_codes:
+                    logging.warning("The response token is invalid or expired. User may need to refresh the page.")
+                elif 'invalid-input-secret' in error_codes:
+                    logging.warning("The reCAPTCHA secret key is invalid.")
+                elif 'bad-request' in error_codes:
+                    logging.warning("The request was invalid or malformed.")
                 return False
     except Exception as e:
         logging.error(f"reCAPTCHA verification error: {str(e)}")
