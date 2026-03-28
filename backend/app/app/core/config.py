@@ -16,8 +16,9 @@ class ModeEnum(str, Enum):
 
 class Settings(BaseSettings):
     # MODE: ModeEnum = ModeEnum.production
-    MODE: ModeEnum = os.getenv("ENVIRONMENT", "development")
-    
+    # MODE: ModeEnum = os.getenv("ENVIRONMENT", "development")
+    # Support both MODE and ENVIRONMENT variables for flexibility
+    MODE: ModeEnum = os.getenv("MODE") or os.getenv("ENVIRONMENT", "development")
     @property
     def is_development(self) -> bool:
         return self.MODE == ModeEnum.development
@@ -163,7 +164,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str = secrets.token_urlsafe(32)
     ENCRYPT_KEY: str = secrets.token_urlsafe(32)
     BACKEND_CORS_ORIGINS: list[str] | list[AnyHttpUrl]
-    
+
     # OAuth Settings
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
