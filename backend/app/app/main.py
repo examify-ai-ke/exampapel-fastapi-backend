@@ -249,9 +249,9 @@ app = FastAPI(
 ---
 *Built with ❤️ using FastAPI, SQLModel, and modern Python async patterns for educational excellence*
     """,
-    docs_url=f"{settings.API_V1_STR}/docs",
-    redoc_url=f"{settings.API_V1_STR}/redoc",
-    openapi_url=f"{settings.API_V1_STR}/openapi.json",
+    # docs_url=f"{settings.API_V1_STR}/docs",
+    # redoc_url=f"{settings.API_V1_STR}/redoc",
+    # openapi_url=f"{settings.API_V1_STR}/openapi.json",
     lifespan=lifespan,
     contact={
         "name": "ExamPapel Development Team",
